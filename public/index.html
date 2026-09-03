@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monitoring FIFO</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div id="loginView" class="auth-page">
+      <div class="auth-shell">
+        <div class="auth-card">
+          <div class="auth-header">
+            <p class="eyebrow">Secure Access</p>
+            <h1>Monitoring FIFO</h1>
+            <p class="auth-subtitle">Masuk untuk mengakses dashboard perusahaan</p>
+          </div>
+
+          <form id="loginForm" class="auth-form">
+            <label>
+              <span>Username</span>
+              <input type="text" id="loginUsername" name="username" placeholder="Masukkan username" required />
+            </label>
+
+            <label>
+              <span>Password</span>
+              <input type="password" id="loginPassword" name="password" placeholder="Masukkan password" required />
+            </label>
+
+            <button type="submit" class="primary-btn auth-btn">Masuk</button>
+            <button type="button" class="secondary-btn auth-btn" id="showRegisterBtn">Buat akun baru</button>
+            <p id="loginMessage" class="auth-message" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="registerModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <h3>Buat Akun Baru</h3>
+          <button type="button" class="close-btn" id="closeRegisterModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="registerForm">
+          <div class="form-grid">
+            <label>
+              <span>Username</span>
+              <input type="text" id="registerUsername" name="username" placeholder="Username" required />
+            </label>
+
+            <label>
+              <span>Password</span>
+              <input type="password" id="registerPassword" name="password" placeholder="Password" required />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelRegisterBtn">Batal</button>
+            <button type="submit" class="primary-btn">Daftar</button>
+          </div>
+
+          <p id="registerMessage" class="auth-message" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="dashboardView" class="app-shell hidden">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Monitoring System</p>
+          <h1>FIFO Dashboard</h1>
+        </div>
+
+        <div class="topbar-actions">
+          <span id="userPill" class="user-pill">User</span>
+          <button class="secondary-btn" id="logoutBtn" type="button">Logout</button>
+          <button class="primary-btn" id="refreshBtn" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section class="summary-strip">
+        <div class="stat-card stat-feature accent-indigo" id="card-total" style="cursor: pointer;">
+          <div class="stat-icon icon-purple">
+            <span>◫</span>
+          </div>
+          <div class="stat-copy">
+            <span>Total Keseluruhan</span>
+            <strong id="totalData">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card stat-mini accent-green" id="card-updated" style="cursor: pointer;">
+          <div class="stat-icon icon-green">
+            <span>✓</span>
+          </div>
+          <div class="stat-copy">
+            <span>Sudah Diupdate</span>
+            <strong id="updatedCardCount">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card stat-mini accent-amber" id="card-48-60" style="cursor: pointer;">
+          <div class="stat-icon icon-amber">
+            <span>◔</span>
+          </div>
+          <div class="stat-copy">
+            <span>4. 48 Jam - 60 Jam</span>
+            <strong id="count-48-60">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card stat-mini accent-orange" id="card-48-72" style="cursor: pointer;">
+          <div class="stat-icon icon-orange">
+            <span>△</span>
+          </div>
+          <div class="stat-copy">
+            <span>5. 48 Jam - 72 Jam</span>
+            <strong id="count-48-72">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card stat-mini accent-red" id="card-72-up" style="cursor: pointer;">
+          <div class="stat-icon icon-red">
+            <span>◷</span>
+          </div>
+          <div class="stat-copy">
+            <span>6. 72 Jam UP</span>
+            <strong id="count-72-up">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card stat-mini accent-cyan" id="card-archive" style="cursor: pointer;">
+          <div class="stat-icon icon-cyan">
+            <span>◫</span>
+          </div>
+          <div class="stat-copy">
+            <span>Arsip Waybill</span>
+            <strong id="archiveCardCount">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="adminControlPanel" class="panel admin-panel hidden">
+        <div class="admin-toolbar-header">
+          <span class="admin-toolbar-badge">⚠</span>
+          <span>Panel Kontrol Admin</span>
+        </div>
+
+        <div class="admin-toolbar-actions">
+          <button type="button" class="admin-primary-btn" id="importBulkBtn">
+            <span class="btn-icon">⬆</span>
+            Import Bulk Data
+          </button>
+          <button type="button" class="admin-secondary-btn" id="toggleHistoryBtn">
+            <span class="btn-icon">🕘</span>
+            Lihat History Arsip
+          </button>
+          <button type="button" class="admin-danger-btn" id="deleteHistoryBtn">
+            <span class="btn-icon">🗑</span>
+            Hapus Semua History
+          </button>
+          <button type="button" class="admin-secondary-btn" id="toggleUserPanelBtn">
+            <span class="btn-icon">👥</span>
+            Management User
+          </button>
+          <button type="button" class="admin-secondary-btn" id="downloadTemplateBtn">
+            <span class="btn-icon">↓</span>
+            Download Template CSV
+          </button>
+          <button type="button" class="admin-danger-btn" id="deleteAllMonitoringBtn">
+            <span class="btn-icon">🗑</span>
+            Hapus Data Global
+          </button>
+          <input id="bulkImportInput" type="file" accept=".csv,.txt,.tsv" hidden />
+        </div>
+      </section>
+
+      <section id="userPanel" class="panel audit-panel hidden">
+        <div class="panel-header">
+          <h2>Manajemen User</h2>
+          <div class="panel-actions">
+            <input id="userSearchInput" type="text" placeholder="Cari username / nama / role..." />
+            <label class="checkbox-inline"><input type="checkbox" id="selectAllUsers" /> Pilih semua</label>
+            <button type="button" class="secondary-btn small-btn" id="bulkBlockUsers">Block Terpilih</button>
+            <button type="button" class="secondary-btn small-btn delete-ghost" id="bulkDeleteUsers">Delete Terpilih</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="headerSelectAllUsers" aria-label="Pilih semua user" /></th>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Nama</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="monitoringPanel" class="panel">
+        <div class="panel-header">
+          <h2>Data Monitoring</h2>
+          <div class="panel-actions">
+            <input id="searchInput" type="text" placeholder="Cari waybill / outlet / status..." />
+            <select id="statusFilter" class="filter-select" aria-label="Filter status">
+              <option value="all">Semua Status</option>
+              <option value="Pending">Pending</option>
+            </select>
+            <div id="monitoringBulkControls" class="monitoring-bulk-controls">
+              <select id="bulkActionSelect" class="filter-select" aria-label="Pilih aksi untuk data terpilih">
+                <option value="">Pilih aksi...</option>
+                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                <option value="Dalam Gudang">Dalam Gudang</option>
+                <option value="Miss Route">Miss Route</option>
+                <option value="Crosslabel">Crosslabel</option>
+                <option value="Penangguhan">Penangguhan</option>
+                <option value="manual">Ketik manual...</option>
+              </select>
+              <input id="bulkActionManual" class="bulk-action-manual hidden" type="text" placeholder="Ketik aksi untuk data terpilih..." maxlength="150" />
+              <button class="primary-btn small-btn" id="bulkUpdateBtn" type="button">Update <span id="selectedMonitoringCount">0</span></button>
+              <button class="admin-secondary-btn small-btn" id="bulkArchiveBtn" type="button">Arsipkan <span id="selectedMonitoringArchiveCount">0</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="monitoring-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAllMonitoring" aria-label="Pilih semua data halaman" /></th>
+                <th>Waybill</th>
+                <th>Tanggal</th>
+                <th>Outlet</th>
+                <th>Stuck</th>
+                <th>TLC</th>
+                <th>Status</th>
+                <th>Aksi</th>
+                <th>Nama Barang</th>
+                <th>Updated By</th>
+              </tr>
+            </thead>
+            <tbody id="tabel-monitoring"></tbody>
+          </table>
+        </div>
+        <div class="table-pagination" id="monitoringPagination"></div>
+      </section>
+
+      <section id="archivePanel" class="panel audit-panel hidden">
+        <div class="panel-header">
+          <h2>Arsip Waybill</h2>
+          <div class="panel-actions">
+            <input id="archiveSearchInput" type="text" placeholder="Cari waybill / outlet / barang..." />
+            <button type="button" class="primary-btn small-btn" id="restoreArchiveBtn">Pulihkan <span id="selectedArchiveRestoreCount">0</span></button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="archive-table">
+            <thead><tr>
+              <th><input type="checkbox" id="selectAllArchive" aria-label="Pilih semua arsip" /></th>
+              <th>Waybill</th><th>Tanggal</th><th>Outlet</th><th>Stuck</th><th>Status</th><th>Aksi</th><th>Updated By</th><th>Update</th>
+            </tr></thead>
+            <tbody id="archiveTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="historyPanel" class="panel audit-panel hidden">
+        <div class="panel-header">
+          <h2>History Update</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Waybill</th>
+                <th>Tanggal</th>
+                <th>Outlet</th>
+                <th>Status</th>
+                <th>Aksi</th>
+                <th>Updated By</th>
+                <th>Archived At</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="auditPanel" class="panel audit-panel hidden">
+        <div class="panel-header">
+          <h2>Audit Log</h2>
+          <div class="panel-actions">
+            <input id="auditSearchInput" type="text" placeholder="Cari user / aksi / entity..." />
+            <button type="button" class="secondary-btn small-btn" id="exportAuditBtn">Export Log</button>
+            <button type="button" class="secondary-btn small-btn delete-ghost" id="deleteAuditBtn">Hapus Semua Log</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Aksi</th>
+                <th>Entity</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div id="auditDetailModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <h3>Detail Audit</h3>
+          <button type="button" class="close-btn" id="closeAuditDetailBtn" aria-label="Tutup detail audit">×</button>
+        </div>
+        <div id="auditDetailContent" class="audit-detail-content"></div>
+      </div>
+    </div>
+
+    <div id="monitoringModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">Tambah Data Monitoring</h3>
+          <button type="button" class="close-btn" id="closeModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="monitoringForm">
+          <div class="form-grid">
+            <label>
+              <span>Status</span>
+              <input type="text" id="status" name="status" value="Pending" readonly />
+            </label>
+
+            <label>
+              <span>Aksi Update</span>
+              <select id="actionSelect" name="actionSelect">
+                <option value="">Pilih aksi...</option>
+                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                <option value="Dalam Gudang">Dalam Gudang</option>
+                <option value="Miss Route">Miss Route</option>
+                <option value="Crosslabel">Crosslabel</option>
+                <option value="Penangguhan">Penangguhan</option>
+                <option value="manual">Ketik Manual...</option>
+              </select>
+              <input type="text" id="actionManual" name="actionManual" class="manual-action-input hidden" placeholder="Ketik aksi manual..." />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelBtn">Batal</button>
+            <button type="submit" class="primary-btn">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="importProgressModal" class="modal hidden" aria-hidden="true">
+      <div class="import-progress-card">
+        <div class="import-progress-orbit"><span>↑</span></div>
+        <p class="eyebrow">BULK IMPORT</p>
+        <h3 id="importProgressTitle">Menyiapkan import...</h3>
+        <p id="importProgressDetail">Membaca file data</p>
+        <div class="import-progress-track"><div id="importProgressBar" class="import-progress-bar"></div></div>
+        <div class="import-progress-meta"><strong id="importProgressPercent">0%</strong><span id="importProgressRows">0 data</span></div>
+        <div id="importProgressPulse" class="import-progress-pulse"><span></span><span></span><span></span></div>
+        <div id="importSummary" class="import-summary hidden">
+          <div><strong id="summarySkipped">0</strong><span>Dilewati</span></div>
+          <div><strong id="summaryOverwritten">0</strong><span>Ditimpa</span></div>
+          <div><strong id="summaryDeleted">0</strong><span>Dihapus permanen</span></div>
+          <div><strong id="summaryHistory">0</strong><span>Masuk History</span></div>
+        </div>
+        <button id="closeImportProgressBtn" class="primary-btn small-btn import-close-btn hidden" type="button">Selesai</button>
+      </div>
+    </div>
+
+    <div id="appAlertModal" class="modal hidden" aria-hidden="true">
+      <div class="app-alert-card" role="alertdialog" aria-modal="true" aria-labelledby="appAlertTitle">
+        <div id="appAlertIcon" class="app-alert-icon">!</div>
+        <p class="eyebrow">MONITORING FIFO</p>
+        <h3 id="appAlertTitle">Informasi</h3>
+        <p id="appAlertMessage"></p>
+        <button id="appAlertClose" class="primary-btn app-alert-close" type="button">Mengerti</button>
+      </div>
+    </div>
+  </body>
+</html>
