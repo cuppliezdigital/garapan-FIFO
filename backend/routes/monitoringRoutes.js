@@ -16,7 +16,7 @@ router.patch('/monitoring/archive', authMiddleware, requireRole('admin'), monito
 router.patch('/monitoring/archive/restore', authMiddleware, requireRole('admin'), monitoringController.bulkRestoreMonitoring);
 router.put('/monitoring/archive/:waybill', authMiddleware, requireRole('admin'), validateMonitoringPayload, monitoringController.updateMonitoringArchive);
 router.delete('/monitoring/all', authMiddleware, requireRole('admin'), monitoringController.deleteAllMonitoring);
-router.put('/monitoring/:waybill', authMiddleware, requireRole('admin'), validateMonitoringPayload, monitoringController.updateMonitoring);
+router.put('/monitoring/:waybill', authMiddleware, requireRole('admin', 'user'), validateMonitoringPayload, monitoringController.updateMonitoring);
 router.delete('/monitoring/:waybill', authMiddleware, requireRole('admin'), monitoringController.deleteMonitoring);
 
 module.exports = router;

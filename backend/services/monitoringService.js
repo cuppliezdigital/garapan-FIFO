@@ -410,10 +410,9 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
 
   const [result] = await db.query(
     `UPDATE monitoring_stuck
-     SET tanggal = ?, outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ?
+     SET outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ?
      WHERE waybill = ?`,
     [
-      normalized.tanggal || null,
       normalized.outlet || '-',
       normalized.stuck || 0,
       normalized.tlc || '-',
