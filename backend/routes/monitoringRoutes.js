@@ -11,7 +11,7 @@ router.get('/monitoring/archive', authMiddleware, requireRole('admin'), monitori
 router.delete('/monitoring/history', authMiddleware, requireRole('admin'), monitoringController.deleteAllMonitoringHistory);
 router.post('/monitoring', authMiddleware, requireRole('admin'), validateMonitoringPayload, monitoringController.createMonitoring);
 router.post('/monitoring/import', authMiddleware, requireRole('admin'), monitoringController.importMonitoringBulk);
-router.patch('/monitoring/bulk-update', authMiddleware, requireRole('admin'), monitoringController.bulkUpdateMonitoring);
+router.patch('/monitoring/bulk-update', authMiddleware, requireRole('admin', 'user'), monitoringController.bulkUpdateMonitoring);
 router.patch('/monitoring/archive', authMiddleware, requireRole('admin'), monitoringController.bulkArchiveMonitoring);
 router.patch('/monitoring/archive/restore', authMiddleware, requireRole('admin'), monitoringController.bulkRestoreMonitoring);
 router.put('/monitoring/archive/:waybill', authMiddleware, requireRole('admin'), validateMonitoringPayload, monitoringController.updateMonitoringArchive);
