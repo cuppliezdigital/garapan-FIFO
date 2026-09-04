@@ -403,29 +403,41 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
     throw new Error('Data monitoring tidak valid');
   }
 
-  // Jika ada aksi, status otomatis jadi 'Sudah Diupdate'
-  const finalStatus = (normalized.aksi && normalized.aksi !== '-' && normalized.aksi !== '') 
-    ? 'Sudah Diupdate' 
-    : (normalized.status || 'Open');
+  const beforeAksi = String(before?.aksi || '').trim();
+  const newAksi = String(normalized.aksi || '-').trim();
+  const aksiChanged = beforeAksi !== newAksi;
+
+  const finalStatus = (newAksi && newAksi !== '-' && newAksi !== '')
+    ? 'Sudah Diupdate'
+    : (normalized.status || before?.status || 'Open');
+
+  const preservedTanggal = normalized.tanggal && normalized.tanggal !== ''
+    ? normalized.tanggal
+    : (before?.tanggal
+      ? (before.tanggal instanceof Date
+        ? before.tanggal.toISOString().slice(0, 10)
+        : String(before.tanggal).split('T')[0].split(' ')[0])
+      : null);
 
   const [result] = await db.query(
     `UPDATE monitoring_stuck
-     SET outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ?
+     SET tanggal = ?, outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ?
      WHERE waybill = ?`,
     [
-      normalized.outlet || '-',
-      normalized.stuck || 0,
-      normalized.tlc || '-',
+      preservedTanggal,
+      normalized.outlet || before?.outlet || '-',
+      normalized.stuck || before?.stuck || '0',
+      normalized.tlc || before?.tlc || '-',
       finalStatus,
-      normalized.aksi || '-',
-      normalized.nama_barang || '-',
+      newAksi || '-',
+      normalized.nama_barang || before?.nama_barang || '-',
       actorName,
       waybillParam,
     ]
   );
   const recordExists = Boolean(before);
 
-  if (result.affectedRows > 0 && before && (String(before.aksi || '').trim() !== '-' && String(before.aksi || '').trim() !== '')) {
+  if (result.affectedRows > 0 && before && aksiChanged && beforeAksi !== '-' && beforeAksi !== '') {
     await archiveMonitoringRecord({ ...before, source: 'updated_before_replacement' }, 'history');
   }
 
@@ -458,6 +470,11 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
 }
 
 async function bulkUpdateMonitoring(waybills, aksi, actor = null) {
+  const normalizedAksi = String(aksi || '').trim();
+  if (!normalizedAksi || normalizedAksi === '-') {
+    throw new Error('Aksi bulk update wajib diisi dan tidak boleh "-".');
+  }
+
   let updatedCount = 0;
 
   for (const waybill of waybills) {
@@ -465,13 +482,14 @@ async function bulkUpdateMonitoring(waybills, aksi, actor = null) {
     const current = rows[0];
     if (!current) continue;
 
-    const tanggal = current.tanggal instanceof Date
+    const preservedTanggal = current.tanggal instanceof Date
       ? current.tanggal.toISOString().slice(0, 10)
       : String(current.tanggal || '').split('T')[0].split(' ')[0];
+
     const result = await updateMonitoring(waybill, {
       ...current,
-      tanggal,
-      aksi,
+      tanggal: preservedTanggal,
+      aksi: normalizedAksi,
       status: 'Sudah Diupdate',
     }, actor);
     if (result.success) updatedCount += 1;

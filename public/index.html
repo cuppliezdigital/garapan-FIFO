@@ -53,6 +53,14 @@
               <span>Password</span>
               <input type="password" id="registerPassword" name="password" placeholder="Password" required />
             </label>
+
+            <label>
+              <span>Role</span>
+              <select id="registerRole" name="role">
+                <option value="user" selected>User</option>
+                <option value="client">Client (View Only)</option>
+              </select>
+            </label>
           </div>
 
           <div class="form-actions">
@@ -276,7 +284,7 @@
           <h2>History Update</h2>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="history-table">
             <thead>
               <tr>
                 <th>Waybill</th>

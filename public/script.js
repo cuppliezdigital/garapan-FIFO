@@ -171,17 +171,18 @@ function setAuthState() {
   }
 
   const isAdmin = user.role === 'admin';
+  const isClient = user.role === 'client';
 
   if (addBtn) {
     addBtn.style.display = 'none';
   }
 
   if (userPanel) {
-    userPanel.classList.toggle('hidden', !isAdmin || true);
+    userPanel.classList.toggle('hidden', !isAdmin);
   }
 
   if (adminControlPanel) {
-    adminControlPanel.classList.toggle('hidden', !isAdmin);
+    adminControlPanel.classList.toggle('hidden', !(isAdmin || user.role === 'user'));
   }
 
   if (historyPanel) {
@@ -192,11 +193,20 @@ function setAuthState() {
     auditPanel.classList.toggle('hidden', !isAdmin);
   }
 
+  if (monitoringBulkControls) {
+    monitoringBulkControls.classList.toggle('hidden', isClient);
+  }
+
+  if (bulkArchiveBtn) bulkArchiveBtn.classList.toggle('hidden', isClient);
+  if (restoreArchiveBtn) restoreArchiveBtn.classList.toggle('hidden', isClient);
+
   fetchMonitoring();
   if (isAdmin) {
     fetchUsers();
     fetchAuditLogs();
     fetchMonitoringHistory();
+    fetchMonitoringArchive();
+  } else {
     fetchMonitoringArchive();
   }
 }
@@ -209,7 +219,11 @@ function logout() {
 
   authUser = null;
   sessionStorage.removeItem('monitoring_user');
-  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Authorization: `Bearer ${getToken() || ''}` },
+  }).catch(() => {});
   selectedUserIds = new Set();
   showLoginView();
 }
@@ -327,23 +341,47 @@ function closeRegisterModal() {
 
 function formatDate(dateValue) {
   if (!dateValue) return '-';
-
-  return new Date(dateValue).toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  const normalized = normalizeDateString(dateValue);
+  if (!normalized) return '-';
+  const [year, month, day] = normalized.split('-');
+  return `${day}/${month}/${year}`;
 }
 
 function formatDateForApi(dateValue) {
-  if (!dateValue) return '';
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return '';
+  if (dateValue === null || dateValue === undefined || dateValue === '') return '';
+  const normalized = normalizeDateString(dateValue);
+  if (!normalized) return '';
+  return normalized;
+}
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function normalizeDateString(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  const raw = String(value).trim();
+  if (!raw) return '';
+  const datePart = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0];
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(datePart)) {
+    const [year, month, day] = datePart.split('-');
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  const slashParts = datePart.split('/');
+  if (slashParts.length === 3 && slashParts[2].length === 4) {
+    const [day, month, year] = slashParts;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  const fallback = new Date(raw);
+  if (!Number.isNaN(fallback.getTime())) {
+    const year = fallback.getUTCFullYear();
+    const month = String(fallback.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(fallback.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return '';
 }
 
 function syncStatusWithAction() {
@@ -395,7 +433,7 @@ function renderTable(data) {
   if (!tbody) return;
 
   const user = getCurrentUser();
-  const canMutate = user.role === 'admin';
+  const canMutate = user.role === 'admin' || user.role === 'user';
 
   const totalPages = Math.max(1, Math.ceil(data.length / monitoringPageSize));
   monitoringPage = Math.min(monitoringPage, totalPages);
@@ -788,13 +826,13 @@ function renderMonitoringHistory(rows) {
   rows.forEach((row) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${row.waybill || '-'}</td>
-      <td>${row.tanggal ? formatDate(row.tanggal) : '-'}</td>
-      <td>${row.outlet || '-'}</td>
-      <td><span class="status ${String(row.status || 'Open').toLowerCase().replace(/\s+/g, '-')} ">${row.status || 'Open'}</span></td>
-      <td>${row.aksi || '-'}</td>
-      <td>${row.updated_by || '-'}</td>
-      <td>${row.archived_at ? new Date(row.archived_at).toLocaleString('id-ID') : '-'}</td>
+      <td data-label="Waybill"><span class="cell-value">${highlightSearch(row.waybill || '-')}</span></td>
+      <td data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(row.tanggal))}</span></td>
+      <td data-label="Outlet"><span class="cell-value">${highlightSearch(row.outlet || '-')}</span></td>
+      <td data-label="Status"><span class="cell-value"><span class="status ${String(row.status || 'Open').toLowerCase().replace(/\s+/g, '-')}">${row.status || 'Open'}</span></span></td>
+      <td data-label="Aksi"><span class="cell-value">${highlightSearch(row.aksi || '-')}</span></td>
+      <td data-label="Updated By"><span class="cell-value">${highlightSearch(row.updated_by || '-')}</span></td>
+      <td data-label="Archived At"><span class="cell-value">${row.archived_at ? new Date(row.archived_at).toLocaleString('id-ID') : '-'}</span></td>
     `;
     historyTableBody.appendChild(tr);
   });
@@ -1188,9 +1226,10 @@ async function saveMonitoring(event) {
   const existingItem = editingArchiveWaybill
     ? monitoringArchiveData.find((item) => item.waybill === editingArchiveWaybill)
     : (editingWaybill ? monitoringData.find((item) => item.waybill === editingWaybill) : null);
+  const existingTanggal = normalizeDateString(existingItem?.tanggal);
   const payload = {
     waybill: editingArchiveWaybill || editingWaybill || '',
-    tanggal: formatDateForApi(existingItem?.tanggal),
+    tanggal: existingTanggal,
     outlet: existingItem?.outlet || '-',
     stuck: existingItem?.stuck ?? '0',
     tlc: existingItem?.tlc || '-',
@@ -1234,11 +1273,12 @@ async function saveMonitoring(event) {
 }
 
 async function handleBulkMonitoringUpdate() {
-  const aksi = bulkActionSelect?.value === 'manual'
+  const aksiRaw = bulkActionSelect?.value === 'manual'
     ? (bulkActionManual?.value || '').trim()
-    : (bulkActionSelect?.value || '');
+    : (bulkActionSelect?.value || '').trim();
+  const aksi = aksiRaw;
   const waybills = [...selectedMonitoringWaybills];
-  if (!aksi || !waybills.length) {
+  if (!aksi || aksi === '-' || !waybills.length) {
     alert('Pilih data dan aksi update terlebih dahulu.');
     return;
   }
@@ -1281,8 +1321,9 @@ async function handleTableAction(event) {
   const user = getCurrentUser();
 
   if (action === 'update' || action === 'edit') {
-    if (user.role !== 'admin') {
-      alert('Akses ditolak. Hanya admin yang dapat mengubah data monitoring.');
+    const user = getCurrentUser();
+    if (user.role === 'client') {
+      alert('Akses ditolak. Role client hanya dapat melihat data.');
       return;
     }
 
@@ -1520,7 +1561,7 @@ if (registerForm) {
     const username = document.getElementById('registerUsername').value.trim();
     const password = document.getElementById('registerPassword').value;
     const full_name = username;
-    const role = 'user';
+    const role = document.getElementById('registerRole')?.value === 'client' ? 'client' : 'user';
 
     const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordPattern.test(password)) {
@@ -1545,9 +1586,11 @@ if (registerForm) {
         throw new Error(data.error || 'Registrasi gagal');
       }
 
-      registerMessage.textContent = `Akun ${username} berhasil dibuat.`;
+      registerMessage.textContent = `Akun ${username} (${role}) berhasil dibuat.`;
       registerMessage.classList.remove('error');
       registerForm.reset();
+      const roleSelect = document.getElementById('registerRole');
+      if (roleSelect) roleSelect.value = 'user';
 
       setTimeout(() => {
         closeRegisterModal();
@@ -1682,6 +1725,10 @@ if (logoutBtn) {
 if (addBtn) {
   addBtn.addEventListener('click', () => {
     const user = getCurrentUser();
+    if (user.role === 'client') {
+      alert('Akses ditolak. Role client hanya dapat melihat data.');
+      return;
+    }
     if (user.role !== 'admin') {
       alert('Akses ditolak. Hanya admin yang dapat menambah data monitoring.');
       return;

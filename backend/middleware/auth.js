@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const authService = require('../services/authService');
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || '';
@@ -8,7 +9,7 @@ function authMiddleware(req, res, next) {
     return result;
   }, {});
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const token = bearerToken && bearerToken !== 'cookie-session'
+  const token = bearerToken && bearerToken !== 'cookie-session' && bearerToken !== 'null' && bearerToken !== ''
     ? bearerToken
     : cookies.monitoring_session;
 
@@ -23,8 +24,27 @@ function authMiddleware(req, res, next) {
     }
 
     const decoded = jwt.verify(token, jwtSecret);
-    req.user = decoded;
-    next();
+
+    if (!decoded.sid) {
+      return res.status(401).json({ error: 'Sesi tidak valid. Silakan login ulang.' });
+    }
+
+    authService.isSessionValid(decoded.id, decoded.sid)
+      .then((valid) => {
+        if (!valid) {
+          return res.status(401).json({ error: 'Sesi Anda telah berakhir atau digunakan di perangkat lain. Silakan login ulang.' });
+        }
+        return authService.touchSession(decoded.id, decoded.sid).catch(() => null);
+      })
+      .then(() => {
+        if (res.writableEnded) return;
+        req.user = decoded;
+        next();
+      })
+      .catch((error) => {
+        console.error('Session validation error:', error.message);
+        return res.status(500).json({ error: 'Gagal memvalidasi sesi' });
+      });
   } catch (error) {
     return res.status(401).json({ error: 'Token tidak valid atau kadaluarsa' });
   }

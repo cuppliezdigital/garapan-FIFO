@@ -1,10 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('../config/db');
 
 const failedLoginAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const SESSION_TTL_MS = 30 * 60 * 1000;
 
 function getAttemptKey(username) {
   return String(username || '').trim().toLowerCase();
@@ -41,7 +43,7 @@ async function ensureUsersTable() {
       username VARCHAR(100) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
       full_name VARCHAR(150) NOT NULL,
-      role ENUM('admin', 'user') DEFAULT 'user',
+      role ENUM('admin', 'user', 'client') DEFAULT 'user',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -70,9 +72,9 @@ async function ensureUsersTable() {
   }
 
   if (!columnNames.includes('role')) {
-    await db.query("ALTER TABLE users ADD COLUMN role ENUM('admin', 'user') DEFAULT 'user'");
+    await db.query("ALTER TABLE users ADD COLUMN role ENUM('admin', 'user', 'client') DEFAULT 'user'");
   } else {
-    await db.query("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'user') DEFAULT 'user'");
+    await db.query("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'user', 'client') DEFAULT 'user'");
   }
 
   if (!columnNames.includes('status')) {
@@ -84,6 +86,73 @@ async function ensureUsersTable() {
   if (columnNames.includes('password') && !columnNames.includes('password_hash')) {
     await db.query('UPDATE users SET password_hash = password WHERE password_hash = "" OR password_hash IS NULL');
   }
+}
+
+async function ensureUserSessionsTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      session_id VARCHAR(128) NOT NULL UNIQUE,
+      revoked TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_id (user_id),
+      INDEX idx_session_id (session_id)
+    )
+  `);
+}
+
+function generateSessionId() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
+async function registerSession(userId, sessionId) {
+  await ensureUserSessionsTable();
+  await db.query(
+    'INSERT INTO user_sessions (user_id, session_id, revoked) VALUES (?, ?, 0)',
+    [userId, sessionId]
+  );
+}
+
+async function revokeOtherSessions(userId, currentSessionId) {
+  await ensureUserSessionsTable();
+  await db.query(
+    'UPDATE user_sessions SET revoked = 1 WHERE user_id = ? AND session_id != ? AND revoked = 0',
+    [userId, currentSessionId]
+  );
+}
+
+async function isSessionValid(userId, sessionId) {
+  await ensureUserSessionsTable();
+  const [rows] = await db.query(
+    `SELECT revoked, last_seen_at FROM user_sessions WHERE user_id = ? AND session_id = ? LIMIT 1`,
+    [userId, sessionId]
+  );
+  const session = rows[0];
+  if (!session) return false;
+  if (Number(session.revoked) === 1) return false;
+  const lastSeen = new Date(session.last_seen_at).getTime();
+  if (Number.isNaN(lastSeen)) return false;
+  if (Date.now() - lastSeen > SESSION_TTL_MS) return false;
+  return true;
+}
+
+async function touchSession(userId, sessionId) {
+  await ensureUserSessionsTable();
+  await db.query(
+    `UPDATE user_sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE user_id = ? AND session_id = ? AND revoked = 0`,
+    [userId, sessionId]
+  );
+}
+
+async function revokeSession(userId, sessionId) {
+  await ensureUserSessionsTable();
+  if (!sessionId) {
+    await db.query('UPDATE user_sessions SET revoked = 1 WHERE user_id = ? AND revoked = 0', [userId]);
+    return;
+  }
+  await db.query('UPDATE user_sessions SET revoked = 1 WHERE user_id = ? AND session_id = ?', [userId, sessionId]);
 }
 
 async function ensureDefaultAdmin() {
@@ -125,7 +194,8 @@ async function findUserByUsername(username) {
 async function getAllUsers() {
   await ensureUsersTable();
   const [rows] = await db.query(
-    'SELECT id, username, full_name, role, status, created_at FROM users ORDER BY created_at DESC'
+    'SELECT id, username, full_name, role, status, created_at FROM users WHERE role IN (?, ?) ORDER BY created_at DESC',
+    ['user', 'client']
   );
   return rows;
 }
@@ -139,9 +209,13 @@ async function toggleUserStatus(userId, nextStatus, currentUserId) {
   }
 
   const [result] = await db.query(
-    'UPDATE users SET status = ? WHERE id = ? AND role = ?',
-    [normalizedStatus, userId, 'user']
+    'UPDATE users SET status = ? WHERE id = ? AND role IN (?, ?)',
+    [normalizedStatus, userId, 'user', 'client']
   );
+
+  if (result.affectedRows > 0 && normalizedStatus === 'blocked') {
+    await revokeSession(userId);
+  }
 
   return { success: result.affectedRows > 0 };
 }
@@ -154,9 +228,13 @@ async function deleteUser(userId, currentUserId) {
   }
 
   const [result] = await db.query(
-    'DELETE FROM users WHERE id = ? AND role = ?',
-    [userId, 'user']
+    'DELETE FROM users WHERE id = ? AND role IN (?, ?)',
+    [userId, 'user', 'client']
   );
+
+  if (result.affectedRows > 0) {
+    await revokeSession(userId);
+  }
 
   return { success: result.affectedRows > 0 };
 }
@@ -175,7 +253,8 @@ async function registerUser({ username, password, full_name, role = 'user' }) {
 
   const normalizedUsername = String(username || '').trim();
   const normalizedFullName = String(full_name || '').trim() || normalizedUsername;
-  const safeRole = 'user';
+  const allowedRoles = ['user', 'client'];
+  const safeRole = allowedRoles.includes(role) ? role : 'user';
 
   if (!normalizedUsername || !password) {
     throw new Error('Username dan password wajib diisi');
@@ -234,12 +313,17 @@ async function loginUser({ username, password }) {
 
   resetFailedAttempts(normalizedUsername);
 
+  const sessionId = generateSessionId();
+  await registerSession(user.id, sessionId);
+  await revokeOtherSessions(user.id, sessionId);
+
   const token = jwt.sign(
     {
       id: user.id,
       username: user.username,
       role: user.role,
       full_name: user.full_name,
+      sid: sessionId,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '30m' }
@@ -264,4 +348,8 @@ module.exports = {
   getAllUsers,
   toggleUserStatus,
   deleteUser,
+  isSessionValid,
+  touchSession,
+  revokeSession,
+  revokeOtherSessions,
 };

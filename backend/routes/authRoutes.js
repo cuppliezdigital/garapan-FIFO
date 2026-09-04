@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-router.post('/logout', authController.logout);
+router.post('/logout', authMiddleware, authController.logout);
 router.get('/users', authMiddleware, requireRole('admin'), authController.getUsers);
 router.patch('/users/:id/status', authMiddleware, requireRole('admin'), authController.toggleUserStatus);
 router.delete('/users/:id', authMiddleware, requireRole('admin'), authController.deleteUser);

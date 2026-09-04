@@ -58,6 +58,9 @@ async function bulkUpdateMonitoring(req, res) {
     const result = await monitoringService.bulkUpdateMonitoring(waybills, aksi, req.user);
     res.json({ message: 'Update banyak berhasil diproses', updatedCount: result.updatedCount });
   } catch (error) {
+    if (error.message && error.message.includes('Aksi bulk update')) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Controller bulkUpdateMonitoring error:', error);
     res.status(500).json({ error: 'Gagal memperbarui data monitoring secara bulk' });
   }

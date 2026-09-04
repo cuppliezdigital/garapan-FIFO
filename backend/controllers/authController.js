@@ -23,7 +23,14 @@ async function login(req, res) {
   }
 }
 
-function logout(req, res) {
+async function logout(req, res) {
+  try {
+    if (req.user && req.user.id && req.user.sid) {
+      await authService.revokeSession(req.user.id, req.user.sid);
+    }
+  } catch (error) {
+    console.error('Logout revoke error:', error.message);
+  }
   res.setHeader('Set-Cookie', 'monitoring_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict');
   res.json({ message: 'Logout berhasil' });
 }
