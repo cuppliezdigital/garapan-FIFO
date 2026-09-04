@@ -172,6 +172,10 @@
             <span class="btn-icon">👥</span>
             Management User
           </button>
+          <button type="button" class="admin-secondary-btn" id="toggleConfigPanelBtn">
+            <span class="btn-icon">⚙</span>
+            Konfigurasi Akses
+          </button>
           <button type="button" class="admin-secondary-btn" id="downloadTemplateBtn">
             <span class="btn-icon">↓</span>
             Download Template CSV
@@ -209,6 +213,39 @@
             </thead>
             <tbody id="userTableBody"></tbody>
           </table>
+        </div>
+      </section>
+
+      <section id="configPanel" class="panel audit-panel hidden">
+        <div class="panel-header">
+          <h2>Konfigurasi Akses User</h2>
+          <div class="panel-actions">
+            <select id="configUserSelect" class="filter-select" aria-label="Pilih user"></select>
+            <button type="button" class="secondary-btn small-btn" id="refreshConfigBtn">Refresh</button>
+            <button type="button" class="primary-btn small-btn" id="saveConfigBtn">Simpan Perubahan</button>
+          </div>
+        </div>
+        <div class="config-grid">
+          <div class="config-card">
+            <h3>Role Akun</h3>
+            <p class="config-hint">Admin tidak dapat diubah dari sini. User/Client bisa di-switch.</p>
+            <label class="config-row">
+              <span>Role</span>
+              <select id="configRoleSelect" class="filter-select">
+                <option value="user">User</option>
+                <option value="client">Client (View Only)</option>
+              </select>
+            </label>
+            <button type="button" class="primary-btn small-btn" id="saveRoleBtn">Simpan Role</button>
+            <p id="roleMessage" class="auth-message" aria-live="polite"></p>
+          </div>
+
+          <div class="config-card config-card-wide">
+            <h3>Daftar Izin</h3>
+            <p class="config-hint">Centang izin yang boleh digunakan user ini. <strong>Full Akses</strong> = otomatis mengaktifkan semua izin di bawahnya.</p>
+            <div id="configPermissionsList" class="permissions-list"></div>
+            <p id="permissionsMessage" class="auth-message" aria-live="polite"></p>
+          </div>
         </div>
       </section>
 

@@ -37,6 +37,16 @@ const bulkImportInput = document.getElementById('bulkImportInput');
 const importBulkBtn = document.getElementById('importBulkBtn');
 const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
 const deleteHistoryBtn = document.getElementById('deleteHistoryBtn');
+const toggleConfigPanelBtn = document.getElementById('toggleConfigPanelBtn');
+const configPanel = document.getElementById('configPanel');
+const configUserSelect = document.getElementById('configUserSelect');
+const configRoleSelect = document.getElementById('configRoleSelect');
+const saveRoleBtn = document.getElementById('saveRoleBtn');
+const roleMessage = document.getElementById('roleMessage');
+const configPermissionsList = document.getElementById('configPermissionsList');
+const saveConfigBtn = document.getElementById('saveConfigBtn');
+const refreshConfigBtn = document.getElementById('refreshConfigBtn');
+const permissionsMessage = document.getElementById('permissionsMessage');
 const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
 const deleteAllMonitoringBtn = document.getElementById('deleteAllMonitoringBtn');
 const toggleUserPanelBtn = document.getElementById('toggleUserPanelBtn');
@@ -102,6 +112,10 @@ let monitoringArchiveData = [];
 let selectedArchiveWaybills = new Set();
 let editingArchiveWaybill = null;
 let authUser = null;
+let currentPermissions = {};
+let permissionCatalog = [];
+let configUsersList = [];
+let selectedConfigUserId = null;
 
 function showAppAlert(message) {
   if (!appAlertModal) return;
@@ -155,6 +169,45 @@ function getCurrentUser() {
   return authUser || JSON.parse(sessionStorage.getItem('monitoring_user') || '{}');
 }
 
+function setCurrentPermissions(permissions) {
+  currentPermissions = {};
+  if (Array.isArray(permissions)) {
+    for (const p of permissions) currentPermissions[p.key] = Boolean(p.allowed);
+  }
+}
+
+function hasPermission(key) {
+  if (getCurrentUser().role === 'admin') return true;
+  return Boolean(currentPermissions[key]);
+}
+
+function applyUIPermissions() {
+  const toggle = (el, show) => {
+    if (!el) return;
+    if (show) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  };
+
+  toggle(toggleHistoryBtn, hasPermission('view_history'));
+  toggle(deleteHistoryBtn, hasPermission('delete_history'));
+  toggle(toggleConfigPanelBtn, hasPermission('access_config'));
+  toggle(toggleUserPanelBtn, hasPermission('manage_users'));
+  toggle(downloadTemplateBtn, hasPermission('download_template'));
+  toggle(importBulkBtn, hasPermission('import_bulk'));
+  toggle(deleteAllMonitoringBtn, hasPermission('delete_global'));
+
+  if (addBtn) {
+    addBtn.style.display = hasPermission('import_bulk') ? '' : 'none';
+  }
+
+  const user = getCurrentUser();
+  if (user.role === 'client') {
+    toggle(monitoringBulkControls, false);
+    toggle(bulkArchiveBtn, false);
+    toggle(restoreArchiveBtn, false);
+  }
+}
+
 function setAuthState() {
   const token = getToken();
 
@@ -200,14 +253,18 @@ function setAuthState() {
   if (bulkArchiveBtn) bulkArchiveBtn.classList.toggle('hidden', isClient);
   if (restoreArchiveBtn) restoreArchiveBtn.classList.toggle('hidden', isClient);
 
+  applyUIPermissions();
+
   fetchMonitoring();
   if (isAdmin) {
     fetchUsers();
     fetchAuditLogs();
     fetchMonitoringHistory();
     fetchMonitoringArchive();
+    fetchConfigUsers();
   } else if (!isClient) {
     fetchMonitoringArchive();
+    if (hasPermission('access_config')) fetchConfigUsers();
   }
 }
 
@@ -257,6 +314,7 @@ async function parseResponseJson(response) {
 async function loginUser(username, password) {
   const response = await fetch('/api/auth/login', {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
@@ -269,11 +327,24 @@ async function loginUser(username, password) {
 
   authUser = data.user;
   sessionStorage.setItem('monitoring_user', JSON.stringify(data.user));
+
+  try {
+    const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+    if (meResponse.ok) {
+      const meData = await meResponse.json();
+      setCurrentPermissions(meData.permissions || []);
+    } else {
+      setCurrentPermissions([]);
+    }
+  } catch (error) {
+    setCurrentPermissions([]);
+  }
+
   setAuthState();
 }
 
 async function bootstrapAuth() {
-  const response = await fetch('/api/auth/me');
+  const response = await fetch('/api/auth/me', { credentials: 'include' });
   if (!response.ok) {
     showLoginView();
     return;
@@ -281,6 +352,7 @@ async function bootstrapAuth() {
   const data = await response.json();
   authUser = data.user;
   sessionStorage.setItem('monitoring_user', JSON.stringify(authUser));
+  setCurrentPermissions(data.permissions || []);
   setAuthState();
 }
 
@@ -1721,6 +1793,158 @@ function syncPanelButtonStates() {
   if (toggleUserPanelBtn) {
     toggleUserPanelBtn.classList.toggle('active', !userPanel?.classList.contains('hidden'));
   }
+
+  if (toggleConfigPanelBtn) {
+    toggleConfigPanelBtn.classList.toggle('active', !configPanel?.classList.contains('hidden'));
+  }
+}
+
+async function fetchConfigUsers() {
+  if (!hasPermission('access_config') && getCurrentUser().role !== 'admin') return;
+  const response = await fetch('/api/auth/users', { credentials: 'include' });
+  if (!response.ok) return;
+  configUsersList = await response.json();
+  if (configUserSelect) {
+    configUserSelect.innerHTML = '<option value="">-- Pilih user --</option>' +
+      configUsersList.map((u) => `<option value="${u.id}">${u.username} (${u.full_name || '-'}) — ${u.role}</option>`).join('');
+    if (selectedConfigUserId) configUserSelect.value = String(selectedConfigUserId);
+  }
+}
+
+async function fetchPermissionCatalog() {
+  if (!hasPermission('access_config') && getCurrentUser().role !== 'admin') return;
+  const response = await fetch('/api/auth/permissions/catalog', { credentials: 'include' });
+  if (!response.ok) return;
+  const data = await response.json();
+  permissionCatalog = data.catalog || [];
+}
+
+async function fetchUserPermissions(userId) {
+  const response = await fetch(`/api/auth/users/${userId}/permissions`, { credentials: 'include' });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data;
+}
+
+function renderConfigPermissions(permissions) {
+  if (!configPermissionsList) return;
+  if (!permissions || !permissions.length) {
+    configPermissionsList.innerHTML = '<p class="empty-state">Pilih user terlebih dahulu.</p>';
+    return;
+  }
+
+  configPermissionsList.innerHTML = permissions.map((p) => `
+    <label class="permission-row ${p.allowed ? 'is-allowed' : 'is-denied'}" data-key="${p.key}">
+      <div class="permission-meta">
+        <strong>${p.label || p.key}</strong>
+        <span class="permission-desc">${p.description || ''}</span>
+        <code class="permission-key">${p.key}</code>
+      </div>
+      <input type="checkbox" class="permission-toggle" data-key="${p.key}" ${p.allowed ? 'checked' : ''} />
+    </label>
+  `).join('');
+
+  configPermissionsList.querySelectorAll('.permission-toggle').forEach((toggle) => {
+    toggle.addEventListener('change', (event) => {
+      const key = event.target.dataset.key;
+      const isFull = key === 'full_access';
+      if (isFull && event.target.checked) {
+        configPermissionsList.querySelectorAll('.permission-toggle').forEach((other) => {
+          if (other.dataset.key !== 'full_access') {
+            other.checked = true;
+            other.disabled = true;
+            other.closest('.permission-row')?.classList.add('is-locked');
+          }
+        });
+      } else if (isFull && !event.target.checked) {
+        configPermissionsList.querySelectorAll('.permission-toggle').forEach((other) => {
+          if (other.dataset.key !== 'full_access') {
+            other.disabled = false;
+            other.closest('.permission-row')?.classList.remove('is-locked');
+          }
+        });
+      }
+    });
+  });
+
+  const fullToggle = configPermissionsList.querySelector('.permission-toggle[data-key="full_access"]');
+  if (fullToggle && fullToggle.checked) fullToggle.dispatchEvent(new Event('change'));
+}
+
+async function loadConfigForUser(userId) {
+  if (!userId) {
+    if (configPermissionsList) configPermissionsList.innerHTML = '<p class="empty-state">Pilih user terlebih dahulu.</p>';
+    if (configRoleSelect) configRoleSelect.value = 'user';
+    return;
+  }
+  selectedConfigUserId = Number(userId);
+  const data = await fetchUserPermissions(userId);
+  if (!data) return;
+  if (configRoleSelect) {
+    configRoleSelect.value = data.role;
+    configRoleSelect.disabled = data.role === 'admin';
+  }
+  renderConfigPermissions(data.permissions);
+  if (roleMessage) roleMessage.textContent = '';
+  if (permissionsMessage) permissionsMessage.textContent = '';
+}
+
+async function saveConfigPermissions() {
+  if (!selectedConfigUserId) {
+    alert('Pilih user terlebih dahulu.');
+    return;
+  }
+  const overrides = {};
+  configPermissionsList.querySelectorAll('.permission-toggle').forEach((toggle) => {
+    overrides[toggle.dataset.key] = toggle.checked;
+  });
+  const response = await fetch(`/api/auth/users/${selectedConfigUserId}/permissions`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ permissions: overrides }),
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (permissionsMessage) {
+      permissionsMessage.textContent = result.error || 'Gagal menyimpan izin';
+      permissionsMessage.classList.add('error');
+    }
+    return;
+  }
+  if (permissionsMessage) {
+    permissionsMessage.textContent = 'Izin berhasil diperbarui.';
+    permissionsMessage.classList.remove('error');
+  }
+  renderConfigPermissions(result.permissions);
+}
+
+async function saveConfigRole() {
+  if (!selectedConfigUserId) {
+    alert('Pilih user terlebih dahulu.');
+    return;
+  }
+  const newRole = configRoleSelect?.value;
+  if (!newRole) return;
+  const response = await fetch(`/api/auth/users/${selectedConfigUserId}/role`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: newRole }),
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (roleMessage) {
+      roleMessage.textContent = result.error || 'Gagal mengubah role';
+      roleMessage.classList.add('error');
+    }
+    return;
+  }
+  if (roleMessage) {
+    roleMessage.textContent = `Role berhasil diubah ke ${newRole}.`;
+    roleMessage.classList.remove('error');
+  }
+  fetchConfigUsers();
 }
 
 if (toggleHistoryBtn && historyPanel) {
@@ -1731,6 +1955,7 @@ if (toggleHistoryBtn && historyPanel) {
       userPanel && userPanel.classList.add('hidden');
       archivePanel && archivePanel.classList.add('hidden');
       monitoringPanel && monitoringPanel.classList.add('hidden');
+      configPanel && configPanel.classList.add('hidden');
       historyPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
       monitoringPanel && monitoringPanel.classList.remove('hidden');
@@ -1745,8 +1970,39 @@ if (toggleUserPanelBtn && userPanel) {
     userPanel.classList.toggle('hidden', !isHidden);
     if (!userPanel.classList.contains('hidden')) {
       historyPanel && historyPanel.classList.add('hidden');
+      configPanel && configPanel.classList.add('hidden');
     }
     syncPanelButtonStates();
+  });
+}
+
+if (toggleConfigPanelBtn && configPanel) {
+  toggleConfigPanelBtn.addEventListener('click', async () => {
+    const isHidden = configPanel.classList.contains('hidden');
+    configPanel.classList.toggle('hidden', !isHidden);
+    if (!configPanel.classList.contains('hidden')) {
+      userPanel && userPanel.classList.add('hidden');
+      historyPanel && historyPanel.classList.add('hidden');
+      await fetchPermissionCatalog();
+      await fetchConfigUsers();
+      if (selectedConfigUserId) loadConfigForUser(selectedConfigUserId);
+    }
+    syncPanelButtonStates();
+  });
+}
+
+if (configUserSelect) {
+  configUserSelect.addEventListener('change', (event) => {
+    loadConfigForUser(event.target.value);
+  });
+}
+
+if (saveRoleBtn) saveRoleBtn.addEventListener('click', saveConfigRole);
+if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveConfigPermissions);
+if (refreshConfigBtn) {
+  refreshConfigBtn.addEventListener('click', async () => {
+    await fetchConfigUsers();
+    if (selectedConfigUserId) loadConfigForUser(selectedConfigUserId);
   });
 }
 

@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const permissionsService = require('../services/permissionsService');
 
 async function register(req, res) {
   try {
@@ -84,6 +85,71 @@ async function deleteUser(req, res) {
   }
 }
 
+async function getPermissionCatalog(req, res) {
+  try {
+    await permissionsService.ensurePermissionsTables();
+    res.json({
+      catalog: permissionsService.PERMISSION_CATALOG,
+    });
+  } catch (error) {
+    console.error('Controller getPermissionCatalog error:', error);
+    res.status(500).json({ error: 'Gagal memuat katalog izin' });
+  }
+}
+
+async function getUserPermissions(req, res) {
+  try {
+    const userId = Number(req.params.id);
+    const [rows] = await require('../config/db').query('SELECT id, role FROM users WHERE id = ?', [userId]);
+    if (!rows.length) return res.status(404).json({ error: 'User tidak ditemukan' });
+    const target = rows[0];
+    const permissions = await permissionsService.getEffectivePermissions(userId, target.role);
+    res.json({ userId, role: target.role, permissions });
+  } catch (error) {
+    console.error('Controller getUserPermissions error:', error);
+    res.status(500).json({ error: 'Gagal memuat izin user' });
+  }
+}
+
+async function updateUserPermissions(req, res) {
+  try {
+    const userId = Number(req.params.id);
+    const payload = req.body?.permissions && typeof req.body.permissions === 'object'
+      ? req.body.permissions
+      : req.body;
+    const result = await permissionsService.updateUserPermissions(userId, payload, req.user);
+    if (!result.success) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+    res.json({ message: 'Izin user berhasil diperbarui', permissions: result.permissions });
+  } catch (error) {
+    console.error('Controller updateUserPermissions error:', error);
+    res.status(500).json({ error: 'Gagal memperbarui izin user' });
+  }
+}
+
+async function changeUserRole(req, res) {
+  try {
+    const userId = Number(req.params.id);
+    const newRole = String(req.body?.role || '').trim();
+    const result = await permissionsService.updateUserRole(userId, newRole, req.user);
+    if (!result.success) {
+      const map = {
+        not_found: { status: 404, message: 'User tidak ditemukan' },
+        invalid_role: { status: 400, message: 'Role tidak valid' },
+        cannot_modify_admin: { status: 403, message: 'Role admin tidak dapat diubah' },
+        self: { status: 400, message: 'Anda tidak dapat mengubah role Anda sendiri' },
+      };
+      const entry = map[result.reason] || { status: 400, message: 'Gagal mengubah role' };
+      return res.status(entry.status).json({ error: entry.message });
+    }
+    res.json({ message: `Role user diubah ke ${newRole}` });
+  } catch (error) {
+    console.error('Controller changeUserRole error:', error);
+    res.status(500).json({ error: 'Gagal mengubah role user' });
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -91,4 +157,8 @@ module.exports = {
   getUsers,
   toggleUserStatus,
   deleteUser,
+  getPermissionCatalog,
+  getUserPermissions,
+  updateUserPermissions,
+  changeUserRole,
 };

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
+const permissionsService = require('../services/permissionsService');
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || '';
@@ -36,10 +37,16 @@ function authMiddleware(req, res, next) {
         }
         return authService.touchSession(decoded.id, decoded.sid).catch(() => null);
       })
-      .then(() => {
+      .then(async () => {
         if (res.writableEnded) return;
-        req.user = decoded;
-        next();
+        try {
+          req.user = decoded;
+          req.permissions = await permissionsService.getEffectivePermissions(decoded.id, decoded.role);
+          next();
+        } catch (error) {
+          console.error('Permission resolve error:', error.message);
+          return res.status(500).json({ error: 'Gagal memuat izin pengguna' });
+        }
       })
       .catch((error) => {
         console.error('Session validation error:', error.message);
@@ -62,4 +69,34 @@ function requireRole(...allowedRoles) {
   };
 }
 
-module.exports = { authMiddleware, requireRole };
+function requirePermission(...permissionKeys) {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Sesi tidak ditemukan' });
+    }
+    if (req.user.role === 'admin') {
+      req.permissionKeys = permissionKeys;
+      return next();
+    }
+    if (!permissionKeys.length) {
+      return next();
+    }
+
+    try {
+      const checks = await Promise.all(
+        permissionKeys.map((key) => permissionsService.userHasPermission(req.user.id, req.user.role, key))
+      );
+      const allGranted = checks.every(Boolean);
+      if (!allGranted) {
+        return res.status(403).json({ error: 'Akses ditolak. Izin Anda tidak mencukupi.' });
+      }
+      req.permissionKeys = permissionKeys;
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error.message);
+      return res.status(500).json({ error: 'Gagal memeriksa izin' });
+    }
+  };
+}
+
+module.exports = { authMiddleware, requireRole, requirePermission };
