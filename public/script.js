@@ -206,7 +206,7 @@ function setAuthState() {
     fetchAuditLogs();
     fetchMonitoringHistory();
     fetchMonitoringArchive();
-  } else {
+  } else if (!isClient) {
     fetchMonitoringArchive();
   }
 }
@@ -1666,13 +1666,16 @@ if (refreshBtn) {
 
     try {
       await fetchMonitoring();
-      if (getCurrentUser().role === 'admin') {
+      const role = getCurrentUser().role;
+      if (role === 'admin') {
         await Promise.all([
           fetchUsers(),
           fetchAuditLogs(),
           fetchMonitoringHistory(),
           fetchMonitoringArchive(),
         ]);
+      } else if (role === 'user') {
+        await fetchMonitoringArchive();
       }
     } catch (error) {
       alert(error.message || 'Gagal memuat ulang data');

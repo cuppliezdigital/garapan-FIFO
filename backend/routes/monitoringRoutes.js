@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.get('/monitoring', authMiddleware, monitoringController.getMonitoring);
 router.get('/monitoring/history', authMiddleware, requireRole('admin'), monitoringController.getMonitoringHistory);
-router.get('/monitoring/archive', authMiddleware, requireRole('admin'), monitoringController.getMonitoringArchive);
+router.get('/monitoring/archive', authMiddleware, requireRole('admin', 'user'), monitoringController.getMonitoringArchive);
 router.delete('/monitoring/history', authMiddleware, requireRole('admin'), monitoringController.deleteAllMonitoringHistory);
 router.post('/monitoring', authMiddleware, requireRole('admin'), validateMonitoringPayload, monitoringController.createMonitoring);
 router.post('/monitoring/import', authMiddleware, requireRole('admin'), monitoringController.importMonitoringBulk);
