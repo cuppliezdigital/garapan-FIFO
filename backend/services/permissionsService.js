@@ -117,27 +117,49 @@ function normalizeAllowed(value) {
 }
 
 async function resolveUserPermissions(userId, role) {
-  await ensurePermissionsTables();
-  const [rows] = await db.query(
-    `SELECT pm.permission_key AS key,
-            COALESCE(up.allowed, rdp.allowed, 0) AS allowed,
-            pm.label, pm.description, pm.category
-     FROM permissions_master pm
-     LEFT JOIN role_default_permissions rdp
-       ON rdp.role = ? AND rdp.permission_key = pm.permission_key
-     LEFT JOIN user_permissions up
-       ON up.user_id = ? AND up.permission_key = pm.permission_key
-     ORDER BY pm.id ASC`,
-    [role, userId]
-  );
+  try {
+    await ensurePermissionsTables();
+  } catch (error) {
+    console.error('ensurePermissionsTables failed:', error.message);
+    return PERMISSION_CATALOG.map((entry) => ({
+      key: entry.key,
+      label: entry.label,
+      description: entry.description,
+      category: entry.category,
+      allowed: role === 'admin',
+    }));
+  }
+  try {
+    const [rows] = await db.query(
+      `SELECT pm.permission_key AS key,
+              COALESCE(up.allowed, rdp.allowed, 0) AS allowed,
+              pm.label, pm.description, pm.category
+       FROM permissions_master pm
+       LEFT JOIN role_default_permissions rdp
+         ON rdp.role = ? AND rdp.permission_key = pm.permission_key
+       LEFT JOIN user_permissions up
+         ON up.user_id = ? AND up.permission_key = pm.permission_key
+       ORDER BY pm.id ASC`,
+      [role, userId]
+    );
 
-  return rows.map((row) => ({
-    key: row.key,
-    label: row.label,
-    description: row.description,
-    category: row.category,
-    allowed: Number(row.allowed) === 1,
-  }));
+    return rows.map((row) => ({
+      key: row.key,
+      label: row.label,
+      description: row.description,
+      category: row.category,
+      allowed: Number(row.allowed) === 1,
+    }));
+  } catch (error) {
+    console.error('resolveUserPermissions query failed:', error.message);
+    return PERMISSION_CATALOG.map((entry) => ({
+      key: entry.key,
+      label: entry.label,
+      description: entry.description,
+      category: entry.category,
+      allowed: role === 'admin',
+    }));
+  }
 }
 
 async function userHasPermission(userId, role, permissionKey) {

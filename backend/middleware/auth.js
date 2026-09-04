@@ -41,11 +41,16 @@ function authMiddleware(req, res, next) {
         if (res.writableEnded) return;
         try {
           req.user = decoded;
-          req.permissions = await permissionsService.getEffectivePermissions(decoded.id, decoded.role);
+          try {
+            req.permissions = await permissionsService.getEffectivePermissions(decoded.id, decoded.role);
+          } catch (permError) {
+            console.error('Permission resolve error (fallback to empty):', permError.message);
+            req.permissions = [];
+          }
           next();
         } catch (error) {
-          console.error('Permission resolve error:', error.message);
-          return res.status(500).json({ error: 'Gagal memuat izin pengguna' });
+          console.error('Auth middleware post-session error:', error.message);
+          return res.status(500).json({ error: 'Gagal memuat data sesi' });
         }
       })
       .catch((error) => {
