@@ -497,9 +497,20 @@ function highlightSearch(value, searchValue = searchInput?.value) {
 function updateSelectedMonitoringCount() {
   if (selectedMonitoringCount) selectedMonitoringCount.textContent = selectedMonitoringWaybills.size;
   if (selectedMonitoringArchiveCount) selectedMonitoringArchiveCount.textContent = selectedMonitoringWaybills.size;
-  if (bulkUpdateBtn) bulkUpdateBtn.disabled = selectedMonitoringWaybills.size === 0;
   if (bulkArchiveBtn) bulkArchiveBtn.disabled = selectedMonitoringWaybills.size === 0;
+  refreshBulkActionButtonState();
   monitoringBulkControls?.classList.toggle('has-selection', selectedMonitoringWaybills.size > 0);
+}
+
+function refreshBulkActionButtonState() {
+  if (!bulkUpdateBtn) return;
+  const hasSelection = selectedMonitoringWaybills.size > 0;
+  const selectedValue = bulkActionSelect?.value || '';
+  const manualValue = (bulkActionManual?.value || '').trim();
+  const hasAction = (selectedValue === 'manual' ? manualValue : selectedValue).length > 0
+    && selectedValue !== ''
+    && !(selectedValue === 'manual' && !manualValue);
+  bulkUpdateBtn.disabled = !(hasSelection && hasAction);
 }
 
 function renderMonitoringPagination(totalRows, totalPages) {
@@ -1273,13 +1284,33 @@ async function saveMonitoring(event) {
 }
 
 async function handleBulkMonitoringUpdate() {
-  const aksiRaw = bulkActionSelect?.value === 'manual'
-    ? (bulkActionManual?.value || '').trim()
-    : (bulkActionSelect?.value || '').trim();
-  const aksi = aksiRaw;
+  const selectedValue = bulkActionSelect?.value || '';
+  const manualValue = (bulkActionManual?.value || '').trim();
+  const aksiRaw = selectedValue === 'manual' ? manualValue : selectedValue;
+  const aksi = aksiRaw.trim();
   const waybills = [...selectedMonitoringWaybills];
-  if (!aksi || aksi === '-' || !waybills.length) {
-    alert('Pilih data dan aksi update terlebih dahulu.');
+
+  if (!waybills.length) {
+    alert('Pilih minimal 1 data monitoring terlebih dahulu.');
+    if (bulkUpdateBtn) bulkUpdateBtn.disabled = true;
+    return;
+  }
+
+  if (!aksi || aksi === '-' || selectedValue === '') {
+    alert('Pilih aksi dari dropdown terlebih dahulu. Update dibatalkan.');
+    if (bulkActionSelect) {
+      bulkActionSelect.focus();
+      bulkActionSelect.classList.add('input-error');
+      setTimeout(() => bulkActionSelect.classList.remove('input-error'), 1800);
+    }
+    return;
+  }
+
+  if (selectedValue === 'manual' && !manualValue) {
+    alert('Ketik aksi manual terlebih dahulu. Update dibatalkan.');
+    bulkActionManual?.focus();
+    bulkActionManual?.classList.add('input-error');
+    setTimeout(() => bulkActionManual?.classList.remove('input-error'), 1800);
     return;
   }
 
@@ -1840,7 +1871,12 @@ if (bulkActionSelect) {
     const isManual = bulkActionSelect.value === 'manual';
     bulkActionManual?.classList.toggle('hidden', !isManual);
     if (isManual) bulkActionManual?.focus();
+    refreshBulkActionButtonState();
   });
+}
+
+if (bulkActionManual) {
+  bulkActionManual.addEventListener('input', refreshBulkActionButtonState);
 }
 
 if (monitoringPagination) {
