@@ -5,7 +5,7 @@ const db = require('../config/db');
 
 const failedLoginAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const LOCKOUT_WINDOW_MS = 1 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
 function getAttemptKey(username) {
@@ -401,8 +401,16 @@ async function loginUser({ username, password }) {
   const lockedState = failedLoginAttempts.get(key);
   if (lockedState && lockedState.lockUntil && Date.now() < lockedState.lockUntil) {
     const remainingMs = Math.max(0, lockedState.lockUntil - Date.now());
-    const remainingMinutes = Math.ceil(remainingMs / 60000);
-    throw new Error(`Akun sementara terkunci karena terlalu banyak login gagal. Coba lagi dalam ${remainingMinutes} menit.`);
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    let remainingLabel;
+    if (totalSeconds >= 60) {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      remainingLabel = seconds > 0 ? `${minutes} menit ${seconds} detik` : `${minutes} menit`;
+    } else {
+      remainingLabel = `${totalSeconds} detik`;
+    }
+    throw new Error(`Akun sementara terkunci karena terlalu banyak login gagal. Coba lagi dalam ${remainingLabel}.`);
   }
 
   const user = await findUserByUsername(normalizedUsername);
