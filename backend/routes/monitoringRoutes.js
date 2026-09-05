@@ -16,7 +16,7 @@ router.get('/monitoring/archive', authMiddleware, requirePermission(PERMISSION_K
 router.post('/monitoring', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), validateMonitoringPayload, monitoringController.createMonitoring);
 router.post('/monitoring/import', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), monitoringController.importMonitoringBulk);
 
-router.patch('/monitoring/bulk-update', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), monitoringController.bulkUpdateMonitoring);
+router.patch('/monitoring/bulk-update', authMiddleware, requirePermission(PERMISSION_KEYS.EDIT_MONITORING), monitoringController.bulkUpdateMonitoring);
 
 router.patch('/monitoring/archive', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.bulkArchiveMonitoring);
 router.patch('/monitoring/archive/restore', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.bulkRestoreMonitoring);
@@ -24,7 +24,7 @@ router.put('/monitoring/archive/:waybill', authMiddleware, requirePermission(PER
 
 router.delete('/monitoring/all', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.deleteAllMonitoring);
 
-router.put('/monitoring/:waybill', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), validateMonitoringPayload, monitoringController.updateMonitoring);
+router.put('/monitoring/:waybill', authMiddleware, requirePermission(PERMISSION_KEYS.EDIT_MONITORING), validateMonitoringPayload, monitoringController.updateMonitoring);
 router.delete('/monitoring/:waybill', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.deleteMonitoring);
 
 module.exports = router;

@@ -60,6 +60,16 @@ const permissionsMessage = document.getElementById('permissionsMessage');
 const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
 const deleteAllMonitoringBtn = document.getElementById('deleteAllMonitoringBtn');
 const toggleUserPanelBtn = document.getElementById('toggleUserPanelBtn');
+const logoInput = document.getElementById('logoInput');
+const uploadLogoBtn = document.getElementById('uploadLogoBtn');
+const deleteLogoBtn = document.getElementById('deleteLogoBtn');
+const adminLogoPreview = document.getElementById('adminLogoPreview');
+const logoMessage = document.getElementById('logoMessage');
+const bgInput = document.getElementById('bgInput');
+const uploadBgBtn = document.getElementById('uploadBgBtn');
+const deleteBgBtn = document.getElementById('deleteBgBtn');
+const adminBgPreview = document.getElementById('adminBgPreview');
+const bgMessage = document.getElementById('bgMessage');
 const userSearchInput = document.getElementById('userSearchInput');
 const selectAllUsers = document.getElementById('selectAllUsers');
 const headerSelectAllUsers = document.getElementById('headerSelectAllUsers');
@@ -188,7 +198,7 @@ function setCurrentPermissions(permissions) {
 
 function hasPermission(key) {
   const role = getCurrentUser().role;
-  if (role === 'admin' || role === 'super_admin') return true;
+  if (role === 'super_admin') return true;
   return Boolean(currentPermissions[key]);
 }
 
@@ -219,7 +229,7 @@ function applyUIPermissions() {
   }
 
   if (role === 'client') {
-    toggle(monitoringBulkControls, false);
+    toggle(monitoringBulkControls, hasPermission('edit_monitoring'));
     toggle(bulkArchiveBtn, false);
     toggle(restoreArchiveBtn, false);
   }
@@ -242,21 +252,21 @@ function setAuthState() {
     userPill.classList.toggle('is-super-admin', isSuper);
   }
 
-  const isAdmin = user.role === 'admin';
   const isSuperAdmin = user.role === 'super_admin';
   const isClient = user.role === 'client';
-  const isAdminLevel = isAdmin || isSuperAdmin;
 
   if (addBtn) {
     addBtn.style.display = 'none';
   }
 
   if (userPanel) {
-    userPanel.classList.toggle('hidden', !isAdminLevel);
+    userPanel.classList.toggle('hidden', !hasPermission('manage_users'));
   }
 
   if (adminControlPanel) {
-    adminControlPanel.classList.toggle('hidden', !(isAdminLevel || user.role === 'user'));
+    const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global'];
+    const hasAdminPermission = adminPermissions.some((key) => hasPermission(key));
+    adminControlPanel.classList.toggle('hidden', !hasAdminPermission);
   }
 
   if (historyPanel) {
@@ -264,11 +274,11 @@ function setAuthState() {
   }
 
   if (auditPanel) {
-    auditPanel.classList.toggle('hidden', !isAdminLevel);
+    auditPanel.classList.toggle('hidden', !hasPermission('view_history'));
   }
 
   if (monitoringBulkControls) {
-    monitoringBulkControls.classList.toggle('hidden', isClient);
+    monitoringBulkControls.classList.toggle('hidden', !hasPermission('edit_monitoring'));
   }
 
   if (bulkArchiveBtn) bulkArchiveBtn.classList.toggle('hidden', isClient);
@@ -277,7 +287,7 @@ function setAuthState() {
   applyUIPermissions();
 
   fetchMonitoring();
-  if (isAdminLevel) {
+  if (hasPermission('manage_users') || hasPermission('view_history')) {
     fetchUsers();
     fetchAuditLogs();
     fetchMonitoringHistory();
@@ -526,7 +536,7 @@ function renderTable(data) {
   if (!tbody) return;
 
   const user = getCurrentUser();
-  const canMutate = user.role === 'admin' || user.role === 'user';
+  const canMutate = hasPermission('edit_monitoring');
 
   const totalPages = Math.max(1, Math.ceil(data.length / monitoringPageSize));
   monitoringPage = Math.min(monitoringPage, totalPages);
@@ -1171,7 +1181,7 @@ async function handleBulkImport(file) {
   setImportProgress(100, 'Import selesai', `${result.importedCount || 0} data berhasil diproses oleh server`, result.importedCount || rows.length, false);
   showImportSummary(result);
   await fetchMonitoring();
-  if (getCurrentUser().role === 'admin') {
+  if (hasPermission('view_history')) {
     await fetchMonitoringHistory();
   }
 }
@@ -1381,7 +1391,7 @@ async function saveMonitoring(event) {
   closeModal();
   await fetchMonitoring();
   if (isArchiveEdit) await fetchMonitoringArchive();
-  if (getCurrentUser().role === 'admin') {
+  if (hasPermission('view_history')) {
     await fetchAuditLogs();
   }
 }
@@ -1455,12 +1465,6 @@ async function handleTableAction(event) {
   const user = getCurrentUser();
 
   if (action === 'update' || action === 'edit') {
-    const user = getCurrentUser();
-    if (user.role === 'client') {
-      alert('Akses ditolak. Role client hanya dapat melihat data.');
-      return;
-    }
-
     const item = monitoringData.find((entry) => entry.waybill === waybill);
     if (item) openModal('edit', item);
     return;
@@ -1490,7 +1494,7 @@ async function handleTableAction(event) {
     }
 
     await fetchMonitoring();
-    if (getCurrentUser().role === 'admin') {
+    if (hasPermission('view_history')) {
       await fetchAuditLogs();
     }
   }
@@ -1769,15 +1773,14 @@ if (refreshBtn) {
 
     try {
       await fetchMonitoring();
-      const role = getCurrentUser().role;
-      if (role === 'admin') {
+      if (hasPermission('manage_users') || hasPermission('view_history')) {
         await Promise.all([
           fetchUsers(),
           fetchAuditLogs(),
           fetchMonitoringHistory(),
           fetchMonitoringArchive(),
         ]);
-      } else if (role === 'user') {
+      } else if (hasPermission('edit_monitoring')) {
         await fetchMonitoringArchive();
       }
     } catch (error) {
@@ -1890,6 +1893,7 @@ function renderConfigPermissions(permissions) {
       } else if (isFull && !event.target.checked) {
         configPermissionsList.querySelectorAll('.permission-toggle').forEach((other) => {
           if (other.dataset.key !== 'full_access') {
+            other.checked = false;
             other.disabled = false;
             other.closest('.permission-row')?.classList.remove('is-locked');
           }
@@ -1913,7 +1917,7 @@ async function loadConfigForUser(userId) {
   if (!data) return;
   if (configRoleSelect) {
     configRoleSelect.value = data.role;
-    configRoleSelect.disabled = data.role === 'admin';
+    configRoleSelect.disabled = data.role === 'super_admin';
   }
   renderConfigPermissions(data.permissions);
   if (roleMessage) roleMessage.textContent = '';
@@ -1947,7 +1951,23 @@ async function saveConfigPermissions() {
     permissionsMessage.textContent = 'Izin berhasil diperbarui.';
     permissionsMessage.classList.remove('error');
   }
+  alert('Izin berhasil diperbarui.');
   renderConfigPermissions(result.permissions);
+
+  if (selectedConfigUserId === getCurrentUser().id) {
+    try {
+      const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        setCurrentPermissions(meData.permissions || []);
+        applyUIPermissions();
+      }
+    } catch (error) {
+      console.error('Failed to refresh current permissions:', error);
+    }
+  } else {
+    loadConfigForUser(selectedConfigUserId);
+  }
 }
 
 async function saveConfigRole() {
@@ -1975,7 +1995,151 @@ async function saveConfigRole() {
     roleMessage.textContent = `Role berhasil diubah ke ${newRole}.`;
     roleMessage.classList.remove('error');
   }
+  alert(`Role berhasil diubah ke ${newRole}.`);
   fetchConfigUsers();
+
+  if (selectedConfigUserId === getCurrentUser().id) {
+    try {
+      const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        setCurrentPermissions(meData.permissions || []);
+        applyUIPermissions();
+      }
+    } catch (error) {
+      console.error('Failed to refresh current permissions after role change:', error);
+    }
+  } else {
+    loadConfigForUser(selectedConfigUserId);
+  }
+}
+
+async function uploadLogo() {
+  const file = logoInput?.files?.[0];
+  if (!file) return alert('Pilih file logo terlebih dahulu.');
+  const form = new FormData();
+  form.append('logo', file);
+  const response = await fetch('/api/auth/logo', {
+    method: 'PUT',
+    credentials: 'include',
+    body: form,
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (logoMessage) {
+      logoMessage.textContent = result.error || 'Gagal upload logo';
+      logoMessage.classList.add('error');
+    }
+    return;
+  }
+  if (logoMessage) {
+    logoMessage.textContent = 'Logo berhasil diperbarui.';
+    logoMessage.classList.remove('error');
+  }
+  await loadLogo();
+}
+
+async function loadLogo() {
+  const response = await fetch('/api/auth/logo', { credentials: 'include' });
+  const result = await parseResponseJson(response);
+  if (!response.ok) return;
+  const preview = adminLogoPreview;
+  const loginLogo = document.getElementById('loginLogo');
+  if (result.logo) {
+    const src = `data:${result.logo.mime};base64,${result.logo.data}`;
+    if (preview) preview.src = src;
+    if (loginLogo) loginLogo.src = src;
+  } else {
+    if (preview) preview.src = '';
+    if (loginLogo) loginLogo.src = '';
+  }
+}
+
+async function removeAppLogo() {
+  const response = await fetch('/api/auth/logo', {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (logoMessage) {
+      logoMessage.textContent = result.error || 'Gagal menghapus logo';
+      logoMessage.classList.add('error');
+    }
+    return;
+  }
+  if (logoMessage) {
+    logoMessage.textContent = 'Logo berhasil dihapus.';
+    logoMessage.classList.remove('error');
+  }
+  await loadLogo();
+}
+
+async function uploadBackground() {
+  const file = bgInput?.files?.[0];
+  if (!file) return alert('Pilih file background terlebih dahulu.');
+  const form = new FormData();
+  form.append('background', file);
+  const response = await fetch('/api/auth/background', {
+    method: 'PUT',
+    credentials: 'include',
+    body: form,
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (bgMessage) {
+      bgMessage.textContent = result.error || 'Gagal upload background';
+      bgMessage.classList.add('error');
+    }
+    return;
+  }
+  if (bgMessage) {
+    bgMessage.textContent = 'Background berhasil diperbarui.';
+    bgMessage.classList.remove('error');
+  }
+  await loadBackground();
+}
+
+async function loadBackground() {
+  const response = await fetch('/api/auth/background', { credentials: 'include' });
+  const result = await parseResponseJson(response);
+  if (!response.ok) return;
+  const preview = adminBgPreview;
+  const loginPage = document.getElementById('loginView');
+  if (result.background) {
+    const src = `data:${result.background.mime};base64,${result.background.data}`;
+    if (preview) preview.src = src;
+    if (loginPage) {
+      loginPage.style.setProperty('--auth-bg-image', `url('${src}')`);
+      loginPage.style.setProperty('--auth-bg-opacity', String(result.background.opacity ?? 0.35));
+    }
+  } else {
+    if (preview) preview.src = '';
+    if (loginPage) {
+      loginPage.style.setProperty('--auth-bg-image', 'none');
+      loginPage.style.setProperty('--auth-bg-opacity', '0');
+    }
+  }
+}
+
+async function removeAppBackground() {
+  const response = await fetch('/api/auth/background', {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (bgMessage) {
+      bgMessage.textContent = result.error || 'Gagal menghapus background';
+      bgMessage.classList.add('error');
+    }
+    return;
+  }
+  if (bgMessage) {
+    bgMessage.textContent = 'Background berhasil dihapus.';
+    bgMessage.classList.remove('error');
+  }
+  await loadBackground();
 }
 
 async function createAccountHandler() {
@@ -2476,5 +2640,36 @@ if (auditTableBody) {
 ['mousemove', 'keydown', 'click', 'scroll'].forEach((eventName) => {
   document.addEventListener(eventName, resetSessionTimer);
 });
+
+if (uploadLogoBtn) {
+  uploadLogoBtn.addEventListener('click', () => logoInput && logoInput.click());
+}
+
+if (logoInput) {
+  logoInput.addEventListener('change', () => {
+    if (logoInput.files?.[0]) uploadLogo();
+  });
+}
+
+if (deleteLogoBtn) {
+  deleteLogoBtn.addEventListener('click', removeAppLogo);
+}
+
+if (uploadBgBtn) {
+  uploadBgBtn.addEventListener('click', () => bgInput && bgInput.click());
+}
+
+if (bgInput) {
+  bgInput.addEventListener('change', () => {
+    if (bgInput.files?.[0]) uploadBackground();
+  });
+}
+
+if (deleteBgBtn) {
+  deleteBgBtn.addEventListener('click', removeAppBackground);
+}
+
+loadLogo();
+loadBackground();
 
 bootstrapAuth();

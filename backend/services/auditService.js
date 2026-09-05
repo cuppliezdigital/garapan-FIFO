@@ -32,13 +32,13 @@ async function logAudit({ userId, username, action, entityType, entityId, detail
   );
 }
 
-async function getAuditLogs() {
+async function getAuditLogs(currentUserRole = 'admin') {
   await ensureAuditTable();
   const [rows] = await db.query(
     'SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 100'
   );
 
-  return rows.map((row) => {
+  let logs = rows.map((row) => {
     let parsedDetails = {};
 
     if (row.details) {
@@ -58,6 +58,16 @@ async function getAuditLogs() {
       details: parsedDetails,
     };
   });
+
+  if (currentUserRole !== 'super_admin') {
+    const [superAdminRows] = await db.query(
+      "SELECT id FROM users WHERE role = 'super_admin'"
+    );
+    const superAdminIds = new Set(superAdminRows.map((row) => row.id));
+    logs = logs.filter((log) => !superAdminIds.has(log.user_id));
+  }
+
+  return logs;
 }
 
 async function deleteAllAuditLogs() {

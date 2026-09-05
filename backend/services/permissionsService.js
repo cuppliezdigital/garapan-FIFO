@@ -10,6 +10,7 @@ const PERMISSION_KEYS = Object.freeze({
   DOWNLOAD_TEMPLATE: 'download_template',
   DELETE_GLOBAL: 'delete_global',
   ACCESS_CONFIG: 'access_config',
+  EDIT_MONITORING: 'edit_monitoring',
 });
 
 const PERMISSION_CATALOG = Object.freeze([
@@ -21,6 +22,7 @@ const PERMISSION_CATALOG = Object.freeze([
   { key: PERMISSION_KEYS.DOWNLOAD_TEMPLATE, label: 'Download Template CSV', description: 'Mengunduh template CSV untuk import.', category: 'monitoring' },
   { key: PERMISSION_KEYS.DELETE_GLOBAL, label: 'Hapus Data Global', description: 'Menghapus seluruh data monitoring secara permanen.', category: 'monitoring' },
   { key: PERMISSION_KEYS.ACCESS_CONFIG, label: 'Akses Konfigurasi', description: 'Membuka halaman Konfigurasi Akses user lain.', category: 'admin' },
+  { key: PERMISSION_KEYS.EDIT_MONITORING, label: 'Edit Data Monitoring', description: 'Mengubah data monitoring (termasuk aksi) secara manual.', category: 'monitoring' },
 ]);
 
 const ROLE_DEFAULTS = Object.freeze({
@@ -35,14 +37,15 @@ const ROLE_DEFAULTS = Object.freeze({
     access_config: 1,
   }),
   admin: Object.freeze({
-    full_access: 1,
-    import_bulk: 1,
+    full_access: 0,
+    import_bulk: 0,
     view_history: 1,
-    delete_history: 1,
+    delete_history: 0,
     manage_users: 1,
     download_template: 1,
-    delete_global: 1,
+    delete_global: 0,
     access_config: 1,
+    edit_monitoring: 1,
   }),
   user: Object.freeze({
     full_access: 1,
@@ -53,6 +56,7 @@ const ROLE_DEFAULTS = Object.freeze({
     download_template: 1,
     delete_global: 0,
     access_config: 0,
+    edit_monitoring: 1,
   }),
   client: Object.freeze({
     full_access: 0,
@@ -63,6 +67,7 @@ const ROLE_DEFAULTS = Object.freeze({
     download_template: 0,
     delete_global: 0,
     access_config: 0,
+    edit_monitoring: 1,
   }),
 });
 
@@ -136,7 +141,7 @@ async function resolveUserPermissions(userId, role) {
       label: entry.label,
       description: entry.description,
       category: entry.category,
-      allowed: role === 'admin',
+      allowed: role === 'super_admin',
     }));
   }
   try {
@@ -167,30 +172,35 @@ async function resolveUserPermissions(userId, role) {
       label: entry.label,
       description: entry.description,
       category: entry.category,
-      allowed: role === 'admin',
+      allowed: role === 'super_admin',
     }));
   }
 }
 
 async function userHasPermission(userId, role, permissionKey) {
   if (!permissionKey) return false;
-  if (role === 'admin' || role === 'super_admin') return true;
+  if (role === 'super_admin') return true;
 
-  await ensurePermissionsTables();
-  const [rows] = await db.query(
-    `SELECT COALESCE(up.allowed, rdp.allowed, 0) AS allowed
-     FROM permissions_master pm
-     LEFT JOIN role_default_permissions rdp
-       ON rdp.role = ? AND rdp.permission_key = pm.permission_key
-     LEFT JOIN user_permissions up
-       ON up.user_id = ? AND up.permission_key = pm.permission_key
-     WHERE pm.permission_key = ?
-     LIMIT 1`,
-    [role, userId, permissionKey]
-  );
+  try {
+    await ensurePermissionsTables();
+    const [rows] = await db.query(
+      `SELECT COALESCE(up.allowed, rdp.allowed, 0) AS allowed
+       FROM permissions_master pm
+       LEFT JOIN role_default_permissions rdp
+         ON rdp.role = ? AND rdp.permission_key = pm.permission_key
+       LEFT JOIN user_permissions up
+         ON up.user_id = ? AND up.permission_key = pm.permission_key
+       WHERE pm.permission_key = ?
+       LIMIT 1`,
+      [role, userId, permissionKey]
+    );
 
-  if (!rows.length) return false;
-  return Number(rows[0].allowed) === 1;
+    if (!rows.length) return false;
+    return Number(rows[0].allowed) === 1;
+  } catch (error) {
+    console.error('userHasPermission error:', error.message);
+    return false;
+  }
 }
 
 function expandFullAccess(permissions) {
@@ -204,12 +214,14 @@ async function getEffectivePermissions(userId, role) {
   const expanded = expandFullAccess(raw);
   const map = {};
   for (const p of expanded) map[p.key] = p.allowed;
-  if (role === 'admin' || role === 'super_admin') {
+
+  if (role === 'super_admin') {
     for (const key of Object.values(PERMISSION_KEYS)) map[key] = true;
   }
+
   return expanded.map((p) => ({
     ...p,
-    allowed: (role === 'admin' || role === 'super_admin') ? true : Boolean(map[p.key]),
+    allowed: Boolean(map[p.key]),
   }));
 }
 
@@ -219,12 +231,16 @@ async function updateUserPermissions(targetUserId, payload, actor) {
   const [userRows] = await db.query('SELECT id, role FROM users WHERE id = ?', [targetUserId]);
   if (!userRows.length) return { success: false, reason: 'not_found' };
   const targetRole = userRows[0].role;
-  const safeRole = ['user', 'client'].includes(targetRole) ? targetRole : 'user';
 
-  if (targetRole === 'admin') {
-    return { success: true, permissions: await getEffectivePermissions(targetUserId, targetRole) };
+  if (targetRole === 'super_admin') {
+    return { success: false, reason: 'cannot_modify_super_admin' };
   }
 
+  if (targetRole === 'admin' && actor?.role !== 'super_admin') {
+    return { success: false, reason: 'cannot_modify_admin' };
+  }
+
+  const safeRole = targetRole === 'admin' ? 'admin' : (['user', 'client'].includes(targetRole) ? targetRole : 'user');
   const overrides = payload && typeof payload === 'object' ? payload : {};
   const catalog = await resolveUserPermissions(targetUserId, safeRole);
 
@@ -281,7 +297,7 @@ async function readUserOverride(connection, userId, key) {
 }
 
 async function updateUserRole(targetUserId, newRole, actor) {
-  const allowedRoles = ['user', 'client'];
+  const allowedRoles = ['user', 'client', 'admin'];
   if (!allowedRoles.includes(newRole)) {
     return { success: false, reason: 'invalid_role' };
   }
@@ -289,7 +305,9 @@ async function updateUserRole(targetUserId, newRole, actor) {
   const [targetRows] = await db.query('SELECT id, role FROM users WHERE id = ?', [targetUserId]);
   if (!targetRows.length) return { success: false, reason: 'not_found' };
   if (targetRows[0].role === 'super_admin') return { success: false, reason: 'cannot_modify_super_admin' };
-  if (targetRows[0].role === 'admin') return { success: false, reason: 'cannot_modify_admin' };
+  if (targetRows[0].role === 'admin' && actor?.role !== 'super_admin') {
+    return { success: false, reason: 'cannot_modify_admin' };
+  }
 
   if (Number(targetUserId) === Number(actor?.id)) {
     return { success: false, reason: 'self' };

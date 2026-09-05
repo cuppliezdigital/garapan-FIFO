@@ -12,17 +12,20 @@
       <div class="auth-shell">
         <div class="auth-card">
           <div class="auth-header">
-                  <h1>Monitoring FIFO</h1>
+            <div class="auth-logo" aria-hidden="true">
+              <img id="loginLogo" class="login-logo-img" alt="Logo aplikasi" />
+            </div>
+            <h1>Monitoring FIFO</h1>
             <p class="auth-subtitle">Masuk untuk mengakses dashboard perusahaan</p>
           </div>
 
           <form id="loginForm" class="auth-form">
-            <label>
+            <label class="input-field">
               <span>Username</span>
               <input type="text" id="loginUsername" name="username" placeholder="Masukkan username" required />
             </label>
 
-            <label>
+            <label class="input-field">
               <span>Password</span>
               <input type="password" id="loginPassword" name="password" placeholder="Masukkan password" required />
             </label>
@@ -58,7 +61,7 @@
               <span>Role</span>
               <select id="registerRole" name="role">
                 <option value="user" selected>User</option>
-                <option value="client">Client (View Only)</option>
+                <option value="client">Client</option>
               </select>
             </label>
           </div>
@@ -186,6 +189,28 @@
           </button>
           <input id="bulkImportInput" type="file" accept=".csv,.txt,.tsv" hidden />
         </div>
+
+        <div class="logo-admin-section">
+          <h3>Logo Aplikasi</h3>
+          <div class="logo-admin-actions">
+            <img id="adminLogoPreview" class="logo-preview" alt="Logo aplikasi" />
+            <input id="logoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+            <button type="button" class="secondary-btn small-btn" id="uploadLogoBtn">Upload Logo</button>
+            <button type="button" class="danger-ghost-btn small-btn" id="deleteLogoBtn">Hapus Logo</button>
+            <p id="logoMessage" class="auth-message" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="logo-admin-section">
+          <h3>Background Login</h3>
+          <div class="logo-admin-actions">
+            <img id="adminBgPreview" class="logo-preview bg-preview" alt="Background login" />
+            <input id="bgInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+            <button type="button" class="secondary-btn small-btn" id="uploadBgBtn">Upload Background</button>
+            <button type="button" class="danger-ghost-btn small-btn" id="deleteBgBtn">Hapus Background</button>
+            <p id="bgMessage" class="auth-message" aria-live="polite"></p>
+          </div>
+        </div>
       </section>
 
       <section id="userPanel" class="panel audit-panel hidden">
@@ -270,12 +295,13 @@
 
           <div class="config-card">
             <h3>Role Akun</h3>
-            <p class="config-hint">Admin tidak dapat diubah dari sini. User/Client bisa di-switch.</p>
+            <p class="config-hint">Super_admin dapat mengubah role admin. User/Client bisa di-switch.</p>
             <label class="config-row">
               <span>Role</span>
               <select id="configRoleSelect" class="filter-select">
                 <option value="user">User</option>
-                <option value="client">Client (View Only)</option>
+                <option value="client">Client</option>
+                <option value="admin">Admin</option>
               </select>
             </label>
             <button type="button" class="primary-btn small-btn" id="saveRoleBtn">Simpan Role</button>

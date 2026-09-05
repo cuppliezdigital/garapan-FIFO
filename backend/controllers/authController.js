@@ -128,7 +128,13 @@ async function updateUserPermissions(req, res) {
       : req.body;
     const result = await permissionsService.updateUserPermissions(userId, payload, req.user);
     if (!result.success) {
-      return res.status(404).json({ error: 'User tidak ditemukan' });
+      const map = {
+        not_found: { status: 404, message: 'User tidak ditemukan' },
+        cannot_modify_super_admin: { status: 403, message: 'Role super_admin tidak dapat diubah' },
+        cannot_modify_admin: { status: 403, message: 'Role admin tidak dapat diubah dari sini' },
+      };
+      const entry = map[result.reason] || { status: 400, message: 'Gagal memperbarui izin user' };
+      return res.status(entry.status).json({ error: entry.message });
     }
     res.json({ message: 'Izin user berhasil diperbarui', permissions: result.permissions });
   } catch (error) {
@@ -265,4 +271,80 @@ module.exports = {
   debugUsers,
   createUser,
   updateCredentials,
+  getLogo,
+  updateLogo,
+  deleteAppLogo,
+  getBackground,
+  updateBackground,
+  deleteAppBackground,
 };
+
+async function getLogo(req, res) {
+  try {
+    const logo = await require('../services/logoService').getLogo();
+    if (!logo) return res.json({ logo: null });
+    res.json({ logo });
+  } catch (error) {
+    console.error('Controller getLogo error:', error);
+    res.status(500).json({ error: 'Gagal memuat logo' });
+  }
+}
+
+async function updateLogo(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File logo wajib diupload.' });
+    const base64 = req.file.buffer.toString('base64');
+    const mime = req.file.mimetype || 'image/png';
+    await require('../services/logoService').saveLogo(base64, mime);
+    res.json({ message: 'Logo berhasil diperbarui.' });
+  } catch (error) {
+    console.error('Controller updateLogo error:', error);
+    res.status(500).json({ error: 'Gagal menyimpan logo' });
+  }
+}
+
+async function deleteAppLogo(req, res) {
+  try {
+    await require('../services/logoService').deleteLogo();
+    res.json({ message: 'Logo berhasil dihapus.' });
+  } catch (error) {
+    console.error('Controller deleteAppLogo error:', error);
+    res.status(500).json({ error: 'Gagal menghapus logo' });
+  }
+}
+
+async function getBackground(req, res) {
+  try {
+    const bg = await require('../services/logoService').getBackground();
+    if (!bg) return res.json({ background: null });
+    res.json({ background: bg });
+  } catch (error) {
+    console.error('Controller getBackground error:', error);
+    res.status(500).json({ error: 'Gagal memuat background' });
+  }
+}
+
+async function updateBackground(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File background wajib diupload.' });
+    const base64 = req.file.buffer.toString('base64');
+    const mime = req.file.mimetype || 'image/png';
+    const opacity = req.body.opacity !== undefined ? Number(req.body.opacity) : 0.35;
+    const safeOpacity = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 0.35));
+    await require('../services/logoService').saveBackground(base64, mime, safeOpacity);
+    res.json({ message: 'Background berhasil diperbarui.' });
+  } catch (error) {
+    console.error('Controller updateBackground error:', error);
+    res.status(500).json({ error: 'Gagal menyimpan background' });
+  }
+}
+
+async function deleteAppBackground(req, res) {
+  try {
+    await require('../services/logoService').deleteBackground();
+    res.json({ message: 'Background berhasil dihapus.' });
+  } catch (error) {
+    console.error('Controller deleteAppBackground error:', error);
+    res.status(500).json({ error: 'Gagal menghapus background' });
+  }
+}

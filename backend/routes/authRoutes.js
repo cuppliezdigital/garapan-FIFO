@@ -23,6 +23,14 @@ router.post('/users/:id/promote-admin', authMiddleware, requireRole('super_admin
 
 router.get('/permissions/catalog', authMiddleware, requirePermission(PERMISSION_KEYS.ACCESS_CONFIG), authController.getPermissionCatalog);
 
+router.get('/logo', authController.getLogo);
+router.put('/logo', authMiddleware, requireRole('super_admin'), (req, res, next) => { req.upload.single('logo')(req, res, next); }, authController.updateLogo);
+router.delete('/logo', authMiddleware, requireRole('super_admin'), authController.deleteAppLogo);
+
+router.get('/background', authController.getBackground);
+router.put('/background', authMiddleware, requireRole('super_admin'), (req, res, next) => { req.upload.single('background')(req, res, next); }, authController.updateBackground);
+router.delete('/background', authMiddleware, requireRole('super_admin'), authController.deleteAppBackground);
+
 router.get('/debug/users', authMiddleware, authController.debugUsers);
 
 router.get('/me', authMiddleware, (req, res) => {

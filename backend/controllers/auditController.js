@@ -2,7 +2,7 @@ const auditService = require('../services/auditService');
 
 async function getAuditLogs(req, res) {
   try {
-    const logs = await auditService.getAuditLogs();
+    const logs = await auditService.getAuditLogs(req.user?.role);
     res.json(logs);
   } catch (error) {
     console.error('Controller getAuditLogs error:', error);

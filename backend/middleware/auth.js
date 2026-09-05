@@ -82,7 +82,7 @@ function requirePermission(...permissionKeys) {
     if (!req.user) {
       return res.status(401).json({ error: 'Sesi tidak ditemukan' });
     }
-    if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+    if (req.user.role === 'super_admin') {
       req.permissionKeys = permissionKeys;
       return next();
     }
