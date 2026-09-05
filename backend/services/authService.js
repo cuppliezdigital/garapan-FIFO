@@ -163,6 +163,83 @@ async function revokeSession(userId, sessionId) {
   await db.query('UPDATE user_sessions SET revoked = 1 WHERE user_id = ? AND session_id = ?', [userId, sessionId]);
 }
 
+async function updateUserCredentials(targetUserId, payload, actor) {
+  await ensureUsersTable();
+
+  const [targetRows] = await db.query('SELECT id, username, role FROM users WHERE id = ?', [targetUserId]);
+  if (!targetRows.length) return { success: false, reason: 'not_found' };
+  const target = targetRows[0];
+
+  const newUsername = payload?.username ? String(payload.username).trim().toLowerCase() : null;
+  const newPassword = payload?.password ? String(payload.password) : null;
+
+  if (!newUsername && !newPassword) {
+    return { success: false, reason: 'no_changes' };
+  }
+
+  const reservedUsernames = ['admin', 'superadmin', 'root', 'super_admin'];
+  if (newUsername && reservedUsernames.includes(newUsername)) {
+    return { success: false, reason: 'reserved_username' };
+  }
+
+  if (newUsername && newUsername !== target.username) {
+    const [conflict] = await db.query('SELECT id FROM users WHERE username = ? AND id != ?', [newUsername, targetUserId]);
+    if (conflict.length) {
+      return { success: false, reason: 'username_taken' };
+    }
+  }
+
+  if (newPassword) {
+    validatePasswordStrength(newPassword);
+  }
+
+  const updates = [];
+  const params = [];
+
+  if (newUsername && newUsername !== target.username) {
+    updates.push('username = ?');
+    params.push(newUsername);
+  }
+
+  if (newPassword) {
+    const hash = await bcrypt.hash(newPassword, 12);
+    updates.push('password_hash = ?');
+    params.push(hash);
+  }
+
+  params.push(targetUserId);
+  await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+
+  if (newPassword) {
+    await revokeSession(targetUserId);
+  }
+
+  const auditService = require('./auditService');
+  await auditService.logAudit({
+    userId: actor?.id,
+    username: actor?.username,
+    action: 'update_credentials',
+    entityType: 'user',
+    entityId: String(targetUserId),
+    details: {
+      targetUserId,
+      oldUsername: target.username,
+      newUsername: newUsername || target.username,
+      passwordChanged: Boolean(newPassword),
+      actorRole: actor?.role,
+    },
+  });
+
+  return {
+    success: true,
+    user: {
+      id: target.id,
+      username: newUsername || target.username,
+      role: target.role,
+    },
+  };
+}
+
 async function ensureDefaultAdmin() {
   await ensureUsersTable();
 
@@ -466,6 +543,7 @@ module.exports = {
   getAllUsers,
   getAllUsersIncludingAdmin,
   createUserByAdmin,
+  updateUserCredentials,
   toggleUserStatus,
   deleteUser,
   isSessionValid,

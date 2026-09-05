@@ -195,6 +195,35 @@ async function createUser(req, res) {
   }
 }
 
+async function updateCredentials(req, res) {
+  try {
+    const userId = Number(req.params.id);
+    const result = await authService.updateUserCredentials(userId, req.body || {}, req.user);
+    if (!result.success) {
+      const map = {
+        not_found: { status: 404, message: 'User tidak ditemukan' },
+        no_changes: { status: 400, message: 'Tidak ada perubahan yang diminta' },
+        reserved_username: { status: 400, message: 'Username ini dipesan untuk sistem' },
+        username_taken: { status: 400, message: 'Username sudah dipakai user lain' },
+      };
+      const entry = map[result.reason] || { status: 400, message: 'Gagal memperbarui kredensial' };
+      return res.status(entry.status).json({ error: entry.message });
+    }
+    res.json({
+      message: result.user.passwordChanged
+        ? `Username & password untuk ${result.user.username} berhasil diperbarui. Sesi lama user ini akan berakhir.`
+        : `Username untuk ${result.user.username} berhasil diperbarui.`,
+      user: result.user,
+    });
+  } catch (error) {
+    if (error.message && error.message.includes('Password minimal')) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('Controller updateCredentials error:', error);
+    res.status(500).json({ error: 'Gagal memperbarui kredensial' });
+  }
+}
+
 async function debugUsers(req, res) {
   try {
     const dbModule = require('../config/db');
@@ -235,4 +264,5 @@ module.exports = {
   promoteToAdmin,
   debugUsers,
   createUser,
+  updateCredentials,
 };

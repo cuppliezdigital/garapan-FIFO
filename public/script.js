@@ -52,6 +52,10 @@ const newAccountFullName = document.getElementById('newAccountFullName');
 const newAccountPassword = document.getElementById('newAccountPassword');
 const newAccountRole = document.getElementById('newAccountRole');
 const createAccountMessage = document.getElementById('createAccountMessage');
+const credNewUsername = document.getElementById('credNewUsername');
+const credNewPassword = document.getElementById('credNewPassword');
+const saveCredentialsBtn = document.getElementById('saveCredentialsBtn');
+const credentialsMessage = document.getElementById('credentialsMessage');
 const permissionsMessage = document.getElementById('permissionsMessage');
 const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
 const deleteAllMonitoringBtn = document.getElementById('deleteAllMonitoringBtn');
@@ -2041,6 +2045,85 @@ async function createAccountHandler() {
 
 if (createAccountBtn) {
   createAccountBtn.addEventListener('click', createAccountHandler);
+}
+
+async function saveCredentialsHandler() {
+  if (getCurrentUser().role !== 'super_admin') {
+    if (credentialsMessage) {
+      credentialsMessage.textContent = 'Hanya super_admin yang dapat mengubah kredensial.';
+      credentialsMessage.classList.add('error');
+    }
+    return;
+  }
+
+  if (!selectedConfigUserId) {
+    if (credentialsMessage) {
+      credentialsMessage.textContent = 'Pilih user terlebih dahulu dari dropdown atas.';
+      credentialsMessage.classList.add('error');
+    }
+    return;
+  }
+
+  const newUsername = (credNewUsername?.value || '').trim();
+  const newPassword = credNewPassword?.value || '';
+
+  if (!newUsername && !newPassword) {
+    if (credentialsMessage) {
+      credentialsMessage.textContent = 'Isi username baru atau password baru (minimal salah satu).';
+      credentialsMessage.classList.add('error');
+    }
+    return;
+  }
+
+  if (newPassword) {
+    const pattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!pattern.test(newPassword)) {
+      if (credentialsMessage) {
+        credentialsMessage.textContent = 'Password min 8 char, harus ada huruf besar, kecil, dan angka.';
+        credentialsMessage.classList.add('error');
+      }
+      return;
+    }
+  }
+
+  const payload = {};
+  if (newUsername) payload.username = newUsername;
+  if (newPassword) payload.password = newPassword;
+
+  if (credentialsMessage) {
+    credentialsMessage.textContent = 'Menyimpan...';
+    credentialsMessage.classList.remove('error');
+  }
+
+  const response = await fetch(`/api/auth/users/${selectedConfigUserId}/credentials`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (credentialsMessage) {
+      credentialsMessage.textContent = result.error || 'Gagal menyimpan kredensial.';
+      credentialsMessage.classList.add('error');
+    }
+    return;
+  }
+
+  if (credentialsMessage) {
+    credentialsMessage.textContent = result.message || 'Kredensial berhasil diperbarui.';
+    credentialsMessage.classList.remove('error');
+  }
+
+  if (credNewUsername) credNewUsername.value = '';
+  if (credNewPassword) credNewPassword.value = '';
+
+  await fetchConfigUsers();
+}
+
+if (saveCredentialsBtn) {
+  saveCredentialsBtn.addEventListener('click', saveCredentialsHandler);
 }
 
 if (toggleHistoryBtn && historyPanel) {

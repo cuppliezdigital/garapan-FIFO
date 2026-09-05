@@ -253,6 +253,21 @@
             <p id="createAccountMessage" class="auth-message" aria-live="polite"></p>
           </div>
 
+          <div class="config-card gm-only">
+            <h3>Ubah Username / Password</h3>
+            <p class="config-hint">Pilih user dari dropdown atas, lalu ubah username atau password di sini. <strong>Tidak bisa mengubah akun super_admin lain.</strong></p>
+            <label class="config-row">
+              <span>Username Baru</span>
+              <input type="text" id="credNewUsername" placeholder="Kosongkan jika tidak ingin ganti" />
+            </label>
+            <label class="config-row">
+              <span>Password Baru</span>
+              <input type="password" id="credNewPassword" placeholder="Kosongkan jika tidak ingin ganti (min 8 char, besar/kecil/angka)" />
+            </label>
+            <button type="button" class="primary-btn small-btn" id="saveCredentialsBtn">Simpan Kredensial</button>
+            <p id="credentialsMessage" class="auth-message" aria-live="polite"></p>
+          </div>
+
           <div class="config-card">
             <h3>Role Akun</h3>
             <p class="config-hint">Admin tidak dapat diubah dari sini. User/Client bisa di-switch.</p>

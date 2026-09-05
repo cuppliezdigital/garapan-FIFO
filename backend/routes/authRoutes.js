@@ -18,6 +18,7 @@ router.delete('/users/:id', authMiddleware, requirePermission(PERMISSION_KEYS.MA
 router.get('/users/:id/permissions', authMiddleware, requirePermission(PERMISSION_KEYS.ACCESS_CONFIG), authController.getUserPermissions);
 router.put('/users/:id/permissions', authMiddleware, requirePermission(PERMISSION_KEYS.ACCESS_CONFIG), authController.updateUserPermissions);
 router.patch('/users/:id/role', authMiddleware, requirePermission(PERMISSION_KEYS.ACCESS_CONFIG), authController.changeUserRole);
+router.patch('/users/:id/credentials', authMiddleware, requireRole('super_admin'), authController.updateCredentials);
 router.post('/users/:id/promote-admin', authMiddleware, requireRole('super_admin'), authController.promoteToAdmin);
 
 router.get('/permissions/catalog', authMiddleware, requirePermission(PERMISSION_KEYS.ACCESS_CONFIG), authController.getPermissionCatalog);
