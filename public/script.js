@@ -269,6 +269,9 @@ function setAuthState() {
     adminControlPanel.classList.toggle('hidden', !hasAdminPermission);
   }
 
+  const logoSections = document.querySelectorAll('.logo-admin-section');
+  logoSections.forEach((section) => section.classList.toggle('hidden', !isSuperAdmin));
+
   if (historyPanel) {
     historyPanel.classList.add('hidden');
   }
