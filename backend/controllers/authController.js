@@ -38,7 +38,10 @@ async function logout(req, res) {
 
 async function getUsers(req, res) {
   try {
-    const users = await authService.getAllUsers();
+    const includeAdmin = req.user?.role === 'super_admin';
+    const users = includeAdmin
+      ? await authService.getAllUsersIncludingAdmin(req.user)
+      : await authService.getAllUsers();
     res.json(users);
   } catch (error) {
     console.error('Controller getUsers error:', error);
@@ -50,13 +53,16 @@ async function toggleUserStatus(req, res) {
   try {
     const userId = Number(req.params.id);
     const nextStatus = req.body?.status === 'blocked' ? 'blocked' : 'active';
-    const result = await authService.toggleUserStatus(userId, nextStatus, req.user.id);
+    const result = await authService.toggleUserStatus(userId, nextStatus, req.user.id, req.user.role);
 
     if (!result.success) {
-      if (result.reason === 'self') {
-        return res.status(400).json({ error: 'Anda tidak dapat memblokir akun Anda sendiri' });
-      }
-      return res.status(404).json({ error: 'User tidak ditemukan' });
+      const map = {
+        self: { status: 400, message: 'Anda tidak dapat memblokir akun Anda sendiri' },
+        protected_role: { status: 403, message: 'Akun super_admin tidak dapat diblokir' },
+        forbidden: { status: 403, message: 'Hanya super_admin yang dapat memblokir akun admin' },
+      };
+      const entry = map[result.reason] || { status: 404, message: 'User tidak ditemukan' };
+      return res.status(entry.status).json({ error: entry.message });
     }
 
     res.json({ message: `Status user diubah ke ${nextStatus}` });
@@ -69,13 +75,16 @@ async function toggleUserStatus(req, res) {
 async function deleteUser(req, res) {
   try {
     const userId = Number(req.params.id);
-    const result = await authService.deleteUser(userId, req.user.id);
+    const result = await authService.deleteUser(userId, req.user.id, req.user.role);
 
     if (!result.success) {
-      if (result.reason === 'self') {
-        return res.status(400).json({ error: 'Anda tidak dapat menghapus akun Anda sendiri' });
-      }
-      return res.status(404).json({ error: 'User tidak ditemukan' });
+      const map = {
+        self: { status: 400, message: 'Anda tidak dapat menghapus akun Anda sendiri' },
+        protected_role: { status: 403, message: 'Akun super_admin tidak dapat dihapus' },
+        forbidden: { status: 403, message: 'Hanya super_admin yang dapat menghapus akun admin' },
+      };
+      const entry = map[result.reason] || { status: 404, message: 'User tidak ditemukan' };
+      return res.status(entry.status).json({ error: entry.message });
     }
 
     res.json({ message: 'User berhasil dihapus' });
@@ -137,7 +146,8 @@ async function changeUserRole(req, res) {
       const map = {
         not_found: { status: 404, message: 'User tidak ditemukan' },
         invalid_role: { status: 400, message: 'Role tidak valid' },
-        cannot_modify_admin: { status: 403, message: 'Role admin tidak dapat diubah' },
+        cannot_modify_super_admin: { status: 403, message: 'Role super_admin tidak dapat diubah' },
+        cannot_modify_admin: { status: 403, message: 'Role admin tidak dapat diubah dari sini' },
         self: { status: 400, message: 'Anda tidak dapat mengubah role Anda sendiri' },
       };
       const entry = map[result.reason] || { status: 400, message: 'Gagal mengubah role' };
@@ -147,6 +157,67 @@ async function changeUserRole(req, res) {
   } catch (error) {
     console.error('Controller changeUserRole error:', error);
     res.status(500).json({ error: 'Gagal mengubah role user' });
+  }
+}
+
+async function promoteToAdmin(req, res) {
+  try {
+    const userId = Number(req.params.id);
+    const result = await permissionsService.promoteToAdmin(userId, req.user);
+    if (!result.success) {
+      const map = {
+        forbidden: { status: 403, message: 'Hanya super_admin yang dapat promote admin' },
+        not_found: { status: 404, message: 'User tidak ditemukan' },
+        already_super_admin: { status: 400, message: 'User sudah super_admin' },
+        self: { status: 400, message: 'Anda tidak dapat mengubah role Anda sendiri' },
+      };
+      const entry = map[result.reason] || { status: 400, message: 'Gagal promote user' };
+      return res.status(entry.status).json({ error: entry.message });
+    }
+    res.json({ message: 'User dipromosikan menjadi admin' });
+  } catch (error) {
+    console.error('Controller promoteToAdmin error:', error);
+    res.status(500).json({ error: 'Gagal promote user' });
+  }
+}
+
+async function createUser(req, res) {
+  try {
+    const { username, password, full_name, role } = req.body || {};
+    const result = await authService.createUserByAdmin({ username, password, full_name, role }, req.user);
+    res.status(201).json({
+      message: `Akun ${result.username} (${result.role}) berhasil dibuat.`,
+      user: result,
+    });
+  } catch (error) {
+    console.error('Controller createUser error:', error);
+    res.status(400).json({ error: error.message || 'Gagal membuat akun' });
+  }
+}
+
+async function debugUsers(req, res) {
+  try {
+    const dbModule = require('../config/db');
+    const [allUsers] = await dbModule.query('SELECT id, username, role FROM users ORDER BY id');
+    const isSuperAdmin = req.user?.role === 'super_admin';
+    let included = [];
+    let error = null;
+    try {
+      included = isSuperAdmin
+        ? await authService.getAllUsersIncludingAdmin(req.user)
+        : await authService.getAllUsers();
+    } catch (err) {
+      error = err.message;
+    }
+    res.json({
+      viewer: { id: req.user?.id, role: req.user?.role },
+      dbUsers: allUsers,
+      returnedUsers: included,
+      error,
+    });
+  } catch (error) {
+    console.error('debugUsers error:', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 }
 
@@ -161,4 +232,7 @@ module.exports = {
   getUserPermissions,
   updateUserPermissions,
   changeUserRole,
+  promoteToAdmin,
+  debugUsers,
+  createUser,
 };

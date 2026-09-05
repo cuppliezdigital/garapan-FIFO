@@ -46,6 +46,12 @@ const roleMessage = document.getElementById('roleMessage');
 const configPermissionsList = document.getElementById('configPermissionsList');
 const saveConfigBtn = document.getElementById('saveConfigBtn');
 const refreshConfigBtn = document.getElementById('refreshConfigBtn');
+const createAccountBtn = document.getElementById('createAccountBtn');
+const newAccountUsername = document.getElementById('newAccountUsername');
+const newAccountFullName = document.getElementById('newAccountFullName');
+const newAccountPassword = document.getElementById('newAccountPassword');
+const newAccountRole = document.getElementById('newAccountRole');
+const createAccountMessage = document.getElementById('createAccountMessage');
 const permissionsMessage = document.getElementById('permissionsMessage');
 const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
 const deleteAllMonitoringBtn = document.getElementById('deleteAllMonitoringBtn');
@@ -177,7 +183,8 @@ function setCurrentPermissions(permissions) {
 }
 
 function hasPermission(key) {
-  if (getCurrentUser().role === 'admin') return true;
+  const role = getCurrentUser().role;
+  if (role === 'admin' || role === 'super_admin') return true;
   return Boolean(currentPermissions[key]);
 }
 
@@ -188,6 +195,8 @@ function applyUIPermissions() {
     else el.classList.add('hidden');
   };
 
+  const role = getCurrentUser().role;
+
   toggle(toggleHistoryBtn, hasPermission('view_history'));
   toggle(deleteHistoryBtn, hasPermission('delete_history'));
   toggle(toggleConfigPanelBtn, hasPermission('access_config'));
@@ -196,12 +205,16 @@ function applyUIPermissions() {
   toggle(importBulkBtn, hasPermission('import_bulk'));
   toggle(deleteAllMonitoringBtn, hasPermission('delete_global'));
 
+  document.querySelectorAll('.gm-only').forEach((el) => {
+    if (role === 'super_admin') el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
+
   if (addBtn) {
     addBtn.style.display = hasPermission('import_bulk') ? '' : 'none';
   }
 
-  const user = getCurrentUser();
-  if (user.role === 'client') {
+  if (role === 'client') {
     toggle(monitoringBulkControls, false);
     toggle(bulkArchiveBtn, false);
     toggle(restoreArchiveBtn, false);
@@ -219,23 +232,27 @@ function setAuthState() {
   showDashboardView();
   const user = getCurrentUser();
   if (userPill) {
-    const roleLabel = user.role ? `(${user.role})` : '';
+    const isSuper = user.role === 'super_admin';
+    const roleLabel = user.role ? (isSuper ? '🔒 GM' : `(${user.role})`) : '';
     userPill.textContent = `${user.full_name || user.username || 'User'} ${roleLabel}`.trim();
+    userPill.classList.toggle('is-super-admin', isSuper);
   }
 
   const isAdmin = user.role === 'admin';
+  const isSuperAdmin = user.role === 'super_admin';
   const isClient = user.role === 'client';
+  const isAdminLevel = isAdmin || isSuperAdmin;
 
   if (addBtn) {
     addBtn.style.display = 'none';
   }
 
   if (userPanel) {
-    userPanel.classList.toggle('hidden', !isAdmin);
+    userPanel.classList.toggle('hidden', !isAdminLevel);
   }
 
   if (adminControlPanel) {
-    adminControlPanel.classList.toggle('hidden', !(isAdmin || user.role === 'user'));
+    adminControlPanel.classList.toggle('hidden', !(isAdminLevel || user.role === 'user'));
   }
 
   if (historyPanel) {
@@ -243,7 +260,7 @@ function setAuthState() {
   }
 
   if (auditPanel) {
-    auditPanel.classList.toggle('hidden', !isAdmin);
+    auditPanel.classList.toggle('hidden', !isAdminLevel);
   }
 
   if (monitoringBulkControls) {
@@ -256,7 +273,7 @@ function setAuthState() {
   applyUIPermissions();
 
   fetchMonitoring();
-  if (isAdmin) {
+  if (isAdminLevel) {
     fetchUsers();
     fetchAuditLogs();
     fetchMonitoringHistory();
@@ -795,24 +812,34 @@ function renderUserTable(users) {
     return;
   }
 
+  const viewer = getCurrentUser();
+  const isViewerSuperAdmin = viewer.role === 'super_admin';
+
   users.forEach((user) => {
     const row = document.createElement('tr');
     const isBlocked = (user.status || 'active') === 'blocked';
-    const currentUserId = Number(getCurrentUser().id || 0);
-    const canManage = Number(user.id) !== currentUserId;
+    const currentUserId = Number(viewer.id || 0);
+    const isSelf = Number(user.id) === currentUserId;
+    const canManage = !isSelf && user.role !== 'super_admin';
+    const canPromote = isViewerSuperAdmin && !isSelf && user.role === 'user';
     const selected = selectedUserIds.has(Number(user.id));
+    const roleDisplay = user.role === 'super_admin'
+      ? '<span class="role-badge role-badge-super">🔒 GM</span>'
+      : (user.role || 'user');
 
     row.innerHTML = `
       <td><input type="checkbox" class="user-select-checkbox" data-user-id="${user.id}" ${selected ? 'checked' : ''} ${canManage ? '' : 'disabled'} /></td>
       <td>${user.id}</td>
       <td>${user.username || '-'}</td>
       <td>${user.full_name || '-'}</td>
-      <td>${user.role || 'user'}</td>
+      <td>${roleDisplay}</td>
       <td><span class="status ${isBlocked ? 'closed' : 'open'}">${isBlocked ? 'Blocked' : 'Active'}</span></td>
       <td>
         <div class="action-group">
-          ${canManage ? `<button type="button" class="table-btn" data-user-action="toggle-status" data-user-id="${user.id}" data-status="${isBlocked ? 'active' : 'blocked'}">${isBlocked ? 'Unblock' : 'Block'}</button>` : '<span class="read-only-label">You</span>'}
-          ${canManage ? `<button type="button" class="table-btn delete-btn" data-user-action="delete-user" data-user-id="${user.id}">Delete</button>` : ''}
+          ${isSelf ? '<span class="read-only-label">You</span>' : ''}
+          ${canManage ? `<button type="button" class="table-btn" data-user-action="toggle-status" data-user-id="${user.id}" data-status="${isBlocked ? 'active' : 'blocked'}">${isBlocked ? 'Unblock' : 'Block'}</button>` : ''}
+          ${canManage && isViewerSuperAdmin ? `<button type="button" class="table-btn delete-btn" data-user-action="delete-user" data-user-id="${user.id}">Delete</button>` : ''}
+          ${canPromote ? `<button type="button" class="table-btn promote-btn" data-user-action="promote-admin" data-user-id="${user.id}">Promote Admin</button>` : ''}
         </div>
       </td>
     `;
@@ -865,7 +892,7 @@ async function fetchUsers() {
   }
 
   const users = await response.json();
-  userData = users || [];
+  userData = (users || []).filter((user) => user.role !== 'super_admin' || getCurrentUser().role === 'super_admin');
   applyUserFilter();
   updateStats(monitoringData);
 }
@@ -1947,6 +1974,75 @@ async function saveConfigRole() {
   fetchConfigUsers();
 }
 
+async function createAccountHandler() {
+  if (getCurrentUser().role !== 'super_admin') {
+    if (createAccountMessage) {
+      createAccountMessage.textContent = 'Hanya super_admin yang dapat membuat akun.';
+      createAccountMessage.classList.add('error');
+    }
+    return;
+  }
+
+  const username = (newAccountUsername?.value || '').trim();
+  const fullName = (newAccountFullName?.value || '').trim();
+  const password = newAccountPassword?.value || '';
+  const role = newAccountRole?.value || 'user';
+
+  if (!username || !password) {
+    if (createAccountMessage) {
+      createAccountMessage.textContent = 'Username dan password wajib diisi.';
+      createAccountMessage.classList.add('error');
+    }
+    return;
+  }
+
+  const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  if (!passwordPattern.test(password)) {
+    if (createAccountMessage) {
+      createAccountMessage.textContent = 'Password min 8 char, harus ada huruf besar, kecil, dan angka.';
+      createAccountMessage.classList.add('error');
+    }
+    return;
+  }
+
+  if (createAccountMessage) {
+    createAccountMessage.textContent = 'Membuat akun...';
+    createAccountMessage.classList.remove('error');
+  }
+
+  const response = await fetch('/api/auth/users', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, full_name: fullName || username, role }),
+  });
+
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (createAccountMessage) {
+      createAccountMessage.textContent = result.error || 'Gagal membuat akun.';
+      createAccountMessage.classList.add('error');
+    }
+    return;
+  }
+
+  if (createAccountMessage) {
+    createAccountMessage.textContent = result.message || `Akun ${username} berhasil dibuat.`;
+    createAccountMessage.classList.remove('error');
+  }
+
+  if (newAccountUsername) newAccountUsername.value = '';
+  if (newAccountFullName) newAccountFullName.value = '';
+  if (newAccountPassword) newAccountPassword.value = '';
+  if (newAccountRole) newAccountRole.value = 'user';
+
+  await fetchConfigUsers();
+}
+
+if (createAccountBtn) {
+  createAccountBtn.addEventListener('click', createAccountHandler);
+}
+
 if (toggleHistoryBtn && historyPanel) {
   toggleHistoryBtn.addEventListener('click', () => {
     const isHidden = historyPanel.classList.contains('hidden');
@@ -2206,6 +2302,21 @@ if (userTableBody) {
       }
 
       selectedUserIds.delete(userId);
+      await fetchUsers();
+    }
+
+    if (action === 'promote-admin') {
+      const confirmed = window.confirm('Promosikan user ini menjadi admin?');
+      if (!confirmed) return;
+      const response = await fetch(`/api/auth/users/${userId}/promote-admin`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await parseResponseJson(response);
+      if (!response.ok) {
+        alert(data.error || 'Gagal promote user');
+        return;
+      }
       await fetchUsers();
     }
   });

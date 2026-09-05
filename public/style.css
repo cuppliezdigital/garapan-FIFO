@@ -1595,3 +1595,57 @@ tbody tr.is-updated .search-highlight {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.user-pill.is-super-admin {
+  background: linear-gradient(120deg, rgba(217, 119, 6, 0.45), rgba(220, 38, 38, 0.45));
+  border-color: rgba(245, 158, 11, 0.65);
+  color: #fff7ed;
+  font-weight: 700;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+}
+
+.role-badge-super {
+  background: linear-gradient(120deg, rgba(217, 119, 6, 0.4), rgba(220, 38, 38, 0.4));
+  color: #fff7ed;
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.promote-btn {
+  background: linear-gradient(120deg, rgba(217, 119, 6, 0.9), rgba(180, 83, 9, 0.9));
+  border-color: rgba(245, 158, 11, 0.7);
+  color: #fff7ed;
+}
+
+.promote-btn:hover {
+  filter: brightness(1.08);
+}
+
+.gm-only {
+  position: relative;
+}
+
+.gm-only::before {
+  content: '🔒 GM';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(217, 119, 6, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 2px 8px;
+  border-radius: 999px;
+}

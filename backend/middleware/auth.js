@@ -65,8 +65,11 @@ function authMiddleware(req, res, next) {
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
     const role = req.user?.role;
+    const effectiveRoles = allowedRoles.includes('super_admin') || allowedRoles.includes('admin')
+      ? [...allowedRoles, 'super_admin']
+      : allowedRoles;
 
-    if (!allowedRoles.includes(role)) {
+    if (!effectiveRoles.includes(role)) {
       return res.status(403).json({ error: 'Akses ditolak. Role Anda tidak memiliki izin.' });
     }
 
@@ -79,7 +82,7 @@ function requirePermission(...permissionKeys) {
     if (!req.user) {
       return res.status(401).json({ error: 'Sesi tidak ditemukan' });
     }
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'admin' || req.user.role === 'super_admin') {
       req.permissionKeys = permissionKeys;
       return next();
     }

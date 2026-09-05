@@ -43,7 +43,7 @@ async function ensureUsersTable() {
       username VARCHAR(100) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
       full_name VARCHAR(150) NOT NULL,
-      role ENUM('admin', 'user', 'client') DEFAULT 'user',
+      role ENUM('super_admin', 'admin', 'user', 'client') DEFAULT 'user',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -72,9 +72,9 @@ async function ensureUsersTable() {
   }
 
   if (!columnNames.includes('role')) {
-    await db.query("ALTER TABLE users ADD COLUMN role ENUM('admin', 'user', 'client') DEFAULT 'user'");
+    await db.query("ALTER TABLE users ADD COLUMN role ENUM('super_admin', 'admin', 'user', 'client') DEFAULT 'user'");
   } else {
-    await db.query("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'user', 'client') DEFAULT 'user'");
+    await db.query("ALTER TABLE users MODIFY COLUMN role ENUM('super_admin', 'admin', 'user', 'client') DEFAULT 'user'");
   }
 
   if (!columnNames.includes('status')) {
@@ -85,6 +85,14 @@ async function ensureUsersTable() {
 
   if (columnNames.includes('password') && !columnNames.includes('password_hash')) {
     await db.query('UPDATE users SET password_hash = password WHERE password_hash = "" OR password_hash IS NULL');
+  }
+
+  try {
+    await db.query(
+      "UPDATE users SET role = 'super_admin' WHERE username = 'admin' AND role = 'admin'"
+    );
+  } catch (error) {
+    console.error('Migration role admin -> super_admin skipped:', error.message);
   }
 }
 
@@ -191,6 +199,59 @@ async function findUserByUsername(username) {
   return rows[0] || null;
 }
 
+async function createUserByAdmin({ username, password, full_name, role }, actor) {
+  await ensureUsersTable();
+
+  const normalizedUsername = String(username || '').trim().toLowerCase();
+  const normalizedFullName = String(full_name || '').trim() || normalizedUsername;
+  const allowedRoles = ['admin', 'user', 'client'];
+  const safeRole = allowedRoles.includes(role) ? role : 'user';
+
+  const reservedUsernames = ['admin', 'superadmin', 'root', 'super_admin'];
+  if (reservedUsernames.includes(normalizedUsername)) {
+    throw new Error('Username ini dipesan untuk sistem dan tidak dapat digunakan.');
+  }
+
+  if (!normalizedUsername || !password) {
+    throw new Error('Username dan password wajib diisi');
+  }
+
+  validatePasswordStrength(password);
+
+  const existingUser = await findUserByUsername(normalizedUsername);
+  if (existingUser) {
+    throw new Error('Username sudah terdaftar');
+  }
+
+  if (safeRole === 'super_admin') {
+    throw new Error('Tidak dapat membuat akun super_admin baru.');
+  }
+
+  const hash = await bcrypt.hash(String(password), 12);
+
+  const [result] = await db.query(
+    'INSERT INTO users (username, password_hash, full_name, role, created_at) VALUES (?, ?, ?, ?, NOW())',
+    [normalizedUsername, hash, normalizedFullName, safeRole]
+  );
+
+  const auditService = require('./auditService');
+  await auditService.logAudit({
+    userId: actor?.id,
+    username: actor?.username,
+    action: 'create_user',
+    entityType: 'user',
+    entityId: String(result.insertId),
+    details: {
+      createdUserId: result.insertId,
+      createdUsername: normalizedUsername,
+      createdRole: safeRole,
+      actorRole: actor?.role,
+    },
+  });
+
+  return { id: result.insertId, username: normalizedUsername, full_name: normalizedFullName, role: safeRole };
+}
+
 async function getAllUsers() {
   await ensureUsersTable();
   const [rows] = await db.query(
@@ -200,7 +261,31 @@ async function getAllUsers() {
   return rows;
 }
 
-async function toggleUserStatus(userId, nextStatus, currentUserId) {
+async function getAllUsersIncludingAdmin(currentUser) {
+  await ensureUsersTable();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const includeRoles = isSuperAdmin ? ['super_admin', 'admin', 'user', 'client'] : ['admin', 'user', 'client'];
+  const placeholders = includeRoles.map(() => '?').join(', ');
+  try {
+    const [rows] = await db.query(
+      `SELECT id, username, full_name, role, status, created_at FROM users WHERE role IN (${placeholders}) ORDER BY
+         CASE role
+           WHEN 'super_admin' THEN 0
+           WHEN 'admin' THEN 1
+           WHEN 'user' THEN 2
+           WHEN 'client' THEN 3
+           ELSE 4
+         END, created_at DESC`,
+      includeRoles
+    );
+    return rows;
+  } catch (error) {
+    console.error('getAllUsersIncludingAdmin error:', error.message, 'roles:', includeRoles);
+    return [];
+  }
+}
+
+async function toggleUserStatus(userId, nextStatus, currentUserId, currentUserRole) {
   await ensureUsersTable();
   const normalizedStatus = nextStatus === 'blocked' ? 'blocked' : 'active';
 
@@ -208,9 +293,19 @@ async function toggleUserStatus(userId, nextStatus, currentUserId) {
     return { success: false, reason: 'self' };
   }
 
+  const [targetRows] = await db.query('SELECT role FROM users WHERE id = ?', [userId]);
+  if (!targetRows.length) return { success: false, reason: 'not_found' };
+  const targetRole = targetRows[0].role;
+  if (targetRole === 'super_admin') {
+    return { success: false, reason: 'protected_role' };
+  }
+  if (targetRole === 'admin' && currentUserRole !== 'super_admin') {
+    return { success: false, reason: 'forbidden' };
+  }
+
   const [result] = await db.query(
-    'UPDATE users SET status = ? WHERE id = ? AND role IN (?, ?)',
-    [normalizedStatus, userId, 'user', 'client']
+    'UPDATE users SET status = ? WHERE id = ?',
+    [normalizedStatus, userId]
   );
 
   if (result.affectedRows > 0 && normalizedStatus === 'blocked') {
@@ -220,16 +315,26 @@ async function toggleUserStatus(userId, nextStatus, currentUserId) {
   return { success: result.affectedRows > 0 };
 }
 
-async function deleteUser(userId, currentUserId) {
+async function deleteUser(userId, currentUserId, currentUserRole) {
   await ensureUsersTable();
 
   if (Number(userId) === Number(currentUserId)) {
     return { success: false, reason: 'self' };
   }
 
+  const [targetRows] = await db.query('SELECT role FROM users WHERE id = ?', [userId]);
+  if (!targetRows.length) return { success: false, reason: 'not_found' };
+  const targetRole = targetRows[0].role;
+  if (targetRole === 'super_admin') {
+    return { success: false, reason: 'protected_role' };
+  }
+  if (targetRole === 'admin' && currentUserRole !== 'super_admin') {
+    return { success: false, reason: 'forbidden' };
+  }
+
   const [result] = await db.query(
-    'DELETE FROM users WHERE id = ? AND role IN (?, ?)',
-    [userId, 'user', 'client']
+    'DELETE FROM users WHERE id = ?',
+    [userId]
   );
 
   if (result.affectedRows > 0) {
@@ -251,10 +356,15 @@ function validatePasswordStrength(password) {
 async function registerUser({ username, password, full_name, role = 'user' }) {
   await ensureUsersTable();
 
-  const normalizedUsername = String(username || '').trim();
+  const normalizedUsername = String(username || '').trim().toLowerCase();
   const normalizedFullName = String(full_name || '').trim() || normalizedUsername;
   const allowedRoles = ['user', 'client'];
   const safeRole = allowedRoles.includes(role) ? role : 'user';
+
+  const reservedUsernames = ['admin', 'superadmin', 'root', 'super_admin'];
+  if (reservedUsernames.includes(normalizedUsername)) {
+    throw new Error('Username ini dipesan dan tidak dapat didaftarkan.');
+  }
 
   if (!normalizedUsername || !password) {
     throw new Error('Username dan password wajib diisi');
@@ -346,6 +456,8 @@ module.exports = {
   loginUser,
   findUserByUsername,
   getAllUsers,
+  getAllUsersIncludingAdmin,
+  createUserByAdmin,
   toggleUserStatus,
   deleteUser,
   isSessionValid,

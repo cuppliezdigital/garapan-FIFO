@@ -24,6 +24,16 @@ const PERMISSION_CATALOG = Object.freeze([
 ]);
 
 const ROLE_DEFAULTS = Object.freeze({
+  super_admin: Object.freeze({
+    full_access: 1,
+    import_bulk: 1,
+    view_history: 1,
+    delete_history: 1,
+    manage_users: 1,
+    download_template: 1,
+    delete_global: 1,
+    access_config: 1,
+  }),
   admin: Object.freeze({
     full_access: 1,
     import_bulk: 1,
@@ -70,7 +80,7 @@ async function ensurePermissionsTables() {
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS role_default_permissions (
-      role ENUM('admin', 'user', 'client') NOT NULL,
+      role ENUM('super_admin', 'admin', 'user', 'client') NOT NULL,
       permission_key VARCHAR(50) NOT NULL,
       allowed TINYINT(1) NOT NULL DEFAULT 0,
       PRIMARY KEY (role, permission_key)
@@ -131,7 +141,7 @@ async function resolveUserPermissions(userId, role) {
   }
   try {
     const [rows] = await db.query(
-      `SELECT pm.permission_key AS key,
+      `SELECT pm.permission_key AS \`key\`,
               COALESCE(up.allowed, rdp.allowed, 0) AS allowed,
               pm.label, pm.description, pm.category
        FROM permissions_master pm
@@ -164,7 +174,7 @@ async function resolveUserPermissions(userId, role) {
 
 async function userHasPermission(userId, role, permissionKey) {
   if (!permissionKey) return false;
-  if (role === 'admin') return true;
+  if (role === 'admin' || role === 'super_admin') return true;
 
   await ensurePermissionsTables();
   const [rows] = await db.query(
@@ -194,10 +204,13 @@ async function getEffectivePermissions(userId, role) {
   const expanded = expandFullAccess(raw);
   const map = {};
   for (const p of expanded) map[p.key] = p.allowed;
-  if (role === 'admin') {
+  if (role === 'admin' || role === 'super_admin') {
     for (const key of Object.values(PERMISSION_KEYS)) map[key] = true;
   }
-  return expanded.map((p) => ({ ...p, allowed: role === 'admin' ? true : Boolean(map[p.key]) }));
+  return expanded.map((p) => ({
+    ...p,
+    allowed: (role === 'admin' || role === 'super_admin') ? true : Boolean(map[p.key]),
+  }));
 }
 
 async function updateUserPermissions(targetUserId, payload, actor) {
@@ -275,6 +288,7 @@ async function updateUserRole(targetUserId, newRole, actor) {
 
   const [targetRows] = await db.query('SELECT id, role FROM users WHERE id = ?', [targetUserId]);
   if (!targetRows.length) return { success: false, reason: 'not_found' };
+  if (targetRows[0].role === 'super_admin') return { success: false, reason: 'cannot_modify_super_admin' };
   if (targetRows[0].role === 'admin') return { success: false, reason: 'cannot_modify_admin' };
 
   if (Number(targetUserId) === Number(actor?.id)) {
@@ -296,6 +310,32 @@ async function updateUserRole(targetUserId, newRole, actor) {
   return { success: result.affectedRows > 0 };
 }
 
+async function promoteToAdmin(targetUserId, actor) {
+  if (actor?.role !== 'super_admin') return { success: false, reason: 'forbidden' };
+
+  const [targetRows] = await db.query('SELECT id, role FROM users WHERE id = ?', [targetUserId]);
+  if (!targetRows.length) return { success: false, reason: 'not_found' };
+  if (targetRows[0].role === 'super_admin') return { success: false, reason: 'already_super_admin' };
+
+  if (Number(targetUserId) === Number(actor?.id)) {
+    return { success: false, reason: 'self' };
+  }
+
+  const oldRole = targetRows[0].role;
+  const [result] = await db.query('UPDATE users SET role = ? WHERE id = ?', ['admin', targetUserId]);
+  if (result.affectedRows > 0) {
+    await auditService.logAudit({
+      userId: actor.id,
+      username: actor.username,
+      action: 'promote_to_admin',
+      entityType: 'user',
+      entityId: String(targetUserId),
+      details: { targetUserId, oldRole, newRole: 'admin', actorRole: actor.role },
+    });
+  }
+  return { success: result.affectedRows > 0 };
+}
+
 module.exports = {
   PERMISSION_KEYS,
   PERMISSION_CATALOG,
@@ -305,4 +345,5 @@ module.exports = {
   getEffectivePermissions,
   updateUserPermissions,
   updateUserRole,
+  promoteToAdmin,
 };
