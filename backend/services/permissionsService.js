@@ -72,56 +72,60 @@ const ROLE_DEFAULTS = Object.freeze({
 });
 
 async function ensurePermissionsTables() {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS permissions_master (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      permission_key VARCHAR(50) NOT NULL UNIQUE,
-      label VARCHAR(120) NOT NULL,
-      description VARCHAR(255),
-      category VARCHAR(50) DEFAULT 'general',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS permissions_master (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        permission_key VARCHAR(50) NOT NULL UNIQUE,
+        label VARCHAR(120) NOT NULL,
+        description VARCHAR(255),
+        category VARCHAR(50) DEFAULT 'general',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS role_default_permissions (
-      role ENUM('super_admin', 'admin', 'user', 'client') NOT NULL,
-      permission_key VARCHAR(50) NOT NULL,
-      allowed TINYINT(1) NOT NULL DEFAULT 0,
-      PRIMARY KEY (role, permission_key)
-    )
-  `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS role_default_permissions (
+        role ENUM('super_admin', 'admin', 'user', 'client') NOT NULL,
+        permission_key VARCHAR(50) NOT NULL,
+        allowed TINYINT(1) NOT NULL DEFAULT 0,
+        PRIMARY KEY (role, permission_key)
+      )
+    `);
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS user_permissions (
-      user_id INT NOT NULL,
-      permission_key VARCHAR(50) NOT NULL,
-      allowed TINYINT(1) NOT NULL,
-      granted_by INT,
-      granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (user_id, permission_key),
-      INDEX idx_user_id (user_id)
-    )
-  `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        user_id INT NOT NULL,
+        permission_key VARCHAR(50) NOT NULL,
+        allowed TINYINT(1) NOT NULL,
+        granted_by INT,
+        granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, permission_key),
+        INDEX idx_user_id (user_id)
+      )
+    `);
 
-  for (const entry of PERMISSION_CATALOG) {
-    await db.query(
-      `INSERT INTO permissions_master (permission_key, label, description, category)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE label = VALUES(label), description = VALUES(description), category = VALUES(category)`,
-      [entry.key, entry.label, entry.description, entry.category]
-    );
-  }
-
-  for (const [role, defaults] of Object.entries(ROLE_DEFAULTS)) {
-    for (const [key, allowed] of Object.entries(defaults)) {
+    for (const entry of PERMISSION_CATALOG) {
       await db.query(
-        `INSERT INTO role_default_permissions (role, permission_key, allowed)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE allowed = VALUES(allowed)`,
-        [role, key, allowed]
+        `INSERT INTO permissions_master (permission_key, label, description, category)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE label = VALUES(label), description = VALUES(description), category = VALUES(category)`,
+        [entry.key, entry.label, entry.description, entry.category]
       );
     }
+
+    for (const [role, defaults] of Object.entries(ROLE_DEFAULTS)) {
+      for (const [key, allowed] of Object.entries(defaults)) {
+        await db.query(
+          `INSERT INTO role_default_permissions (role, permission_key, allowed)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE allowed = VALUES(allowed)`,
+          [role, key, allowed]
+        );
+      }
+    }
+  } catch (error) {
+    console.error('ensurePermissionsTables failed:', error.message);
   }
 }
 
