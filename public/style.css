@@ -225,31 +225,116 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  width: 100%;
 }
 
 .auth-form label {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: var(--text);
-  font-weight: 500;
-}
-
-.input-field input {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: rgba(15, 23, 42, 0.9);
-  color: var(--white);
-  padding: 14px 16px;
-  font-size: 1rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input-field input:focus {
+.input-field {
+  width: 100%;
+}
+
+.input-field input,
+.auth-form input {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  padding: 13px 16px;
+  font-size: 0.95rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.input-field input:hover,
+.auth-form input:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.input-field input:focus,
+.auth-form input:focus {
   outline: none;
-  border-color: rgba(96, 165, 250, 0.65);
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+  background: rgba(15, 23, 42, 0.95);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18), inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Fix browser autofill background in dark mode */
+.auth-form input:-webkit-autofill,
+.auth-form input:-webkit-autofill:hover,
+.auth-form input:-webkit-autofill:focus,
+.auth-form input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f8fafc !important;
+  -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
+  box-shadow: 0 0 0 1000px #0f172a inset !important;
+  border: 1px solid rgba(59, 130, 246, 0.5) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* PASSWORD INPUT WITH TOGGLE EYE BUTTON INSIDE */
+.password-input-box {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.password-input-box input {
+  width: 100% !important;
+  padding-right: 48px !important;
+  box-sizing: border-box !important;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.password-toggle-btn:hover {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.12);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.password-toggle-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.password-toggle-btn:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.65);
+  color: #60a5fa;
+}
+
+.password-toggle-btn svg {
+  display: block;
+  pointer-events: none;
 }
 
 .auth-btn {
@@ -2200,8 +2285,7 @@ button:disabled {
 .panel-header input,
 .filter-select,
 .form-grid input,
-.form-grid select,
-.auth-form input {
+.form-grid select {
   width: min(320px, 100%);
   background: rgba(15, 23, 42, 0.9);
   color: var(--white);
@@ -2215,8 +2299,7 @@ button:disabled {
 .panel-header input:focus,
 .filter-select:focus,
 .form-grid input:focus,
-.form-grid select:focus,
-.auth-form input:focus {
+.form-grid select:focus {
   border-color: rgba(96, 165, 250, 0.68);
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
 }

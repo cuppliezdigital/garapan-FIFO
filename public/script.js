@@ -3513,6 +3513,28 @@ if (sidebarLogoutBtn) {
 }
 window.addEventListener('hashchange', handleHashRoute);
 
+// Password Visibility Toggle Helpers
+function setupPasswordToggle(inputId, btnId) {
+  const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
+  const btn = typeof btnId === 'string' ? document.getElementById(btnId) : btnId;
+  if (!input || !btn) return;
+  const eyeOpen = btn.querySelector('.eye-open');
+  const eyeClosed = btn.querySelector('.eye-closed');
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    if (eyeOpen) eyeOpen.classList.toggle('hidden', !isPassword);
+    if (eyeClosed) eyeClosed.classList.toggle('hidden', isPassword);
+    btn.setAttribute('aria-label', isPassword ? 'Sembunyikan password' : 'Lihat password');
+    input.focus();
+  });
+}
+
+setupPasswordToggle('loginPassword', 'toggleLoginPasswordBtn');
+setupPasswordToggle('registerPassword', 'toggleRegisterPasswordBtn');
+
 loadLogo();
 loadBackground();
 
