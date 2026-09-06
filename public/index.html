@@ -260,10 +260,16 @@
         <!-- TOPBAR -->
         <header class="topbar">
           <div class="topbar-left">
-            <button type="button" id="sidebarToggleBtn" class="hamburger-btn" aria-label="Buka Menu">
-              <span></span>
-              <span></span>
-              <span></span>
+            <button type="button" id="sidebarToggleBtn" class="hamburger-btn" aria-label="Buka Menu Navigasi" title="Menu Navigasi">
+              <div class="menu-btn-inner">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="2.5" class="bento-cube bento-accent" />
+                  <rect x="14" y="3" width="7" height="7" rx="2.5" class="bento-cube" />
+                  <rect x="3" y="14" width="7" height="7" rx="2.5" class="bento-cube" />
+                  <rect x="14" y="14" width="7" height="7" rx="2.5" class="bento-cube" />
+                </svg>
+                <span class="menu-btn-glow"></span>
+              </div>
             </button>
             <div>
               <p class="eyebrow" id="pageEyebrow">Monitoring System</p>
@@ -477,7 +483,15 @@
               <!-- QUICK CHIPS TLC (Opsi Cepat 1-Klik) -->
               <div id="tlcQuickChipsBar" class="tlc-quick-chips hidden">
                 <span class="chips-label">TLC:</span>
-                <div id="tlcChipsContainer" class="chips-list"></div>
+                <div class="chips-scroll-wrapper">
+                  <button type="button" id="tlcScrollLeftBtn" class="chips-nav-arrow chips-arrow-left hidden" aria-label="Geser kiri">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <div id="tlcChipsContainer" class="chips-list"></div>
+                  <button type="button" id="tlcScrollRightBtn" class="chips-nav-arrow chips-arrow-right hidden" aria-label="Geser kanan">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
               </div>
 
               <div class="table-wrap">
