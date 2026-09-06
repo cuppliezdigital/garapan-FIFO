@@ -699,16 +699,16 @@ function renderTable(data) {
       : '<span class="read-only-label">Read only</span>';
 
     tr.innerHTML = `
-      <td data-label="Pilih"><input type="checkbox" class="monitoring-select-checkbox" data-waybill="${item.waybill || ''}" ${selectedMonitoringWaybills.has(item.waybill) ? 'checked' : ''} /></td>
-      <td data-label="Waybill"><strong class="cell-value">${highlightSearch(item.waybill || '-')}</strong></td>
-      <td data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(item.tanggal))}</span></td>
-      <td data-label="Outlet"><span class="cell-value">${highlightSearch(item.outlet || '-')}</span></td>
-      <td data-label="Stuck"><span class="cell-value"><span class="badge badge-stuck">${highlightSearch(item.stuck || 0)}</span></span></td>
-      <td data-label="TLC"><span class="cell-value">${highlightSearch(item.tlc || '-')}</span></td>
-      <td data-label="Status"><span class="cell-value"><span class="status ${item.status ? item.status.toLowerCase().replace(/\s+/g, '-') : 'open'}">${highlightSearch(item.status || 'Open')}</span></span></td>
-      <td data-label="Aksi">${actionButtons}</td>
-      <td data-label="Nama Barang"><span class="cell-value">${highlightSearch(item.nama_barang || '-')}</span></td>
-      <td data-label="Updated By"><span class="cell-value">${highlightSearch(item.updated_by || '-')}</span></td>
+      <td class="col-check" data-label="Pilih"><input type="checkbox" class="monitoring-select-checkbox" data-waybill="${item.waybill || ''}" ${selectedMonitoringWaybills.has(item.waybill) ? 'checked' : ''} /></td>
+      <td class="col-waybill" data-label="Waybill"><strong class="cell-value">${highlightSearch(item.waybill || '-')}</strong></td>
+      <td class="col-tanggal" data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(item.tanggal))}</span></td>
+      <td class="col-outlet" data-label="Outlet"><span class="cell-value">${highlightSearch(item.outlet || '-')}</span></td>
+      <td class="col-stuck" data-label="Stuck"><span class="cell-value"><span class="badge badge-stuck">${highlightSearch(item.stuck || 0)}</span></span></td>
+      <td class="col-tlc" data-label="TLC"><span class="cell-value">${highlightSearch(item.tlc || '-')}</span></td>
+      <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${item.status ? item.status.toLowerCase().replace(/\s+/g, '-') : 'open'}">${highlightSearch(item.status || 'Open')}</span></span></td>
+      <td class="col-aksi" data-label="Aksi">${actionButtons}</td>
+      <td class="col-barang" data-label="Nama Barang"><span class="cell-value">${highlightSearch(item.nama_barang || '-')}</span></td>
+      <td class="col-updated" data-label="Updated By"><span class="cell-value">${highlightSearch(item.updated_by || '-')}</span></td>
     `;
     tbody.appendChild(tr);
   });
@@ -1316,10 +1316,15 @@ function renderMonitoringArchive(rows) {
   const filtered = rows.filter((row) => [row.waybill, row.outlet, row.nama_barang, row.status, row.aksi].filter(Boolean).join(' ').toLowerCase().includes(keyword));
   archiveTableBody.innerHTML = filtered.length ? filtered.map((row) => `
     <tr>
-      <td data-label="Pilih"><input type="checkbox" class="archive-select-checkbox" data-waybill="${row.waybill}" ${selectedArchiveWaybills.has(row.waybill) ? 'checked' : ''}></td>
-      <td data-label="Waybill"><span class="cell-value">${highlightSearch(row.waybill || '-', archiveSearchInput?.value)}</span></td><td data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(row.tanggal), archiveSearchInput?.value)}</span></td><td data-label="Outlet"><span class="cell-value">${highlightSearch(row.outlet || '-', archiveSearchInput?.value)}</span></td>
-      <td data-label="Stuck"><span class="cell-value">${highlightSearch(row.stuck || '-', archiveSearchInput?.value)}</span></td><td data-label="Status"><span class="cell-value">${highlightSearch(row.status || '-', archiveSearchInput?.value)}</span></td><td data-label="Aksi"><span class="cell-value">${highlightSearch(row.aksi || '-', archiveSearchInput?.value)}</span></td><td data-label="Updated By"><span class="cell-value">${highlightSearch(row.updated_by || '-', archiveSearchInput?.value)}</span></td>
-      <td data-label="Update"><button type="button" class="table-btn update-btn archive-update-btn" data-waybill="${row.waybill}">UPDATE</button></td>
+      <td class="col-check" data-label="Pilih"><input type="checkbox" class="archive-select-checkbox" data-waybill="${row.waybill}" ${selectedArchiveWaybills.has(row.waybill) ? 'checked' : ''}></td>
+      <td class="col-waybill" data-label="Waybill"><span class="cell-value">${highlightSearch(row.waybill || '-', archiveSearchInput?.value)}</span></td>
+      <td class="col-tanggal" data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(row.tanggal), archiveSearchInput?.value)}</span></td>
+      <td class="col-outlet" data-label="Outlet"><span class="cell-value">${highlightSearch(row.outlet || '-', archiveSearchInput?.value)}</span></td>
+      <td class="col-stuck" data-label="Stuck"><span class="cell-value">${highlightSearch(row.stuck || '-', archiveSearchInput?.value)}</span></td>
+      <td class="col-status" data-label="Status"><span class="cell-value">${highlightSearch(row.status || '-', archiveSearchInput?.value)}</span></td>
+      <td class="col-aksi-text" data-label="Aksi"><span class="cell-value">${highlightSearch(row.aksi || '-', archiveSearchInput?.value)}</span></td>
+      <td class="col-updated" data-label="Updated By"><span class="cell-value">${highlightSearch(row.updated_by || '-', archiveSearchInput?.value)}</span></td>
+      <td class="col-aksi" data-label="Update"><button type="button" class="table-btn update-btn archive-update-btn" data-waybill="${row.waybill}">UPDATE</button></td>
     </tr>`).join('') : '<tr><td colspan="9" class="empty-state">Belum ada arsip waybill.</td></tr>';
   if (archiveCardCount) archiveCardCount.textContent = rows.length;
   updateArchiveSelectionCount();

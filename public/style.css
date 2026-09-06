@@ -1665,20 +1665,68 @@ button:disabled {
   }
 
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 14px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    min-height: unset;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar-left .eyebrow {
+    font-size: 0.6rem;
+    margin-bottom: 0;
+    line-height: 1.1;
+  }
+
+  .topbar-left h1 {
+    font-size: 1.05rem;
+    margin: 0;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .topbar-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
   }
 
   .user-pill {
-    grid-column: 1 / -1;
+    width: auto;
+    height: 28px;
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
     justify-content: center;
+  }
+
+  .topbar-actions .primary-btn,
+  .topbar-actions .secondary-btn {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.72rem;
+    border-radius: 8px;
   }
 
   .summary-strip {
@@ -2363,16 +2411,9 @@ tbody tr.is-updated .search-highlight {
 }
 
 @media (max-width: 768px) {
-  .topbar,
   .panel-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .topbar-actions {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
   }
 
   .stats-grid,
@@ -2409,103 +2450,257 @@ tbody tr.is-updated .search-highlight {
 
   .monitoring-table tbody,
   .archive-table tbody {
-    display: grid;
-    gap: 12px;
-    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 4px;
   }
 
   .monitoring-table tbody tr,
   .archive-table tbody tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding: 8px 12px;
-    border: 1px solid rgba(96, 165, 250, 0.24);
-    border-radius: 14px;
-    background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.62));
-    box-shadow: 0 8px 18px rgba(2, 6, 23, 0.2);
+    grid-template-columns: auto auto auto 1fr auto;
+    align-items: center;
+    gap: 5px 6px;
+    padding: 10px 14px;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    border-radius: 13px;
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.72));
+    box-shadow: 0 4px 14px rgba(2, 6, 23, 0.35);
   }
 
   .monitoring-table tbody tr.urgency-48-60,
   .archive-table tbody tr.urgency-48-60 {
     border-color: rgba(234, 179, 8, 0.48);
-    background: linear-gradient(145deg, rgba(120, 83, 5, 0.2), rgba(15, 23, 42, 0.76));
+    background: linear-gradient(145deg, rgba(120, 83, 5, 0.2), rgba(15, 23, 42, 0.85));
   }
   .monitoring-table tbody tr.urgency-48-72,
   .archive-table tbody tr.urgency-48-72 {
     border-color: rgba(249, 115, 22, 0.5);
-    background: linear-gradient(145deg, rgba(124, 52, 8, 0.22), rgba(15, 23, 42, 0.76));
+    background: linear-gradient(145deg, rgba(124, 52, 8, 0.22), rgba(15, 23, 42, 0.85));
   }
   .monitoring-table tbody tr.urgency-72-up,
   .archive-table tbody tr.urgency-72-up {
     border-color: rgba(239, 68, 68, 0.52);
-    background: linear-gradient(145deg, rgba(127, 29, 29, 0.24), rgba(15, 23, 42, 0.76));
+    background: linear-gradient(145deg, rgba(127, 29, 29, 0.24), rgba(15, 23, 42, 0.85));
   }
 
   .monitoring-table tbody tr.is-updated,
   .archive-table tbody tr.is-updated {
     border-color: rgba(52, 211, 153, 0.5);
-    background: linear-gradient(145deg, rgba(6, 78, 59, 0.3), rgba(15, 23, 42, 0.76));
+    background: linear-gradient(145deg, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.85));
   }
 
+  /* Reset default td styles in card layout */
   .monitoring-table tbody td,
   .archive-table tbody td {
-    display: grid;
-    grid-template-columns: minmax(82px, 30%) minmax(0, 1fr);
-    gap: 12px;
+    display: flex;
     align-items: center;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    font-size: 0.82rem;
     min-width: 0;
-    padding: 9px 0;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
     overflow-wrap: anywhere;
   }
 
   .monitoring-table tbody td::before,
-  .archive-table tbody td::before {
-    content: attr(data-label);
-    color: #94a3b8;
-    font-size: 0.66rem;
-    font-weight: 800;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
+  .archive-table tbody td::before,
+  .monitoring-table tbody td::after,
+  .archive-table tbody td::after {
+    display: none;
   }
 
   .monitoring-table tbody td .cell-value,
   .archive-table tbody td .cell-value {
     min-width: 0;
+    grid-column: unset;
+  }
+
+  /* BARIS 1: Checkbox + Waybill (kiri) & Badges Stuck + Status (kanan) */
+  .col-check {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    margin-right: 4px;
+  }
+  .col-check input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: #3b82f6;
+  }
+
+  .col-waybill {
     grid-column: 2;
+    grid-row: 1;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.03em;
+  }
+  .col-waybill .cell-value {
+    color: #ffffff;
+    font-weight: 800;
   }
 
-  .monitoring-table tbody td:first-child,
-  .archive-table tbody td:first-child {
+  .col-stuck {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .col-stuck .badge-stuck,
+  .col-stuck .badge {
+    font-size: 0.68rem !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    white-space: nowrap;
+  }
+
+  .col-status {
+    grid-column: 5;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .col-status .status {
+    font-size: 0.68rem !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+
+  /* BARIS 2: Rute Outlet ➔ TLC (kiri) & Tanggal (kanan) */
+  .col-outlet {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #e2e8f0;
     display: flex;
-    justify-content: flex-start;
-    padding: 5px 0 8px;
+    align-items: center;
+    gap: 4px;
+    padding-top: 1px;
+  }
+  .col-outlet::before {
+    content: "🏢 ";
+    font-size: 0.72rem;
+    opacity: 0.85;
+    display: inline-block;
   }
 
-  .monitoring-table tbody td:first-child::before,
-  .archive-table tbody td:first-child::before {
-    display: none;
+  .col-tlc {
+    grid-column: 3;
+    grid-row: 2;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    padding-top: 1px;
+  }
+  .col-tlc::before {
+    content: "➔ ";
+    color: #38bdf8;
+    font-weight: 900;
+    margin-right: 3px;
+    display: inline-block;
   }
 
-  .monitoring-table tbody td:last-child,
-  .archive-table tbody td:last-child {
-    border-bottom: none;
-  }
-
-  .monitoring-table tbody td:first-child::after,
-  .archive-table tbody td:first-child::after {
-    content: "Select data";
-    margin-left: 8px;
+  .col-tanggal {
+    grid-column: 4 / 6;
+    grid-row: 2;
+    justify-self: end;
+    font-size: 0.75rem;
+    font-weight: 600;
     color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-top: 1px;
+  }
+  .col-tanggal::before {
+    content: "📅 ";
     font-size: 0.7rem;
+    opacity: 0.85;
+    display: inline-block;
   }
 
-  .monitoring-table .action-group,
-  .archive-table .action-group,
-  .monitoring-table .table-btn,
-  .archive-table .table-btn {
-    width: 100%;
+  /* BARIS 3: Nama Barang (Monitoring) atau Aksi Text (Archive) */
+  .col-barang,
+  .col-aksi-text {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 0;
+    margin: 2px 0;
+    border-top: 1px dashed rgba(148, 163, 184, 0.12);
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.12);
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    line-height: 1.35;
+  }
+  .col-barang::before {
+    content: "📦 ";
+    font-size: 0.75rem;
+    opacity: 0.85;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+  .col-aksi-text::before {
+    content: "⚡ Aksi: ";
+    font-weight: 700;
+    color: #60a5fa;
+    display: inline-block;
+  }
+
+  /* BARIS 4: Diupdate Oleh (kiri) & Tombol Update (kanan) */
+  .col-updated {
+    grid-column: 1 / 4;
+    grid-row: 4;
+    font-size: 0.73rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-top: 2px;
+  }
+  .col-updated::before {
+    content: "👤 Diupdate: ";
+    font-weight: 600;
+    color: #64748b;
+    display: inline-block;
+  }
+
+  .col-aksi {
+    grid-column: 4 / -1;
+    grid-row: 4;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    padding-top: 2px;
+  }
+  .col-aksi .action-group {
+    width: auto;
+  }
+  .col-aksi .table-btn {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 11px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    width: auto !important;
+  }
+  .col-aksi .read-only-label {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-style: italic;
   }
 
   .monitoring-bulk-controls {
