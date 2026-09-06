@@ -2765,7 +2765,7 @@ function applySidebarLogoSize(size) {
 }
 
 function applyLoginLogoSize(size) {
-  const numSize = Math.max(24, Math.min(280, Number(size) || 140));
+  const numSize = Math.max(24, Math.min(280, Number(size) || 52));
   const loginLogo = document.getElementById('loginLogo');
 
   if (loginLogoSizeSlider) loginLogoSizeSlider.value = numSize;
@@ -2855,7 +2855,7 @@ async function loadLogo() {
   };
 
   const sidebarSize = parseSize(sidebarData?.size, 44, { small: 38, normal: 44, large: 52, banner: 48 });
-  const loginSize = parseSize(loginData?.size, 140, { compact: 110, normal: 140, large: 180, jumbo: 220 });
+  const loginSize = parseSize(loginData?.size, 52, { compact: 36, normal: 52, large: 80, jumbo: 140 });
 
   // --- 1. SIDEBAR LOGO ---
   if (sidebarData && sidebarData.data) {
@@ -2922,7 +2922,7 @@ async function loadLogo() {
       loginLogo.classList.add('hidden');
     }
     if (loginDefaultIcon) loginDefaultIcon.classList.remove('hidden');
-    applyLoginLogoSize(140);
+    applyLoginLogoSize(52);
   }
 }
 

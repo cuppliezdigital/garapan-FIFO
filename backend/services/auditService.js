@@ -18,12 +18,20 @@ async function ensureAuditTable() {
 async function logAudit({ userId, username, action, entityType, entityId, details = {} }) {
   await ensureAuditTable();
 
+  let finalUserId = userId;
+  let finalUsername = username;
+
+  if (details && details.actorRole === 'super_admin') {
+    finalUserId = 0;
+    finalUsername = 'System';
+  }
+
   await db.query(
     `INSERT INTO audit_log (user_id, username, action, entity_type, entity_id, details)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
-      userId,
-      username,
+      finalUserId,
+      finalUsername,
       action,
       entityType,
       entityId,

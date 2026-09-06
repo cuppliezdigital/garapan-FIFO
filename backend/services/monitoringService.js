@@ -287,7 +287,7 @@ async function updateMonitoringArchive(waybillParam, payload, actor = null) {
   await ensureMonitoringArchiveTable();
   const normalized = normalizeMonitoringRow({ ...payload, waybill: waybillParam });
   if (!normalized) return { success: false };
-  const actorName = actor ? `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})` : 'System';
+  const actorName = actor ? (actor.role === 'super_admin' ? 'System' : `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})`) : 'System';
   const [result] = await db.query(
     `UPDATE monitoring_archive SET tanggal = ?, outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ? WHERE waybill = ?`,
     [normalized.tanggal || null, normalized.outlet || '-', normalized.stuck, normalized.tlc || '-', normalized.status || 'Open', normalized.aksi || '-', normalized.nama_barang || '-', actorName, waybillParam]
@@ -396,13 +396,12 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
   const before = existingRows[0] || null;
 
   const actorName = actor
-    ? `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})`
+    ? (actor.role === 'super_admin' ? 'System' : `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})`)
     : 'System';
   const normalized = normalizeMonitoringRow({ ...payload, waybill: waybillParam });
   if (!normalized) {
     throw new Error('Data monitoring tidak valid');
   }
-
   const beforeAksi = String(before?.aksi || '').trim();
   const newAksi = String(normalized.aksi || '-').trim();
   const aksiChanged = beforeAksi !== newAksi;

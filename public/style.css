@@ -204,11 +204,9 @@ h1, h2, h3, h4, h5, h6 {
 .login-logo-img {
   display: block;
   width: auto;
-  max-width: min(100%, 280px);
-  min-width: 24px;
+  max-width: min(100%, 420px);
   height: auto;
-  max-height: var(--login-logo-size, 140px);
-  min-height: 24px;
+  max-height: var(--login-logo-size, 52px);
   object-fit: contain;
   border-radius: 0;
   background: transparent;
@@ -429,8 +427,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .login-logo-img {
-    max-height: 110px;
-    padding: 6px;
+    max-height: var(--login-logo-size, 52px);
+    padding: 2px;
   }
 }
 

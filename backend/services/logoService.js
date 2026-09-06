@@ -54,7 +54,7 @@ async function getLogo(type = 'sidebar') {
       'SELECT logo_data, logo_mime, size_mode FROM app_logo WHERE (logo_type = \'sidebar\' OR id = 1) AND logo_data IS NOT NULL LIMIT 1'
     );
     if (sidebarRows.length && sidebarRows[0].logo_data) {
-      return { data: sidebarRows[0].logo_data, mime: sidebarRows[0].logo_mime || 'image/png', size: 'normal', isFallback: true };
+      return { data: sidebarRows[0].logo_data, mime: sidebarRows[0].logo_mime || 'image/png', size: sidebarRows[0].size_mode || '52', isFallback: true };
     }
   }
   return null;
