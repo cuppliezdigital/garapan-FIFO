@@ -10,6 +10,11 @@ const logoutBtn = document.getElementById('logoutBtn');
 const addBtn = document.getElementById('addBtn');
 const statusFilter = document.getElementById('statusFilter');
 const tlcFilter = document.getElementById('tlcFilter');
+const tlcFilterInput = document.getElementById('tlcFilterInput');
+const clearTlcBtn = document.getElementById('clearTlcBtn');
+const toggleTlcDropdownBtn = document.getElementById('toggleTlcDropdownBtn');
+const tlcDropdownMenu = document.getElementById('tlcDropdownMenu');
+const tlcComboboxWrap = document.getElementById('tlcComboboxWrap');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 const resetFilterBtn = document.getElementById('resetFilterBtn');
 const tlcQuickChipsBar = document.getElementById('tlcQuickChipsBar');
@@ -238,6 +243,7 @@ let monitoringPageSize = 20;
 let monitoringArchiveData = [];
 let selectedArchiveWaybills = new Set();
 let editingArchiveWaybill = null;
+let currentAvailableTlcs = [];
 let authUser = null;
 let currentPermissions = {};
 let permissionCatalog = [];
@@ -841,9 +847,86 @@ function updateStats(data) {
   }
 }
 
+function escapeTlcHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function closeTlcDropdown() {
+  if (tlcDropdownMenu) tlcDropdownMenu.classList.add('hidden');
+  if (tlcComboboxWrap) tlcComboboxWrap.classList.remove('is-open');
+}
+
+function openTlcDropdown() {
+  if (!tlcDropdownMenu) return;
+  renderTlcDropdownMenu(tlcFilterInput?.value || '');
+  tlcDropdownMenu.classList.remove('hidden');
+  if (tlcComboboxWrap) tlcComboboxWrap.classList.add('is-open');
+}
+
+function renderTlcDropdownMenu(searchQuery = '') {
+  if (!tlcDropdownMenu) return;
+  const q = (searchQuery || '').trim().toLowerCase();
+  const currentVal = (tlcFilterInput?.value || '').trim().toUpperCase();
+
+  let filteredList = currentAvailableTlcs;
+  if (q) {
+    filteredList = currentAvailableTlcs.filter((item) => item.code.toLowerCase().includes(q));
+  }
+
+  const totalAll = monitoringData ? monitoringData.length : 0;
+  let html = `
+    <div class="tlc-option-item ${!currentVal ? 'is-selected' : ''}" data-value="all">
+      <span class="tlc-opt-name">
+        <svg class="tlc-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        Semua TLC
+      </span>
+      <span class="tlc-opt-badge">${totalAll}</span>
+    </div>
+  `;
+
+  if (filteredList.length === 0) {
+    html += `
+      <div class="tlc-option-empty">
+        <span>Tidak ada TLC "${escapeTlcHtml(searchQuery)}"</span>
+      </div>
+    `;
+  } else {
+    filteredList.forEach((item) => {
+      const isSelected = currentVal === item.code.toUpperCase();
+      html += `
+        <div class="tlc-option-item ${isSelected ? 'is-selected' : ''}" data-value="${escapeTlcHtml(item.code)}">
+          <span class="tlc-opt-name">
+            <svg class="tlc-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+              <path d="M10 6h4"/>
+              <path d="M10 10h4"/>
+              <path d="M10 14h4"/>
+            </svg>
+            ${escapeTlcHtml(item.code)}
+          </span>
+          <span class="tlc-opt-badge">${item.count}</span>
+        </div>
+      `;
+    });
+  }
+
+  tlcDropdownMenu.innerHTML = html;
+}
+
 function applyFilter() {
   const keyword = (searchInput?.value || '').trim().toLowerCase();
-  const tlc = (tlcFilter?.value || 'all');
+  const tlcRaw = (tlcFilterInput?.value || '').trim();
+  const tlcQuery = tlcRaw.toLowerCase();
+  const selectTlc = (tlcFilter?.value || 'all');
 
   let filtered = monitoringData;
 
@@ -869,17 +952,24 @@ function applyFilter() {
     });
   }
 
-  if (tlc !== 'all') {
-    filtered = filtered.filter((item) => (item.tlc || '').trim().toLowerCase() === tlc.trim().toLowerCase());
+  // Filter TLC: jika ada ketikan di input combobox, gunakan partial match
+  // Jika input kosong namun dropdown select tlc ada nilainya bukan 'all', gunakan itu
+  if (tlcQuery) {
+    filtered = filtered.filter((item) => (item.tlc || '').toLowerCase().includes(tlcQuery));
+  } else if (selectTlc !== 'all') {
+    filtered = filtered.filter((item) => (item.tlc || '').trim().toLowerCase() === selectTlc.trim().toLowerCase());
   }
 
   if (currentStuckFilter) {
     filtered = filtered.filter((item) => matchesStuckFilter(item, currentStuckFilter));
   }
 
-  // Tampilkan / sembunyikan tombol clear search
+  // Tampilkan / sembunyikan tombol clear search & clear tlc
   if (clearSearchBtn) {
     clearSearchBtn.classList.toggle('hidden', !keyword);
+  }
+  if (clearTlcBtn) {
+    clearTlcBtn.classList.toggle('hidden', !tlcRaw);
   }
 
   // Update badge total data di panel header
@@ -895,7 +985,12 @@ function applyFilter() {
   if (tlcChipsContainer) {
     const chips = tlcChipsContainer.querySelectorAll('.tlc-chip');
     chips.forEach((c) => {
-      c.classList.toggle('active', c.dataset.tlc === (tlc || 'all'));
+      const chipVal = (c.dataset.tlc || 'all').toLowerCase();
+      if (!tlcQuery || tlcQuery === 'all') {
+        c.classList.toggle('active', chipVal === 'all');
+      } else {
+        c.classList.toggle('active', chipVal === tlcQuery);
+      }
     });
   }
 
@@ -907,9 +1002,9 @@ function applyFilters() {
 }
 
 function populateTlcFilters(data) {
-  if (!tlcFilter) return;
+  if (!tlcFilter && !tlcFilterInput) return;
 
-  const currentTlc = tlcFilter.value || 'all';
+  const currentTlcVal = (tlcFilterInput?.value || tlcFilter?.value || 'all').trim();
   const tlcCounts = {};
 
   (data || []).forEach((item) => {
@@ -920,32 +1015,39 @@ function populateTlcFilters(data) {
   });
 
   const sortedTlcs = Object.keys(tlcCounts).sort((a, b) => tlcCounts[b] - tlcCounts[a]);
+  currentAvailableTlcs = sortedTlcs.map((code) => ({ code, count: tlcCounts[code] }));
 
-  let optionsHtml = `<option value="all">Semua TLC (${data.length})</option>`;
-  sortedTlcs.forEach((code) => {
-    optionsHtml += `<option value="${code}">${code} (${tlcCounts[code]})</option>`;
-  });
-  tlcFilter.innerHTML = optionsHtml;
+  if (tlcFilter) {
+    let optionsHtml = `<option value="all">Semua TLC (${data.length})</option>`;
+    sortedTlcs.forEach((code) => {
+      optionsHtml += `<option value="${code}">${code} (${tlcCounts[code]})</option>`;
+    });
+    tlcFilter.innerHTML = optionsHtml;
 
-  if (sortedTlcs.includes(currentTlc)) {
-    tlcFilter.value = currentTlc;
-  } else {
-    tlcFilter.value = 'all';
+    if (sortedTlcs.includes(currentTlcVal)) {
+      tlcFilter.value = currentTlcVal;
+    } else {
+      tlcFilter.value = 'all';
+    }
   }
+
+  // Render Combobox Dropdown Menu
+  renderTlcDropdownMenu(tlcFilterInput ? tlcFilterInput.value : '');
 
   // Render Quick Chips
   if (tlcChipsContainer && tlcQuickChipsBar) {
     if (sortedTlcs.length > 0) {
       tlcQuickChipsBar.classList.remove('hidden');
       const topTlcs = sortedTlcs.slice(0, 6);
+      const activeCode = currentTlcVal.toUpperCase();
       let chipsHtml = `
-        <button type="button" class="tlc-chip ${tlcFilter.value === 'all' ? 'active' : ''}" data-tlc="all">
+        <button type="button" class="tlc-chip ${!currentTlcVal || currentTlcVal.toLowerCase() === 'all' ? 'active' : ''}" data-tlc="all">
           Semua <span class="chip-count">${data.length}</span>
         </button>
       `;
       topTlcs.forEach((code) => {
         chipsHtml += `
-          <button type="button" class="tlc-chip ${tlcFilter.value === code ? 'active' : ''}" data-tlc="${code}">
+          <button type="button" class="tlc-chip ${activeCode === code ? 'active' : ''}" data-tlc="${code}">
             ${code} <span class="chip-count">${tlcCounts[code]}</span>
           </button>
         `;
@@ -963,6 +1065,9 @@ function resetAllMonitoringFilters() {
   if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
   if (statusFilter) statusFilter.value = 'all';
   if (tlcFilter) tlcFilter.value = 'all';
+  if (tlcFilterInput) tlcFilterInput.value = '';
+  if (clearTlcBtn) clearTlcBtn.classList.add('hidden');
+  closeTlcDropdown();
   currentStuckFilter = null;
   activeSummaryCardId = null;
 
@@ -2004,10 +2109,93 @@ if (clearSearchBtn) {
 
 if (tlcFilter) {
   tlcFilter.addEventListener('change', () => {
+    if (tlcFilterInput) {
+      tlcFilterInput.value = tlcFilter.value === 'all' ? '' : tlcFilter.value;
+    }
     monitoringPage = 1;
     applyFilter();
   });
 }
+
+if (tlcFilterInput) {
+  // Ketik untuk filter real-time sekaligus filter opsi di dropdown
+  tlcFilterInput.addEventListener('input', () => {
+    openTlcDropdown();
+    if (tlcFilter) {
+      const typed = tlcFilterInput.value.trim().toUpperCase();
+      const matched = currentAvailableTlcs.find((t) => t.code === typed);
+      tlcFilter.value = matched ? matched.code : (typed || 'all');
+    }
+    monitoringPage = 1;
+    applyFilter();
+  });
+
+  // Klik atau fokus pada input untuk memunculkan dropdown list
+  tlcFilterInput.addEventListener('focus', () => {
+    openTlcDropdown();
+  });
+
+  // Navigasi keyboard (Escape untuk menutup dropdown, Enter untuk submit filter)
+  tlcFilterInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeTlcDropdown();
+    } else if (e.key === 'Enter') {
+      closeTlcDropdown();
+      monitoringPage = 1;
+      applyFilter();
+    }
+  });
+}
+
+if (toggleTlcDropdownBtn) {
+  toggleTlcDropdownBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (tlcDropdownMenu && !tlcDropdownMenu.classList.contains('hidden')) {
+      closeTlcDropdown();
+    } else {
+      openTlcDropdown();
+      if (tlcFilterInput) tlcFilterInput.focus();
+    }
+  });
+}
+
+if (clearTlcBtn) {
+  clearTlcBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (tlcFilterInput) tlcFilterInput.value = '';
+    if (tlcFilter) tlcFilter.value = 'all';
+    clearTlcBtn.classList.add('hidden');
+    closeTlcDropdown();
+    monitoringPage = 1;
+    applyFilter();
+    if (tlcFilterInput) tlcFilterInput.focus();
+  });
+}
+
+if (tlcDropdownMenu) {
+  tlcDropdownMenu.addEventListener('click', (e) => {
+    const opt = e.target.closest('.tlc-option-item');
+    if (!opt) return;
+    const val = opt.dataset.value;
+    if (val === 'all') {
+      if (tlcFilterInput) tlcFilterInput.value = '';
+      if (tlcFilter) tlcFilter.value = 'all';
+    } else {
+      if (tlcFilterInput) tlcFilterInput.value = val;
+      if (tlcFilter) tlcFilter.value = val;
+    }
+    closeTlcDropdown();
+    monitoringPage = 1;
+    applyFilter();
+  });
+}
+
+// Tutup dropdown saat klik di luar combobox wrap
+document.addEventListener('click', (e) => {
+  if (tlcComboboxWrap && !tlcComboboxWrap.contains(e.target)) {
+    closeTlcDropdown();
+  }
+});
 
 if (statusFilter) {
   statusFilter.addEventListener('change', applyFilters);
@@ -2024,9 +2212,13 @@ if (tlcChipsContainer) {
     const selectedTlc = chip.dataset.tlc || 'all';
     if (tlcFilter) {
       tlcFilter.value = selectedTlc;
-      monitoringPage = 1;
-      applyFilter();
     }
+    if (tlcFilterInput) {
+      tlcFilterInput.value = selectedTlc === 'all' ? '' : selectedTlc;
+    }
+    closeTlcDropdown();
+    monitoringPage = 1;
+    applyFilter();
   });
 }
 

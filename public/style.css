@@ -2857,10 +2857,19 @@ tbody tr.is-updated .search-highlight {
 
 .filter-icon-prefix {
   position: absolute;
-  left: 10px;
-  font-size: 0.85rem;
+  left: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
   pointer-events: none;
   z-index: 2;
+  transition: color 0.2s ease;
+}
+
+.tlc-combobox-wrap:focus-within .filter-icon-prefix,
+.tlc-combobox-wrap.is-open .filter-icon-prefix {
+  color: #38bdf8;
 }
 
 .filter-select-item .filter-select {
@@ -2914,6 +2923,188 @@ tbody tr.is-updated .search-highlight {
   border-color: rgba(239, 68, 68, 0.35);
   color: #fca5a5;
   transform: translateY(-1px);
+}
+
+/* COMBOBOX TLC SEARCHABLE */
+.tlc-combobox-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tlc-combobox-input {
+  width: 170px !important;
+  height: 38px !important;
+  padding: 8px 46px 8px 32px !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-radius: 10px !important;
+  color: var(--white) !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tlc-combobox-input::placeholder {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.tlc-combobox-input:hover {
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.tlc-combobox-input:focus,
+.tlc-combobox-wrap.is-open .tlc-combobox-input {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+}
+
+.tlc-combobox-wrap .clear-input-btn {
+  position: absolute;
+  right: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.2);
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  z-index: 3;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.tlc-combobox-wrap .clear-input-btn svg {
+  pointer-events: none;
+}
+
+.tlc-combobox-wrap .clear-input-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  transform: scale(1.1);
+}
+
+.tlc-combobox-wrap .combobox-arrow {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+  z-index: 2;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.tlc-combobox-wrap .combobox-arrow svg {
+  pointer-events: none;
+}
+
+.tlc-combobox-wrap.is-open .combobox-arrow {
+  transform: rotate(180deg);
+  color: #38bdf8;
+}
+
+.tlc-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 260px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  z-index: 100;
+  padding: 4px;
+}
+
+.tlc-dropdown-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tlc-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+
+.tlc-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tlc-option-item:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.tlc-option-item.is-selected {
+  background: rgba(56, 189, 248, 0.22);
+  color: #38bdf8;
+}
+
+.tlc-opt-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tlc-item-icon {
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: color 0.15s ease;
+}
+
+.tlc-option-item:hover .tlc-item-icon,
+.tlc-option-item.is-selected .tlc-item-icon {
+  color: #38bdf8;
+}
+
+.tlc-opt-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.tlc-option-item.is-selected .tlc-opt-badge {
+  background: rgba(56, 189, 248, 0.3);
+  color: #bae6fd;
+}
+
+.tlc-option-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-style: italic;
 }
 
 /* QUICK CHIPS TLC */
@@ -3059,6 +3250,18 @@ tbody tr.is-updated .search-highlight {
     font-size: 0.82rem !important;
     padding: 6px 24px 6px 28px !important;
     border-radius: 9px !important;
+  }
+  .tlc-combobox-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 36px !important;
+    font-size: 0.82rem !important;
+    padding: 6px 44px 6px 28px !important;
+    border-radius: 9px !important;
+  }
+  .tlc-dropdown-menu {
+    width: 100% !important;
+    max-width: 100% !important;
   }
   .btn-reset-filter {
     height: 36px !important;
