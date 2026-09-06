@@ -9,6 +9,13 @@ const refreshBtn = document.getElementById('refreshBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const addBtn = document.getElementById('addBtn');
 const statusFilter = document.getElementById('statusFilter');
+const tlcFilter = document.getElementById('tlcFilter');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+const resetFilterBtn = document.getElementById('resetFilterBtn');
+const tlcQuickChipsBar = document.getElementById('tlcQuickChipsBar');
+const tlcChipsContainer = document.getElementById('tlcChipsContainer');
+const monitoringTotalBadge = document.getElementById('monitoringTotalBadge');
+const selectedMonitoringCountBadge = document.getElementById('selectedMonitoringCountBadge');
 const monitoringModal = document.getElementById('monitoringModal');
 const monitoringForm = document.getElementById('monitoringForm');
 const modalTitle = document.getElementById('modalTitle');
@@ -116,6 +123,106 @@ const summaryOverwritten = document.getElementById('summaryOverwritten');
 const summaryDeleted = document.getElementById('summaryDeleted');
 const summaryHistory = document.getElementById('summaryHistory');
 
+// Router & Layout Elements
+const appSidebar = document.getElementById('appSidebar');
+const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+const sidebarUserName = document.getElementById('sidebarUserName');
+const sidebarUserRole = document.getElementById('sidebarUserRole');
+const pageTitle = document.getElementById('pageTitle');
+const pageEyebrow = document.getElementById('pageEyebrow');
+
+const viewPages = {
+  monitoring: document.getElementById('viewMonitoring'),
+  archive: document.getElementById('viewArchive'),
+  history: document.getElementById('viewHistory'),
+  users: document.getElementById('viewUsers'),
+  permissions: document.getElementById('viewPermissions'),
+  audit: document.getElementById('viewAudit'),
+  settings: document.getElementById('viewSettings'),
+};
+
+const navLinks = {
+  monitoring: document.getElementById('navMonitoring'),
+  archive: document.getElementById('navArchive'),
+  history: document.getElementById('navHistory'),
+  users: document.getElementById('navUsers'),
+  permissions: document.getElementById('navPermissions'),
+  audit: document.getElementById('navAudit'),
+  settings: document.getElementById('navSettings'),
+};
+
+function openMobileSidebar() {
+  if (appSidebar) appSidebar.classList.add('is-open');
+  if (sidebarBackdrop) sidebarBackdrop.classList.add('is-open');
+}
+
+function closeMobileSidebar() {
+  if (appSidebar) appSidebar.classList.remove('is-open');
+  if (sidebarBackdrop) sidebarBackdrop.classList.remove('is-open');
+}
+
+function handleHashRoute() {
+  const rawHash = (window.location.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
+  const activeRoute = rawHash || 'monitoring';
+
+  const routeConfig = {
+    monitoring: { title: 'FIFO Dashboard', eyebrow: 'Monitoring System' },
+    archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
+    history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
+    users: { title: 'Manajemen User', eyebrow: 'Administrasi Sistem' },
+    permissions: { title: 'Konfigurasi Akses', eyebrow: 'Hak Akses Pengguna' },
+    audit: { title: 'Audit Log', eyebrow: 'Keamanan Sistem' },
+    settings: { title: 'Pengaturan Sistem', eyebrow: 'Konfigurasi & Branding' },
+  };
+
+  const target = routeConfig[activeRoute] ? activeRoute : 'monitoring';
+  const meta = routeConfig[target];
+
+  if (pageTitle) pageTitle.textContent = meta.title;
+  if (pageEyebrow) pageEyebrow.textContent = meta.eyebrow;
+
+  Object.entries(viewPages).forEach(([key, element]) => {
+    if (!element) return;
+    if (key === target) {
+      element.classList.remove('hidden');
+      element.classList.add('active');
+    } else {
+      element.classList.add('hidden');
+      element.classList.remove('active');
+    }
+  });
+
+  Object.entries(navLinks).forEach(([key, link]) => {
+    if (!link) return;
+    link.classList.toggle('active', key === target);
+  });
+
+  // Fetch data sesuai view yang aktif
+  if (target === 'monitoring') {
+    if (!monitoringData.length) fetchMonitoring();
+  } else if (target === 'archive') {
+    fetchMonitoringArchive();
+  } else if (target === 'history') {
+    fetchMonitoringHistory();
+  } else if (target === 'users') {
+    fetchUsers();
+  } else if (target === 'permissions') {
+    fetchPermissionCatalog();
+    fetchConfigUsers();
+    if (selectedConfigUserId) loadConfigForUser(selectedConfigUserId);
+  } else if (target === 'audit') {
+    fetchAuditLogs();
+  } else if (target === 'settings') {
+    fetchAppLogo();
+    fetchAppBackground();
+  }
+
+  closeMobileSidebar();
+}
+
 let monitoringData = [];
 let userData = [];
 let auditLogsData = [];
@@ -219,6 +326,25 @@ function applyUIPermissions() {
   toggle(importBulkBtn, hasPermission('import_bulk'));
   toggle(deleteAllMonitoringBtn, hasPermission('delete_global'));
 
+  // Sidebar navigation visibility
+  const canManageUsers = hasPermission('manage_users');
+  const canViewHistory = hasPermission('view_history');
+  const canAccessConfig = hasPermission('access_config');
+  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global'];
+  const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
+
+  toggle(navLinks.users, canManageUsers);
+  toggle(navLinks.history, canViewHistory);
+  toggle(navLinks.permissions, canAccessConfig);
+  toggle(navLinks.audit, canViewHistory);
+  toggle(navLinks.settings, hasAdminPermission);
+
+  document.querySelectorAll('.nav-admin-item').forEach((el) => {
+    if (el.classList.contains('nav-label-group')) {
+      toggle(el, hasAdminPermission || canManageUsers || canAccessConfig || canViewHistory);
+    }
+  });
+
   document.querySelectorAll('.gm-only').forEach((el) => {
     if (role === 'super_admin') el.classList.remove('hidden');
     else el.classList.add('hidden');
@@ -245,40 +371,37 @@ function setAuthState() {
 
   showDashboardView();
   const user = getCurrentUser();
-  if (userPill) {
-    const isSuper = user.role === 'super_admin';
-    const roleLabel = user.role ? (isSuper ? '🔒 GM' : `(${user.role})`) : '';
-    userPill.textContent = `${user.full_name || user.username || 'User'} ${roleLabel}`.trim();
-    userPill.classList.toggle('is-super-admin', isSuper);
-  }
-
   const isSuperAdmin = user.role === 'super_admin';
   const isClient = user.role === 'client';
+
+  if (userPill) {
+    const roleLabel = user.role ? (isSuperAdmin ? '🔒 GM' : `(${user.role})`) : '';
+    userPill.textContent = `${user.full_name || user.username || 'User'} ${roleLabel}`.trim();
+    userPill.classList.toggle('is-super-admin', isSuperAdmin);
+  }
+
+  if (sidebarUserName) {
+    sidebarUserName.textContent = user.full_name || user.username || 'User';
+  }
+  if (sidebarUserRole) {
+    sidebarUserRole.textContent = isSuperAdmin ? 'Super Admin (GM)' : (user.role ? user.role.toUpperCase() : 'USER');
+  }
 
   if (addBtn) {
     addBtn.style.display = 'none';
   }
 
-  if (userPanel) {
-    userPanel.classList.toggle('hidden', !hasPermission('manage_users'));
-  }
-
-  if (adminControlPanel) {
-    const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global'];
-    const hasAdminPermission = adminPermissions.some((key) => hasPermission(key));
-    adminControlPanel.classList.toggle('hidden', !hasAdminPermission);
-  }
+  // Pastikan panel di dalam masing-masing view tidak terhalang .hidden internal
+  if (monitoringPanel) monitoringPanel.classList.remove('hidden');
+  if (archivePanel) archivePanel.classList.remove('hidden');
+  if (historyPanel) historyPanel.classList.remove('hidden');
+  if (userPanel) userPanel.classList.remove('hidden');
+  if (configPanel) configPanel.classList.remove('hidden');
+  if (auditPanel) auditPanel.classList.remove('hidden');
+  if (adminControlPanel) adminControlPanel.classList.remove('hidden');
 
   const logoSections = document.querySelectorAll('.logo-admin-section');
   logoSections.forEach((section) => section.classList.toggle('hidden', !isSuperAdmin));
-
-  if (historyPanel) {
-    historyPanel.classList.add('hidden');
-  }
-
-  if (auditPanel) {
-    auditPanel.classList.toggle('hidden', !hasPermission('view_history'));
-  }
 
   if (monitoringBulkControls) {
     monitoringBulkControls.classList.toggle('hidden', !hasPermission('edit_monitoring'));
@@ -288,6 +411,7 @@ function setAuthState() {
   if (restoreArchiveBtn) restoreArchiveBtn.classList.toggle('hidden', isClient);
 
   applyUIPermissions();
+  handleHashRoute();
 
   fetchMonitoring();
   if (hasPermission('manage_users') || hasPermission('view_history')) {
@@ -604,8 +728,14 @@ function updateSelectedMonitoringCount() {
   if (selectedMonitoringCount) selectedMonitoringCount.textContent = selectedMonitoringWaybills.size;
   if (selectedMonitoringArchiveCount) selectedMonitoringArchiveCount.textContent = selectedMonitoringWaybills.size;
   if (bulkArchiveBtn) bulkArchiveBtn.disabled = selectedMonitoringWaybills.size === 0;
+  const count = selectedMonitoringWaybills.size;
+  if (selectedMonitoringCount) selectedMonitoringCount.textContent = count;
+  if (selectedMonitoringArchiveCount) selectedMonitoringArchiveCount.textContent = count;
+  if (selectedMonitoringCountBadge) selectedMonitoringCountBadge.textContent = count;
+  if (bulkArchiveBtn) bulkArchiveBtn.disabled = count === 0;
   refreshBulkActionButtonState();
   monitoringBulkControls?.classList.toggle('has-selection', selectedMonitoringWaybills.size > 0);
+  monitoringBulkControls?.classList.toggle('has-selection', count > 0);
 }
 
 function refreshBulkActionButtonState() {
@@ -713,13 +843,25 @@ function updateStats(data) {
 
 function applyFilter() {
   const keyword = (searchInput?.value || '').trim().toLowerCase();
-  const status = (statusFilter?.value || 'all').toLowerCase();
+  const tlc = (tlcFilter?.value || 'all');
 
   let filtered = monitoringData;
 
   if (keyword) {
     filtered = filtered.filter((item) => {
-      const haystack = [item.waybill, item.tanggal, item.outlet, item.stuck, item.tlc, item.status, item.aksi, item.nama_barang, item.updated_by]
+      const formattedTanggal = formatDate(item.tanggal);
+      const haystack = [
+        item.waybill,
+        item.tanggal,
+        formattedTanggal,
+        item.outlet,
+        item.stuck,
+        item.tlc,
+        item.status,
+        item.aksi,
+        item.nama_barang,
+        item.updated_by,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -727,18 +869,114 @@ function applyFilter() {
     });
   }
 
-  if (status !== 'all') {
-    filtered = filtered.filter((item) => (item.status || 'Open').toLowerCase() === status);
+  if (tlc !== 'all') {
+    filtered = filtered.filter((item) => (item.tlc || '').trim().toLowerCase() === tlc.trim().toLowerCase());
   }
 
   if (currentStuckFilter) {
     filtered = filtered.filter((item) => matchesStuckFilter(item, currentStuckFilter));
   }
 
+  // Tampilkan / sembunyikan tombol clear search
+  if (clearSearchBtn) {
+    clearSearchBtn.classList.toggle('hidden', !keyword);
+  }
+
+  // Update badge total data di panel header
+  if (monitoringTotalBadge) {
+    if (filtered.length === monitoringData.length) {
+      monitoringTotalBadge.textContent = `${monitoringData.length} Data`;
+    } else {
+      monitoringTotalBadge.textContent = `${filtered.length} dari ${monitoringData.length} Data`;
+    }
+  }
+
+  // Sinkronisasi status aktif pada Quick TLC Chips
+  if (tlcChipsContainer) {
+    const chips = tlcChipsContainer.querySelectorAll('.tlc-chip');
+    chips.forEach((c) => {
+      c.classList.toggle('active', c.dataset.tlc === (tlc || 'all'));
+    });
+  }
+
   renderTable(filtered);
 }
 
 function applyFilters() {
+  applyFilter();
+}
+
+function populateTlcFilters(data) {
+  if (!tlcFilter) return;
+
+  const currentTlc = tlcFilter.value || 'all';
+  const tlcCounts = {};
+
+  (data || []).forEach((item) => {
+    const code = (item.tlc || '').trim();
+    if (code && code !== '-') {
+      tlcCounts[code] = (tlcCounts[code] || 0) + 1;
+    }
+  });
+
+  const sortedTlcs = Object.keys(tlcCounts).sort((a, b) => tlcCounts[b] - tlcCounts[a]);
+
+  let optionsHtml = `<option value="all">Semua TLC (${data.length})</option>`;
+  sortedTlcs.forEach((code) => {
+    optionsHtml += `<option value="${code}">${code} (${tlcCounts[code]})</option>`;
+  });
+  tlcFilter.innerHTML = optionsHtml;
+
+  if (sortedTlcs.includes(currentTlc)) {
+    tlcFilter.value = currentTlc;
+  } else {
+    tlcFilter.value = 'all';
+  }
+
+  // Render Quick Chips
+  if (tlcChipsContainer && tlcQuickChipsBar) {
+    if (sortedTlcs.length > 0) {
+      tlcQuickChipsBar.classList.remove('hidden');
+      const topTlcs = sortedTlcs.slice(0, 6);
+      let chipsHtml = `
+        <button type="button" class="tlc-chip ${tlcFilter.value === 'all' ? 'active' : ''}" data-tlc="all">
+          Semua <span class="chip-count">${data.length}</span>
+        </button>
+      `;
+      topTlcs.forEach((code) => {
+        chipsHtml += `
+          <button type="button" class="tlc-chip ${tlcFilter.value === code ? 'active' : ''}" data-tlc="${code}">
+            ${code} <span class="chip-count">${tlcCounts[code]}</span>
+          </button>
+        `;
+      });
+      tlcChipsContainer.innerHTML = chipsHtml;
+    } else {
+      tlcQuickChipsBar.classList.add('hidden');
+      tlcChipsContainer.innerHTML = '';
+    }
+  }
+}
+
+function resetAllMonitoringFilters() {
+  if (searchInput) searchInput.value = '';
+  if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+  if (statusFilter) statusFilter.value = 'all';
+  if (tlcFilter) tlcFilter.value = 'all';
+  currentStuckFilter = null;
+  activeSummaryCardId = null;
+
+  document.querySelectorAll('.summary-strip .stat-card').forEach((card) => {
+    card.classList.remove('is-active');
+  });
+
+  if (tlcChipsContainer) {
+    tlcChipsContainer.querySelectorAll('.tlc-chip').forEach((c) => {
+      c.classList.toggle('active', c.dataset.tlc === 'all');
+    });
+  }
+
+  monitoringPage = 1;
   applyFilter();
 }
 
@@ -814,9 +1052,11 @@ async function fetchMonitoring() {
 
   const data = await response.json();
   monitoringData = data;
+  populateTlcFilters(data);
   renderTable(data);
   renderStatusOverview(data);
   updateStats(data);
+  if (monitoringTotalBadge) monitoringTotalBadge.textContent = `${data.length} Data`;
 }
 
 function renderUserTable(users) {
@@ -1744,10 +1984,26 @@ if (registerForm) {
 }
 
 if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    monitoringPage = 1;
+    applyFilter();
+  });
 }
 
-if (searchInput) {
-  searchInput.addEventListener('input', () => {
+if (clearSearchBtn) {
+  clearSearchBtn.addEventListener('click', () => {
+    if (searchInput) {
+      searchInput.value = '';
+      clearSearchBtn.classList.add('hidden');
+      searchInput.focus();
+      monitoringPage = 1;
+      applyFilter();
+    }
+  });
+}
+
+if (tlcFilter) {
+  tlcFilter.addEventListener('change', () => {
     monitoringPage = 1;
     applyFilter();
   });
@@ -1755,6 +2011,23 @@ if (searchInput) {
 
 if (statusFilter) {
   statusFilter.addEventListener('change', applyFilters);
+}
+
+if (resetFilterBtn) {
+  resetFilterBtn.addEventListener('click', resetAllMonitoringFilters);
+}
+
+if (tlcChipsContainer) {
+  tlcChipsContainer.addEventListener('click', (e) => {
+    const chip = e.target.closest('.tlc-chip');
+    if (!chip) return;
+    const selectedTlc = chip.dataset.tlc || 'all';
+    if (tlcFilter) {
+      tlcFilter.value = selectedTlc;
+      monitoringPage = 1;
+      applyFilter();
+    }
+  });
 }
 
 if (userSearchInput) {
@@ -2047,14 +2320,61 @@ async function loadLogo() {
   const result = await parseResponseJson(response);
   if (!response.ok) return;
   const preview = adminLogoPreview;
+  const logoPlaceholder = document.getElementById('logoEmptyPlaceholder');
   const loginLogo = document.getElementById('loginLogo');
-  if (result.logo) {
+  const loginDefaultIcon = document.getElementById('loginDefaultIcon');
+  const sidebarLogo = document.getElementById('sidebarLogoImg');
+  const sidebarDefaultIcon = document.getElementById('sidebarDefaultIcon');
+  const sidebarBrand = document.querySelector('.sidebar-brand');
+
+  const applySidebarLogoAspect = () => {
+    if (!sidebarLogo) return;
+    if (sidebarLogo.naturalWidth && sidebarLogo.naturalHeight) {
+      const ratio = sidebarLogo.naturalWidth / sidebarLogo.naturalHeight;
+      if (ratio > 1.4) {
+        sidebarBrand?.classList.add('brand-wide-layout');
+      } else {
+        sidebarBrand?.classList.remove('brand-wide-layout');
+      }
+    }
+  };
+
+  if (result.logo && result.logo.data) {
     const src = `data:${result.logo.mime};base64,${result.logo.data}`;
-    if (preview) preview.src = src;
-    if (loginLogo) loginLogo.src = src;
+    if (preview) {
+      preview.src = src;
+      preview.classList.remove('hidden');
+    }
+    if (logoPlaceholder) logoPlaceholder.classList.add('hidden');
+    if (loginLogo) {
+      loginLogo.src = src;
+      loginLogo.classList.remove('hidden');
+    }
+    if (loginDefaultIcon) loginDefaultIcon.classList.add('hidden');
+    if (sidebarLogo) {
+      sidebarLogo.src = src;
+      sidebarLogo.classList.remove('hidden');
+      sidebarLogo.onload = applySidebarLogoAspect;
+      if (sidebarLogo.complete) applySidebarLogoAspect();
+    }
+    if (sidebarDefaultIcon) sidebarDefaultIcon.classList.add('hidden');
   } else {
-    if (preview) preview.src = '';
-    if (loginLogo) loginLogo.src = '';
+    if (preview) {
+      preview.src = '';
+      preview.classList.add('hidden');
+    }
+    if (logoPlaceholder) logoPlaceholder.classList.remove('hidden');
+    if (loginLogo) {
+      loginLogo.src = '';
+      loginLogo.classList.add('hidden');
+    }
+    if (loginDefaultIcon) loginDefaultIcon.classList.remove('hidden');
+    if (sidebarLogo) {
+      sidebarLogo.src = '';
+      sidebarLogo.classList.add('hidden');
+    }
+    if (sidebarDefaultIcon) sidebarDefaultIcon.classList.remove('hidden');
+    if (sidebarBrand) sidebarBrand.classList.remove('brand-wide-layout');
   }
 }
 
@@ -2080,7 +2400,7 @@ async function removeAppLogo() {
 
 async function uploadBackground() {
   const file = bgInput?.files?.[0];
-  if (!file) return alert('Pilih file background terlebih dahulu.');
+  if (!file) return alert('Pilih file gambar latar belakang terlebih dahulu.');
   const form = new FormData();
   form.append('background', file);
   const response = await fetch('/api/auth/background', {
@@ -2091,13 +2411,13 @@ async function uploadBackground() {
   const result = await parseResponseJson(response);
   if (!response.ok) {
     if (bgMessage) {
-      bgMessage.textContent = result.error || 'Gagal upload background';
+      bgMessage.textContent = result.error || 'Gagal mengunggah latar belakang';
       bgMessage.classList.add('error');
     }
     return;
   }
   if (bgMessage) {
-    bgMessage.textContent = 'Background berhasil diperbarui.';
+    bgMessage.textContent = 'Latar belakang berhasil diperbarui.';
     bgMessage.classList.remove('error');
   }
   await loadBackground();
@@ -2108,16 +2428,25 @@ async function loadBackground() {
   const result = await parseResponseJson(response);
   if (!response.ok) return;
   const preview = adminBgPreview;
+  const bgPlaceholder = document.getElementById('bgEmptyPlaceholder');
   const loginPage = document.getElementById('loginView');
   if (result.background) {
     const src = `data:${result.background.mime};base64,${result.background.data}`;
-    if (preview) preview.src = src;
+    if (preview) {
+      preview.src = src;
+      preview.classList.remove('hidden');
+    }
+    if (bgPlaceholder) bgPlaceholder.classList.add('hidden');
     if (loginPage) {
       loginPage.style.setProperty('--auth-bg-image', `url('${src}')`);
       loginPage.style.setProperty('--auth-bg-opacity', String(result.background.opacity ?? 0.35));
     }
   } else {
-    if (preview) preview.src = '';
+    if (preview) {
+      preview.src = '';
+      preview.classList.add('hidden');
+    }
+    if (bgPlaceholder) bgPlaceholder.classList.remove('hidden');
     if (loginPage) {
       loginPage.style.setProperty('--auth-bg-image', 'none');
       loginPage.style.setProperty('--auth-bg-opacity', '0');
@@ -2133,13 +2462,13 @@ async function removeAppBackground() {
   const result = await parseResponseJson(response);
   if (!response.ok) {
     if (bgMessage) {
-      bgMessage.textContent = result.error || 'Gagal menghapus background';
+      bgMessage.textContent = result.error || 'Gagal menghapus latar belakang';
       bgMessage.classList.add('error');
     }
     return;
   }
   if (bgMessage) {
-    bgMessage.textContent = 'Background berhasil dihapus.';
+    bgMessage.textContent = 'Latar belakang berhasil dihapus.';
     bgMessage.classList.remove('error');
   }
   await loadBackground();
@@ -2293,47 +2622,21 @@ if (saveCredentialsBtn) {
   saveCredentialsBtn.addEventListener('click', saveCredentialsHandler);
 }
 
-if (toggleHistoryBtn && historyPanel) {
+if (toggleHistoryBtn) {
   toggleHistoryBtn.addEventListener('click', () => {
-    const isHidden = historyPanel.classList.contains('hidden');
-    historyPanel.classList.toggle('hidden', !isHidden);
-    if (!historyPanel.classList.contains('hidden')) {
-      userPanel && userPanel.classList.add('hidden');
-      archivePanel && archivePanel.classList.add('hidden');
-      monitoringPanel && monitoringPanel.classList.add('hidden');
-      configPanel && configPanel.classList.add('hidden');
-      historyPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      monitoringPanel && monitoringPanel.classList.remove('hidden');
-    }
-    syncPanelButtonStates();
+    window.location.hash = '#/history';
   });
 }
 
-if (toggleUserPanelBtn && userPanel) {
+if (toggleUserPanelBtn) {
   toggleUserPanelBtn.addEventListener('click', () => {
-    const isHidden = userPanel.classList.contains('hidden');
-    userPanel.classList.toggle('hidden', !isHidden);
-    if (!userPanel.classList.contains('hidden')) {
-      historyPanel && historyPanel.classList.add('hidden');
-      configPanel && configPanel.classList.add('hidden');
-    }
-    syncPanelButtonStates();
+    window.location.hash = '#/users';
   });
 }
 
-if (toggleConfigPanelBtn && configPanel) {
-  toggleConfigPanelBtn.addEventListener('click', async () => {
-    const isHidden = configPanel.classList.contains('hidden');
-    configPanel.classList.toggle('hidden', !isHidden);
-    if (!configPanel.classList.contains('hidden')) {
-      userPanel && userPanel.classList.add('hidden');
-      historyPanel && historyPanel.classList.add('hidden');
-      await fetchPermissionCatalog();
-      await fetchConfigUsers();
-      if (selectedConfigUserId) loadConfigForUser(selectedConfigUserId);
-    }
-    syncPanelButtonStates();
+if (toggleConfigPanelBtn) {
+  toggleConfigPanelBtn.addEventListener('click', () => {
+    window.location.hash = '#/permissions';
   });
 }
 
@@ -2448,13 +2751,9 @@ if (selectAllArchive) {
   });
 }
 
-if (cardArchive && archivePanel) {
+if (cardArchive) {
   cardArchive.addEventListener('click', () => {
-    const showArchive = archivePanel.classList.contains('hidden');
-    archivePanel.classList.toggle('hidden', !showArchive);
-    monitoringPanel?.classList.toggle('hidden', showArchive);
-    cardArchive.classList.toggle('is-active', showArchive);
-    if (showArchive) fetchMonitoringArchive();
+    window.location.hash = '#/archive';
   });
 }
 
@@ -2671,6 +2970,21 @@ if (bgInput) {
 if (deleteBgBtn) {
   deleteBgBtn.addEventListener('click', removeAppBackground);
 }
+
+// Sidebar Drawer & Router Events
+if (sidebarToggleBtn) {
+  sidebarToggleBtn.addEventListener('click', openMobileSidebar);
+}
+if (sidebarCloseBtn) {
+  sidebarCloseBtn.addEventListener('click', closeMobileSidebar);
+}
+if (sidebarBackdrop) {
+  sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+}
+if (sidebarLogoutBtn) {
+  sidebarLogoutBtn.addEventListener('click', logout);
+}
+window.addEventListener('hashchange', handleHashRoute);
 
 loadLogo();
 loadBackground();

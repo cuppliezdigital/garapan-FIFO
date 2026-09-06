@@ -27,8 +27,8 @@ async function ensureBackgroundTable() {
 
 async function getLogo() {
   await ensureLogoTable();
-  const [rows] = await db.query('SELECT logo_data, logo_mime FROM app_logo LIMIT 1');
-  if (!rows.length) return null;
+  const [rows] = await db.query('SELECT logo_data, logo_mime FROM app_logo WHERE id = 1');
+  if (!rows.length || !rows[0].logo_data) return null;
   return { data: rows[0].logo_data, mime: rows[0].logo_mime || 'image/png' };
 }
 

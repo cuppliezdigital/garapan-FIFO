@@ -282,7 +282,7 @@ module.exports = {
 async function getLogo(req, res) {
   try {
     const logo = await require('../services/logoService').getLogo();
-    if (!logo) return res.json({ logo: null });
+    if (!logo || !logo.data) return res.json({ logo: null });
     res.json({ logo });
   } catch (error) {
     console.error('Controller getLogo error:', error);

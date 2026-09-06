@@ -13,7 +13,15 @@
         <div class="auth-card">
           <div class="auth-header">
             <div class="auth-logo" aria-hidden="true">
-              <img id="loginLogo" class="login-logo-img" alt="Logo aplikasi" />
+              <div id="loginDefaultIcon" class="brand-logo-icon auth-circle-logo">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m7.5 4.27 9 5.15"/>
+                  <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                  <path d="m3.3 7 8.7 5 8.7-5"/>
+                  <path d="M12 22V12"/>
+                </svg>
+              </div>
+              <img id="loginLogo" class="login-logo-img hidden" alt="Logo aplikasi" />
             </div>
             <h1>Monitoring FIFO</h1>
             <p class="auth-subtitle">Masuk untuk mengakses dashboard perusahaan</p>
@@ -76,361 +84,658 @@
       </div>
     </div>
 
-    <div id="dashboardView" class="app-shell hidden">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Monitoring System</p>
-          <h1>FIFO Dashboard</h1>
+    <div id="dashboardView" class="app-layout hidden">
+      <!-- SIDEBAR NAVIGATION -->
+      <aside id="appSidebar" class="app-sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-logo-wrap">
+            <div id="sidebarDefaultIcon" class="brand-logo-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m7.5 4.27 9 5.15"/>
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                <path d="m3.3 7 8.7 5 8.7-5"/>
+                <path d="M12 22V12"/>
+              </svg>
+            </div>
+            <img id="sidebarLogoImg" class="sidebar-logo-img hidden" alt="Logo Perusahaan" />
+          </div>
+          <div class="brand-info">
+            <h2 class="brand-name">Monitoring FIFO</h2>
+            <span class="brand-desc">Sistem Monitoring Gudang</span>
+          </div>
+          <button type="button" id="sidebarCloseBtn" class="sidebar-close-btn" aria-label="Tutup Menu">✕</button>
         </div>
 
-        <div class="topbar-actions">
-          <span id="userPill" class="user-pill">User</span>
-          <button class="secondary-btn" id="logoutBtn" type="button">Logout</button>
-          <button class="primary-btn" id="refreshBtn" type="button">Refresh</button>
-        </div>
-      </header>
+        <nav class="sidebar-nav">
+          <div class="nav-label-group">MENU UTAMA</div>
+          <a href="#/monitoring" class="nav-link active" id="navMonitoring">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Monitoring Data</span>
+          </a>
+          <a href="#/archive" class="nav-link" id="navArchive">
+            <span class="nav-icon">📦</span>
+            <span class="nav-text">Arsip Waybill</span>
+          </a>
+          <a href="#/history" class="nav-link" id="navHistory">
+            <span class="nav-icon">🕒</span>
+            <span class="nav-text">History Update</span>
+          </a>
 
-      <section class="summary-strip">
-        <div class="stat-card stat-feature accent-indigo" id="card-total" style="cursor: pointer;">
-          <div class="stat-icon icon-purple">
-            <span>◫</span>
-          </div>
-          <div class="stat-copy">
-            <span>Total Keseluruhan</span>
-            <strong id="totalData">0</strong>
-          </div>
-        </div>
+          <div class="nav-label-group nav-admin-item">ADMINISTRASI</div>
+          <a href="#/users" class="nav-link nav-admin-item" id="navUsers">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Manajemen User</span>
+          </a>
+          <a href="#/permissions" class="nav-link nav-admin-item" id="navPermissions">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Konfigurasi Akses</span>
+          </a>
+          <a href="#/audit" class="nav-link nav-admin-item" id="navAudit">
+            <span class="nav-icon">📋</span>
+            <span class="nav-text">Audit Log</span>
+          </a>
+          <a href="#/settings" class="nav-link nav-admin-item" id="navSettings">
+            <span class="nav-icon">🛠️</span>
+            <span class="nav-text">Pengaturan Sistem</span>
+          </a>
+        </nav>
 
-        <div class="stat-card stat-mini accent-green" id="card-updated" style="cursor: pointer;">
-          <div class="stat-icon icon-green">
-            <span>✓</span>
-          </div>
-          <div class="stat-copy">
-            <span>Sudah Diupdate</span>
-            <strong id="updatedCardCount">0</strong>
-          </div>
-        </div>
-
-        <div class="stat-card stat-mini accent-amber" id="card-48-60" style="cursor: pointer;">
-          <div class="stat-icon icon-amber">
-            <span>◔</span>
-          </div>
-          <div class="stat-copy">
-            <span>4. 48 Jam - 60 Jam</span>
-            <strong id="count-48-60">0</strong>
-          </div>
-        </div>
-
-        <div class="stat-card stat-mini accent-orange" id="card-48-72" style="cursor: pointer;">
-          <div class="stat-icon icon-orange">
-            <span>△</span>
-          </div>
-          <div class="stat-copy">
-            <span>5. 48 Jam - 72 Jam</span>
-            <strong id="count-48-72">0</strong>
-          </div>
-        </div>
-
-        <div class="stat-card stat-mini accent-red" id="card-72-up" style="cursor: pointer;">
-          <div class="stat-icon icon-red">
-            <span>◷</span>
-          </div>
-          <div class="stat-copy">
-            <span>6. 72 Jam UP</span>
-            <strong id="count-72-up">0</strong>
-          </div>
-        </div>
-
-        <div class="stat-card stat-mini accent-cyan" id="card-archive" style="cursor: pointer;">
-          <div class="stat-icon icon-cyan">
-            <span>◫</span>
-          </div>
-          <div class="stat-copy">
-            <span>Arsip Waybill</span>
-            <strong id="archiveCardCount">0</strong>
-          </div>
-        </div>
-      </section>
-
-      <section id="adminControlPanel" class="panel admin-panel hidden">
-        <div class="admin-toolbar-header">
-          <span class="admin-toolbar-badge">⚠</span>
-          <span>Panel Kontrol Admin</span>
-        </div>
-
-        <div class="admin-toolbar-actions">
-          <button type="button" class="admin-primary-btn" id="importBulkBtn">
-            <span class="btn-icon">⬆</span>
-            Import Bulk Data
-          </button>
-          <button type="button" class="admin-secondary-btn" id="toggleHistoryBtn">
-            <span class="btn-icon">🕘</span>
-            Lihat History Arsip
-          </button>
-          <button type="button" class="admin-danger-btn" id="deleteHistoryBtn">
-            <span class="btn-icon">🗑</span>
-            Hapus Semua History
-          </button>
-          <button type="button" class="admin-secondary-btn" id="toggleUserPanelBtn">
-            <span class="btn-icon">👥</span>
-            Management User
-          </button>
-          <button type="button" class="admin-secondary-btn" id="toggleConfigPanelBtn">
-            <span class="btn-icon">⚙</span>
-            Konfigurasi Akses
-          </button>
-          <button type="button" class="admin-secondary-btn" id="downloadTemplateBtn">
-            <span class="btn-icon">↓</span>
-            Download Template CSV
-          </button>
-          <button type="button" class="admin-danger-btn" id="deleteAllMonitoringBtn">
-            <span class="btn-icon">🗑</span>
-            Hapus Data Global
-          </button>
-          <input id="bulkImportInput" type="file" accept=".csv,.txt,.tsv" hidden />
-        </div>
-
-        <div class="logo-admin-section">
-          <h3>Logo Aplikasi</h3>
-          <div class="logo-admin-actions">
-            <img id="adminLogoPreview" class="logo-preview" alt="Logo aplikasi" />
-            <input id="logoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
-            <button type="button" class="secondary-btn small-btn" id="uploadLogoBtn">Upload Logo</button>
-            <button type="button" class="danger-ghost-btn small-btn" id="deleteLogoBtn">Hapus Logo</button>
-            <p id="logoMessage" class="auth-message" aria-live="polite"></p>
-          </div>
-        </div>
-
-        <div class="logo-admin-section">
-          <h3>Background Login</h3>
-          <div class="logo-admin-actions">
-            <img id="adminBgPreview" class="logo-preview bg-preview" alt="Background login" />
-            <input id="bgInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
-            <button type="button" class="secondary-btn small-btn" id="uploadBgBtn">Upload Background</button>
-            <button type="button" class="danger-ghost-btn small-btn" id="deleteBgBtn">Hapus Background</button>
-            <p id="bgMessage" class="auth-message" aria-live="polite"></p>
-          </div>
-        </div>
-      </section>
-
-      <section id="userPanel" class="panel audit-panel hidden">
-        <div class="panel-header">
-          <h2>Manajemen User</h2>
-          <div class="panel-actions">
-            <input id="userSearchInput" type="text" placeholder="Cari username / nama / role..." />
-            <label class="checkbox-inline"><input type="checkbox" id="selectAllUsers" /> Pilih semua</label>
-            <button type="button" class="secondary-btn small-btn" id="bulkBlockUsers">Block Terpilih</button>
-            <button type="button" class="secondary-btn small-btn delete-ghost" id="bulkDeleteUsers">Delete Terpilih</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="headerSelectAllUsers" aria-label="Pilih semua user" /></th>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Nama</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="userTableBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="configPanel" class="panel audit-panel hidden">
-        <div class="panel-header">
-          <h2>Konfigurasi Akses User</h2>
-          <div class="panel-actions">
-            <select id="configUserSelect" class="filter-select" aria-label="Pilih user"></select>
-            <button type="button" class="secondary-btn small-btn" id="refreshConfigBtn">Refresh</button>
-            <button type="button" class="primary-btn small-btn" id="saveConfigBtn">Simpan Perubahan</button>
-          </div>
-        </div>
-        <div class="config-grid">
-          <div class="config-card gm-only">
-            <h3>Buat Akun Baru</h3>
-            <p class="config-hint">Hanya super_admin. Akun admin/user/client dapat dibuat di sini.</p>
-            <label class="config-row">
-              <span>Username</span>
-              <input type="text" id="newAccountUsername" placeholder="username_baru" />
-            </label>
-            <label class="config-row">
-              <span>Nama Lengkap</span>
-              <input type="text" id="newAccountFullName" placeholder="Nama Lengkap (opsional)" />
-            </label>
-            <label class="config-row">
-              <span>Password</span>
-              <input type="password" id="newAccountPassword" placeholder="Min 8 char, ada besar/kecil/angka" />
-            </label>
-            <label class="config-row">
-              <span>Role</span>
-              <select id="newAccountRole" class="filter-select">
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="client">Client (View Only)</option>
-              </select>
-            </label>
-            <button type="button" class="primary-btn small-btn" id="createAccountBtn">Buat Akun</button>
-            <p id="createAccountMessage" class="auth-message" aria-live="polite"></p>
-          </div>
-
-          <div class="config-card gm-only">
-            <h3>Ubah Username / Password</h3>
-            <p class="config-hint">Pilih user dari dropdown atas, lalu ubah username atau password di sini. <strong>Tidak bisa mengubah akun super_admin lain.</strong></p>
-            <label class="config-row">
-              <span>Username Baru</span>
-              <input type="text" id="credNewUsername" placeholder="Kosongkan jika tidak ingin ganti" />
-            </label>
-            <label class="config-row">
-              <span>Password Baru</span>
-              <input type="password" id="credNewPassword" placeholder="Kosongkan jika tidak ingin ganti (min 8 char, besar/kecil/angka)" />
-            </label>
-            <button type="button" class="primary-btn small-btn" id="saveCredentialsBtn">Simpan Kredensial</button>
-            <p id="credentialsMessage" class="auth-message" aria-live="polite"></p>
-          </div>
-
-          <div class="config-card">
-            <h3>Role Akun</h3>
-            <p class="config-hint">Super_admin dapat mengubah role admin. User/Client bisa di-switch.</p>
-            <label class="config-row">
-              <span>Role</span>
-              <select id="configRoleSelect" class="filter-select">
-                <option value="user">User</option>
-                <option value="client">Client</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
-            <button type="button" class="primary-btn small-btn" id="saveRoleBtn">Simpan Role</button>
-            <p id="roleMessage" class="auth-message" aria-live="polite"></p>
-          </div>
-
-          <div class="config-card config-card-wide">
-            <h3>Daftar Izin</h3>
-            <p class="config-hint">Centang izin yang boleh digunakan user ini. <strong>Full Akses</strong> = otomatis mengaktifkan semua izin di bawahnya.</p>
-            <div id="configPermissionsList" class="permissions-list"></div>
-            <p id="permissionsMessage" class="auth-message" aria-live="polite"></p>
-          </div>
-        </div>
-      </section>
-
-      <section id="monitoringPanel" class="panel">
-        <div class="panel-header">
-          <h2>Data Monitoring</h2>
-          <div class="panel-actions">
-            <input id="searchInput" type="text" placeholder="Cari waybill / outlet / status..." />
-            <select id="statusFilter" class="filter-select" aria-label="Filter status">
-              <option value="all">Semua Status</option>
-              <option value="Pending">Pending</option>
-            </select>
-            <div id="monitoringBulkControls" class="monitoring-bulk-controls">
-              <select id="bulkActionSelect" class="filter-select" aria-label="Pilih aksi untuk data terpilih">
-                <option value="">Pilih aksi...</option>
-                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
-                <option value="Dalam Gudang">Dalam Gudang</option>
-                <option value="Miss Route">Miss Route</option>
-                <option value="Crosslabel">Crosslabel</option>
-                <option value="Penangguhan">Penangguhan</option>
-                <option value="manual">Ketik manual...</option>
-              </select>
-              <input id="bulkActionManual" class="bulk-action-manual hidden" type="text" placeholder="Ketik aksi untuk data terpilih..." maxlength="150" />
-              <button class="primary-btn small-btn" id="bulkUpdateBtn" type="button">Update <span id="selectedMonitoringCount">0</span></button>
-              <button class="admin-secondary-btn small-btn" id="bulkArchiveBtn" type="button">Arsipkan <span id="selectedMonitoringArchiveCount">0</span></button>
+        <div class="sidebar-footer">
+          <div class="sidebar-user-card">
+            <div class="user-avatar-badge">👤</div>
+            <div class="user-profile-data">
+              <span id="sidebarUserName" class="sidebar-user-name">User</span>
+              <span id="sidebarUserRole" class="sidebar-user-role">Operator</span>
             </div>
           </div>
+          <button type="button" id="sidebarLogoutBtn" class="sidebar-logout-btn">
+            <span>🚪</span> Keluar
+          </button>
         </div>
+      </aside>
 
-        <div class="table-wrap">
-          <table class="monitoring-table">
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="selectAllMonitoring" aria-label="Pilih semua data halaman" /></th>
-                <th>Waybill</th>
-                <th>Tanggal</th>
-                <th>Outlet</th>
-                <th>Stuck</th>
-                <th>TLC</th>
-                <th>Status</th>
-                <th>Aksi</th>
-                <th>Nama Barang</th>
-                <th>Updated By</th>
-              </tr>
-            </thead>
-            <tbody id="tabel-monitoring"></tbody>
-          </table>
-        </div>
-        <div class="table-pagination" id="monitoringPagination"></div>
-      </section>
+      <!-- BACKDROP UNTUK MOBILE DRAWER -->
+      <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
-      <section id="archivePanel" class="panel audit-panel hidden">
-        <div class="panel-header">
-          <h2>Arsip Waybill</h2>
-          <div class="panel-actions">
-            <input id="archiveSearchInput" type="text" placeholder="Cari waybill / outlet / barang..." />
-            <button type="button" class="primary-btn small-btn" id="restoreArchiveBtn">Pulihkan <span id="selectedArchiveRestoreCount">0</span></button>
+      <!-- MAIN CONTENT WRAPPER -->
+      <div class="app-main-layout">
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <button type="button" id="sidebarToggleBtn" class="hamburger-btn" aria-label="Buka Menu">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <div>
+              <p class="eyebrow" id="pageEyebrow">Monitoring System</p>
+              <h1 id="pageTitle">FIFO Dashboard</h1>
+            </div>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table class="archive-table">
-            <thead><tr>
-              <th><input type="checkbox" id="selectAllArchive" aria-label="Pilih semua arsip" /></th>
-              <th>Waybill</th><th>Tanggal</th><th>Outlet</th><th>Stuck</th><th>Status</th><th>Aksi</th><th>Updated By</th><th>Update</th>
-            </tr></thead>
-            <tbody id="archiveTableBody"></tbody>
-          </table>
-        </div>
-      </section>
 
-      <section id="historyPanel" class="panel audit-panel hidden">
-        <div class="panel-header">
-          <h2>History Update</h2>
-        </div>
-        <div class="table-wrap">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>Waybill</th>
-                <th>Tanggal</th>
-                <th>Outlet</th>
-                <th>Status</th>
-                <th>Aksi</th>
-                <th>Updated By</th>
-                <th>Archived At</th>
-              </tr>
-            </thead>
-            <tbody id="historyTableBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="auditPanel" class="panel audit-panel hidden">
-        <div class="panel-header">
-          <h2>Audit Log</h2>
-          <div class="panel-actions">
-            <input id="auditSearchInput" type="text" placeholder="Cari user / aksi / entity..." />
-            <button type="button" class="secondary-btn small-btn" id="exportAuditBtn">Export Log</button>
-            <button type="button" class="secondary-btn small-btn delete-ghost" id="deleteAuditBtn">Hapus Semua Log</button>
+          <div class="topbar-actions">
+            <span id="userPill" class="user-pill">User</span>
+            <button class="primary-btn" id="refreshBtn" type="button">Refresh</button>
+            <button class="secondary-btn" id="logoutBtn" type="button">Logout</button>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Waktu</th>
-                <th>User</th>
-                <th>Role</th>
-                <th>Aksi</th>
-                <th>Entity</th>
-                <th>Detail</th>
-              </tr>
-            </thead>
-            <tbody id="auditTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+        </header>
+
+        <!-- VIEWS CONTAINER (Hanya satu view yang tampil, tidak menumpuk) -->
+        <main class="app-views-container">
+          <!-- VIEW 1: MONITORING (DEFAULT) -->
+          <div id="viewMonitoring" class="view-page active">
+            <section class="summary-strip">
+              <div class="stat-card stat-feature accent-indigo" id="card-total" style="cursor: pointer;">
+                <div class="stat-icon icon-purple">
+                  <span>◫</span>
+                </div>
+                <div class="stat-copy">
+                  <span>Total Keseluruhan</span>
+                  <strong id="totalData">0</strong>
+                </div>
+              </div>
+
+              <div class="stat-card stat-mini accent-green" id="card-updated" style="cursor: pointer;">
+                <div class="stat-icon icon-green">
+                  <span>✓</span>
+                </div>
+                <div class="stat-copy">
+                  <span>Sudah Diupdate</span>
+                  <strong id="updatedCardCount">0</strong>
+                </div>
+              </div>
+
+              <div class="stat-card stat-mini accent-amber" id="card-48-60" style="cursor: pointer;">
+                <div class="stat-icon icon-amber">
+                  <span>◔</span>
+                </div>
+                <div class="stat-copy">
+                  <span>4. 48 Jam - 60 Jam</span>
+                  <strong id="count-48-60">0</strong>
+                </div>
+              </div>
+
+              <div class="stat-card stat-mini accent-orange" id="card-48-72" style="cursor: pointer;">
+                <div class="stat-icon icon-orange">
+                  <span>△</span>
+                </div>
+                <div class="stat-copy">
+                  <span>5. 48 Jam - 72 Jam</span>
+                  <strong id="count-48-72">0</strong>
+                </div>
+              </div>
+
+              <div class="stat-card stat-mini accent-red" id="card-72-up" style="cursor: pointer;">
+                <div class="stat-icon icon-red">
+                  <span>◷</span>
+                </div>
+                <div class="stat-copy">
+                  <span>6. 72 Jam UP</span>
+                  <strong id="count-72-up">0</strong>
+                </div>
+              </div>
+
+              <div class="stat-card stat-mini accent-cyan" id="card-archive" style="cursor: pointer;">
+                <div class="stat-icon icon-cyan">
+                  <span>◫</span>
+                </div>
+                <div class="stat-copy">
+                  <span>Arsip Waybill</span>
+                  <strong id="archiveCardCount">0</strong>
+                </div>
+              </div>
+            </section>
+
+            <div class="monitoring-quick-bar">
+              <div class="quick-bar-meta">
+                <span class="quick-bar-dot"></span>
+                <span class="quick-bar-label">Operasional Data:</span>
+              </div>
+              <div class="quick-bar-actions">
+                <button type="button" class="btn-executive btn-executive-primary" id="importBulkBtn">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Import Bulk Data</span>
+                </button>
+                <button type="button" class="btn-executive btn-executive-secondary" id="downloadTemplateBtn">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Template CSV</span>
+                </button>
+              </div>
+              <input id="bulkImportInput" type="file" accept=".csv,.txt,.tsv" hidden />
+            </div>
+
+            <section id="monitoringPanel" class="panel">
+              <div class="panel-header">
+                <div class="panel-title-wrap">
+                  <h2>Data Monitoring</h2>
+                  <span id="monitoringTotalBadge" class="panel-counter-badge">0 Data</span>
+                </div>
+
+                <div id="monitoringBulkControls" class="monitoring-bulk-controls">
+                  <span class="bulk-count-indicator"><span id="selectedMonitoringCountBadge">0</span> terpilih</span>
+                  <select id="bulkActionSelect" class="filter-select bulk-select" aria-label="Pilih aksi untuk data terpilih">
+                    <option value="">Pilih aksi massal...</option>
+                    <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                    <option value="Dalam Gudang">Dalam Gudang</option>
+                    <option value="Miss Route">Miss Route</option>
+                    <option value="Crosslabel">Crosslabel</option>
+                    <option value="Penangguhan">Penangguhan</option>
+                    <option value="manual">Ketik manual...</option>
+                  </select>
+                  <input id="bulkActionManual" class="bulk-action-manual hidden" type="text" placeholder="Ketik aksi untuk data terpilih..." maxlength="150" />
+                  <button class="primary-btn small-btn" id="bulkUpdateBtn" type="button">Update <span id="selectedMonitoringCount">0</span></button>
+                  <button class="admin-secondary-btn small-btn" id="bulkArchiveBtn" type="button">Arsipkan <span id="selectedMonitoringArchiveCount">0</span></button>
+                </div>
+              </div>
+
+              <!-- TOOLBAR PENCARIAN & FILTER (KOMPAK & RESPONSIF DI HP) -->
+              <div class="monitoring-filter-bar">
+                <div class="filter-search-box">
+                  <span class="search-box-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </span>
+                  <input id="searchInput" type="text" placeholder="Cari waybill, tgl, outlet, nama barang..." autocomplete="off" />
+                  <button type="button" id="clearSearchBtn" class="clear-search-btn hidden" aria-label="Hapus pencarian">✕</button>
+                </div>
+
+                <div class="filter-controls-cluster">
+                  <div class="filter-select-item">
+                    <span class="filter-icon-prefix">🏢</span>
+                    <select id="tlcFilter" class="filter-select" aria-label="Filter TLC">
+                      <option value="all">Semua TLC</option>
+                    </select>
+                  </div>
+
+                  <button type="button" id="resetFilterBtn" class="btn-reset-filter" title="Reset semua filter">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                      <path d="M3 3v5h5"/>
+                    </svg>
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- QUICK CHIPS TLC (Opsi Cepat 1-Klik) -->
+              <div id="tlcQuickChipsBar" class="tlc-quick-chips hidden">
+                <span class="chips-label">TLC:</span>
+                <div id="tlcChipsContainer" class="chips-list"></div>
+              </div>
+
+              <div class="table-wrap">
+                <table class="monitoring-table">
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="selectAllMonitoring" aria-label="Pilih semua data halaman" /></th>
+                      <th>Waybill</th>
+                      <th>Tanggal</th>
+                      <th>Outlet</th>
+                      <th>Stuck</th>
+                      <th>TLC</th>
+                      <th>Status</th>
+                      <th>Aksi</th>
+                      <th>Nama Barang</th>
+                      <th>Updated By</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabel-monitoring"></tbody>
+                </table>
+              </div>
+              <div class="table-pagination" id="monitoringPagination"></div>
+            </section>
+          </div>
+
+          <!-- VIEW 2: ARSIP -->
+          <div id="viewArchive" class="view-page hidden">
+            <section id="archivePanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Arsip Waybill</h2>
+                <div class="panel-actions">
+                  <input id="archiveSearchInput" type="text" placeholder="Cari waybill / outlet / barang..." />
+                  <button type="button" class="primary-btn small-btn" id="restoreArchiveBtn">Pulihkan <span id="selectedArchiveRestoreCount">0</span></button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="archive-table">
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="selectAllArchive" aria-label="Pilih semua arsip" /></th>
+                      <th>Waybill</th><th>Tanggal</th><th>Outlet</th><th>Stuck</th><th>Status</th><th>Aksi</th><th>Updated By</th><th>Update</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archiveTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 3: HISTORY -->
+          <div id="viewHistory" class="view-page hidden">
+            <section id="historyPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Riwayat Pembaruan</h2>
+                <div class="panel-actions">
+                  <button type="button" class="btn-danger-modern" id="deleteHistoryBtn">
+                    <span class="btn-danger-icon">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                      </svg>
+                    </span>
+                    <span>Hapus Semua Riwayat</span>
+                  </button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="history-table">
+                  <thead>
+                    <tr>
+                      <th>Waybill</th>
+                      <th>Tanggal</th>
+                      <th>Outlet</th>
+                      <th>Status</th>
+                      <th>Aksi</th>
+                      <th>Updated By</th>
+                      <th>Archived At</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 4: USERS -->
+          <div id="viewUsers" class="view-page hidden">
+            <section id="userPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Manajemen User</h2>
+                <div class="panel-actions">
+                  <input id="userSearchInput" type="text" placeholder="Cari username / nama / role..." />
+                  <label class="checkbox-inline"><input type="checkbox" id="selectAllUsers" /> Pilih semua</label>
+                  <button type="button" class="secondary-btn small-btn" id="bulkBlockUsers">Block Terpilih</button>
+                  <button type="button" class="secondary-btn small-btn delete-ghost" id="bulkDeleteUsers">Delete Terpilih</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="headerSelectAllUsers" aria-label="Pilih semua user" /></th>
+                      <th>ID</th>
+                      <th>Username</th>
+                      <th>Nama</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 5: PERMISSIONS / CONFIG -->
+          <div id="viewPermissions" class="view-page hidden">
+            <section id="configPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Konfigurasi Akses User</h2>
+                <div class="panel-actions">
+                  <select id="configUserSelect" class="filter-select" aria-label="Pilih user"></select>
+                  <button type="button" class="secondary-btn small-btn" id="refreshConfigBtn">Refresh</button>
+                  <button type="button" class="primary-btn small-btn" id="saveConfigBtn">Simpan Perubahan</button>
+                </div>
+              </div>
+              <div class="config-grid">
+                <div class="config-card gm-only">
+                  <h3>Buat Akun Baru</h3>
+                  <p class="config-hint">Hanya super_admin. Akun admin/user/client dapat dibuat di sini.</p>
+                  <label class="config-row">
+                    <span>Username</span>
+                    <input type="text" id="newAccountUsername" placeholder="username_baru" />
+                  </label>
+                  <label class="config-row">
+                    <span>Nama Lengkap</span>
+                    <input type="text" id="newAccountFullName" placeholder="Nama Lengkap (opsional)" />
+                  </label>
+                  <label class="config-row">
+                    <span>Password</span>
+                    <input type="password" id="newAccountPassword" placeholder="Min 8 char, ada besar/kecil/angka" />
+                  </label>
+                  <label class="config-row">
+                    <span>Role</span>
+                    <select id="newAccountRole" class="filter-select">
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="client">Client (View Only)</option>
+                    </select>
+                  </label>
+                  <button type="button" class="primary-btn small-btn" id="createAccountBtn">Buat Akun</button>
+                  <p id="createAccountMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+
+                <div class="config-card gm-only">
+                  <h3>Ubah Username / Password</h3>
+                  <p class="config-hint">Pilih user dari dropdown atas, lalu ubah username atau password di sini. <strong>Tidak bisa mengubah akun super_admin lain.</strong></p>
+                  <label class="config-row">
+                    <span>Username Baru</span>
+                    <input type="text" id="credNewUsername" placeholder="Kosongkan jika tidak ingin ganti" />
+                  </label>
+                  <label class="config-row">
+                    <span>Password Baru</span>
+                    <input type="password" id="credNewPassword" placeholder="Kosongkan jika tidak ingin ganti (min 8 char, besar/kecil/angka)" />
+                  </label>
+                  <button type="button" class="primary-btn small-btn" id="saveCredentialsBtn">Simpan Kredensial</button>
+                  <p id="credentialsMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+
+                <div class="config-card">
+                  <h3>Role Akun</h3>
+                  <p class="config-hint">Super_admin dapat mengubah role admin. User/Client bisa di-switch.</p>
+                  <label class="config-row">
+                    <span>Role</span>
+                    <select id="configRoleSelect" class="filter-select">
+                      <option value="user">User</option>
+                      <option value="client">Client</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </label>
+                  <button type="button" class="primary-btn small-btn" id="saveRoleBtn">Simpan Role</button>
+                  <p id="roleMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+
+                <div class="config-card config-card-wide">
+                  <h3>Daftar Izin</h3>
+                  <p class="config-hint">Centang izin yang boleh digunakan user ini. <strong>Full Akses</strong> = otomatis mengaktifkan semua izin di bawahnya.</p>
+                  <div id="configPermissionsList" class="permissions-list"></div>
+                  <p id="permissionsMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 6: AUDIT LOG -->
+          <div id="viewAudit" class="view-page hidden">
+            <section id="auditPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Audit Log</h2>
+                <div class="panel-actions">
+                  <input id="auditSearchInput" type="text" placeholder="Cari user / aksi / entity..." />
+                  <button type="button" class="secondary-btn small-btn" id="exportAuditBtn">Export Log</button>
+                  <button type="button" class="secondary-btn small-btn delete-ghost" id="deleteAuditBtn">Hapus Semua Log</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>User</th>
+                      <th>Role</th>
+                      <th>Aksi</th>
+                      <th>Entity</th>
+                      <th>Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody id="auditTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 7: PENGATURAN SISTEM -->
+          <div id="viewSettings" class="view-page hidden">
+            <section id="adminControlPanel" class="panel admin-panel">
+              <div class="admin-toolbar-header">
+                <span class="admin-toolbar-badge">🛠️</span>
+                <span>Pengaturan Sistem & Admin</span>
+              </div>
+
+              <div class="settings-shortcuts-bar">
+                <button type="button" class="settings-nav-tile" id="toggleUserPanelBtn">
+                  <div class="tile-icon-wrap icon-blue">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  </div>
+                  <div class="tile-text">
+                    <strong>Manajemen Pengguna</strong>
+                    <span>Kelola akun & status</span>
+                  </div>
+                </button>
+
+                <button type="button" class="settings-nav-tile" id="toggleConfigPanelBtn">
+                  <div class="tile-icon-wrap icon-purple">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                  </div>
+                  <div class="tile-text">
+                    <strong>Konfigurasi Hak Akses</strong>
+                    <span>Atur izin detail peran</span>
+                  </div>
+                </button>
+
+                <button type="button" class="settings-nav-tile" id="toggleHistoryBtn">
+                  <div class="tile-icon-wrap icon-cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <div class="tile-text">
+                    <strong>Riwayat Arsip</strong>
+                    <span>Lihat riwayat data</span>
+                  </div>
+                </button>
+              </div>
+
+              <div class="settings-grid">
+                <!-- KARTU LOGO APLIKASI -->
+                <div class="media-setting-card">
+                  <div class="media-card-header">
+                    <div class="media-header-icon icon-blue">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                        <circle cx="9" cy="9" r="2"/>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4>Logo Aplikasi</h4>
+                      <p class="media-card-sub">Format PNG/JPG transparan atau persegi/panjang</p>
+                    </div>
+                  </div>
+
+                  <div class="media-card-body">
+                    <div class="media-preview-container">
+                      <span id="logoEmptyPlaceholder" class="preview-empty-hint">Belum ada logo kustom (menggunakan logo bawaan)</span>
+                      <img id="adminLogoPreview" class="logo-preview-box hidden" alt="Logo aplikasi" />
+                      <div class="preview-badge">Pratinjau Logo</div>
+                    </div>
+
+                    <div class="media-card-controls">
+                      <input id="logoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+                      <button type="button" class="btn-media-primary" id="uploadLogoBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Pilih & Unggah Logo</span>
+                      </button>
+                      <button type="button" class="btn-media-danger" id="deleteLogoBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                        </svg>
+                        <span>Hapus Logo</span>
+                      </button>
+                    </div>
+                    <p id="logoMessage" class="auth-message" aria-live="polite"></p>
+                  </div>
+                </div>
+
+                <!-- KARTU LATAR BELAKANG MASUK -->
+                <div class="media-setting-card">
+                  <div class="media-card-header">
+                    <div class="media-header-icon icon-purple">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="20" height="14" x="2" y="5" rx="2"/>
+                        <line x1="2" y1="10" x2="22" y2="10"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4>Latar Belakang Masuk</h4>
+                      <p class="media-card-sub">Gambar wallpaper untuk latar halaman login</p>
+                    </div>
+                  </div>
+
+                  <div class="media-card-body">
+                    <div class="media-preview-container">
+                      <span id="bgEmptyPlaceholder" class="preview-empty-hint">Belum ada background kustom (tema gelap bawaan)</span>
+                      <img id="adminBgPreview" class="bg-preview-box hidden" alt="Background login" />
+                      <div class="preview-badge">Pratinjau Latar</div>
+                    </div>
+
+                    <div class="media-card-controls">
+                      <input id="bgInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+                      <button type="button" class="btn-media-primary" id="uploadBgBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Pilih & Unggah Latar Belakang</span>
+                      </button>
+                      <button type="button" class="btn-media-danger" id="deleteBgBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                        </svg>
+                        <span>Hapus Latar</span>
+                      </button>
+                    </div>
+                    <p id="bgMessage" class="auth-message" aria-live="polite"></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ZONA PEMELIHARAAN (DANGER ZONE) -->
+              <div class="danger-zone-card">
+                <div class="danger-zone-header">
+                  <div class="danger-zone-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3>Zona Pemeliharaan & Hapus Global</h3>
+                    <p class="config-hint">Tindakan berikut akan menghapus seluruh data monitoring aktif dari database server secara permanen.</p>
+                  </div>
+                </div>
+                <div class="danger-zone-actions">
+                  <button type="button" class="btn-danger-modern btn-danger-large" id="deleteAllMonitoringBtn">
+                    <span class="btn-danger-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                      </svg>
+                    </span>
+                    <span>Hapus Seluruh Data Global</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
     </div>
 
     <div id="auditDetailModal" class="modal hidden" aria-hidden="true">
