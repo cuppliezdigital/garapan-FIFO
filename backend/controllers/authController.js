@@ -256,16 +256,6 @@ async function debugUsers(req, res) {
   }
 }
 
-async function initPermissions(req, res) {
-  try {
-    await permissionsService.ensurePermissionsTables();
-    res.json({ message: 'Permissions initialized successfully' });
-  } catch (error) {
-    console.error('Init permissions error:', error);
-    res.status(500).json({ error: error.message });
-  }
-}
-
 module.exports = {
   register,
   login,
@@ -287,7 +277,6 @@ module.exports = {
   getBackground,
   updateBackground,
   deleteAppBackground,
-  initPermissions,
 };
 
 async function getLogo(req, res) {
