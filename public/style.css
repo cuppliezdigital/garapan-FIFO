@@ -1395,9 +1395,16 @@ h1 {
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.7));
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.24);
-  padding: 7px 10px;
-  font-size: 0.74rem;
-  min-width: 72px;
+  padding: 0 10px;
+  height: 26px;
+  min-height: 26px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 6px;
+  min-width: 68px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -1408,11 +1415,11 @@ h1 {
 }
 
 .update-btn {
-  min-width: 86px;
+  min-width: 72px;
   background: linear-gradient(135deg, rgba(96, 165, 250, 0.28), rgba(30, 64, 175, 0.24));
   border-color: rgba(147, 197, 253, 0.62);
   color: #eff6ff;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.06em;
 }
@@ -2160,19 +2167,23 @@ table {
 }
 
 th, td {
-  padding: 13px 16px;
+  padding: 7px 12px;
   text-align: left;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
   vertical-align: middle;
+  font-size: 0.81rem;
+  line-height: 1.3;
 }
 
 th {
   background: rgba(148, 163, 184, 0.04);
   color: rgba(226, 232, 240, 0.72);
-  font-size: 0.72rem;
+  font-size: 0.69rem;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   font-weight: 700;
+  padding: 8px 12px;
+  white-space: nowrap;
 }
 
 tbody tr {
@@ -2220,29 +2231,44 @@ tbody td:first-child {
 tbody td:first-child::before {
   content: "";
   position: absolute;
-  inset: 10px auto 10px 0;
-  width: 2px;
+  inset: 5px auto 5px 0;
+  width: 2.5px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(96, 165, 250, 0.9), rgba(96, 165, 250, 0.15));
 }
 
 tbody td:first-child,
 thead th:first-child {
-  padding-left: 18px;
+  padding-left: 12px;
+  padding-right: 8px;
+  width: 38px;
+  text-align: center;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
-  padding: 5px 8px;
+  min-width: 32px;
+  padding: 2px 7px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 700;
   background: rgba(96, 165, 250, 0.12);
   border: 1px solid rgba(96, 165, 250, 0.22);
   color: #dbeafe;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.badge-stuck {
+  white-space: nowrap !important;
+  padding: 2px 8px !important;
+  font-size: 0.71rem !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .search-highlight {
@@ -2276,11 +2302,13 @@ tbody tr.is-updated .search-highlight {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   border: 1px solid transparent;
+  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .status.open {
@@ -2296,6 +2324,75 @@ tbody tr.is-updated .search-highlight {
 .status.closed {
   background: rgba(96, 165, 250, 0.12);
   color: #bfdbfe;
+}
+
+/* Compact Desktop Table Specifics */
+.monitoring-table .action-group,
+.archive-table .action-group {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.monitoring-table .read-only-label,
+.archive-table .read-only-label {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 0.69rem;
+  line-height: 1.2;
+}
+
+.col-check {
+  width: 38px;
+  text-align: center;
+}
+
+.col-check input[type="checkbox"],
+thead th input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+  vertical-align: middle;
+  margin: 0;
+}
+
+.col-waybill {
+  white-space: nowrap;
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.col-tanggal,
+.col-outlet,
+.col-tlc,
+.col-stuck,
+.col-status,
+.col-aksi,
+.col-updated,
+.col-aksi-text {
+  white-space: nowrap;
+}
+
+.col-barang {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.col-barang .cell-value {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .status-overview {

@@ -707,7 +707,7 @@ function renderTable(data) {
       <td class="col-tlc" data-label="TLC"><span class="cell-value">${highlightSearch(item.tlc || '-')}</span></td>
       <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${item.status ? item.status.toLowerCase().replace(/\s+/g, '-') : 'open'}">${highlightSearch(item.status || 'Open')}</span></span></td>
       <td class="col-aksi" data-label="Aksi">${actionButtons}</td>
-      <td class="col-barang" data-label="Nama Barang"><span class="cell-value">${highlightSearch(item.nama_barang || '-')}</span></td>
+      <td class="col-barang" data-label="Nama Barang" title="${escapeTlcHtml(item.nama_barang || '')}"><span class="cell-value">${highlightSearch(item.nama_barang || '-')}</span></td>
       <td class="col-updated" data-label="Updated By"><span class="cell-value">${highlightSearch(item.updated_by || '-')}</span></td>
     `;
     tbody.appendChild(tr);
