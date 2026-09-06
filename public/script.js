@@ -44,6 +44,7 @@ const monitoringBulkControls = document.getElementById('monitoringBulkControls')
 const selectedArchiveRestoreCount = document.getElementById('selectedArchiveRestoreCount');
 const userTableBody = document.getElementById('userTableBody');
 const historyTableBody = document.getElementById('historyTableBody');
+const historySearchInput = document.getElementById('historySearchInput');
 const updatedCardCount = document.getElementById('updatedCardCount');
 const bulkImportInput = document.getElementById('bulkImportInput');
 const importBulkBtn = document.getElementById('importBulkBtn');
@@ -1346,23 +1347,69 @@ function renderAuditLogs(logs) {
 function renderMonitoringHistory(rows) {
   if (!historyTableBody) return;
 
+  const keyword = (historySearchInput?.value || '').trim().toLowerCase();
+  const filtered = (rows || []).filter((row) =>
+    [row.waybill, row.outlet, row.status, row.aksi, row.updated_by]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(keyword)
+  );
+
+  const countBadge = document.getElementById('historyCountBadge');
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} riwayat`;
+  }
+
   historyTableBody.innerHTML = '';
 
-  if (!rows.length) {
+  if (!filtered.length) {
     historyTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada data di history.</td></tr>';
     return;
   }
 
-  rows.forEach((row) => {
+  filtered.forEach((row) => {
     const tr = document.createElement('tr');
+    tr.className = 'history-item-row';
+    const statusVal = row.status || 'Open';
+    const statusClass = String(statusVal).toLowerCase().replace(/\s+/g, '-');
     tr.innerHTML = `
-      <td data-label="Waybill"><span class="cell-value">${highlightSearch(row.waybill || '-')}</span></td>
-      <td data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(row.tanggal))}</span></td>
-      <td data-label="Outlet"><span class="cell-value">${highlightSearch(row.outlet || '-')}</span></td>
-      <td data-label="Status"><span class="cell-value"><span class="status ${String(row.status || 'Open').toLowerCase().replace(/\s+/g, '-')}">${row.status || 'Open'}</span></span></td>
-      <td data-label="Aksi"><span class="cell-value">${highlightSearch(row.aksi || '-')}</span></td>
-      <td data-label="Updated By"><span class="cell-value">${highlightSearch(row.updated_by || '-')}</span></td>
-      <td data-label="Archived At"><span class="cell-value">${row.archived_at ? new Date(row.archived_at).toLocaleString('id-ID') : '-'}</span></td>
+      <td class="history-col-waybill" data-label="Waybill">
+        <span class="cell-value">
+          <span class="history-waybill-badge">${highlightSearch(row.waybill || '-', historySearchInput?.value)}</span>
+        </span>
+      </td>
+      <td class="history-col-tanggal" data-label="Tanggal">
+        <span class="cell-value">${highlightSearch(formatDate(row.tanggal), historySearchInput?.value)}</span>
+      </td>
+      <td class="history-col-outlet" data-label="Outlet">
+        <span class="cell-value">
+          <span class="history-outlet-tag">${highlightSearch(row.outlet || '-', historySearchInput?.value)}</span>
+        </span>
+      </td>
+      <td class="history-col-status" data-label="Status">
+        <span class="cell-value">
+          <span class="status ${statusClass}">${statusVal}</span>
+        </span>
+      </td>
+      <td class="history-col-aksi" data-label="Aksi">
+        <span class="cell-value">
+          <span class="history-aksi-badge">${highlightSearch(row.aksi || '-', historySearchInput?.value)}</span>
+        </span>
+      </td>
+      <td class="history-col-updater" data-label="Updated By">
+        <span class="cell-value">
+          <span class="history-user-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            ${highlightSearch(row.updated_by || '-', historySearchInput?.value)}
+          </span>
+        </span>
+      </td>
+      <td class="history-col-archived" data-label="Archived At">
+        <span class="cell-value">
+          <span class="history-time-badge">${row.archived_at ? new Date(row.archived_at).toLocaleString('id-ID') : '-'}</span>
+        </span>
+      </td>
     `;
     historyTableBody.appendChild(tr);
   });
@@ -1478,7 +1525,11 @@ async function fetchAuditLogs() {
 
 async function deleteAllAuditLogs() {
   const token = getToken();
-  if (!token || getCurrentUser().role !== 'admin') return;
+  const role = getCurrentUser().role;
+  if (!token || (role !== 'admin' && role !== 'super_admin')) {
+    alert('Akses ditolak. Hanya Admin dan Super Admin yang dapat menghapus audit log.');
+    return;
+  }
 
   const confirmed = window.confirm('PERINGATAN: semua audit log akan dihapus permanen dan tidak dapat dikembalikan. Lanjutkan?');
   if (!confirmed) return;
@@ -1522,7 +1573,10 @@ async function fetchMonitoringHistory() {
 
 async function deleteAllMonitoringHistory() {
   const token = getToken();
-  if (!token || getCurrentUser().role !== 'admin') return;
+  if (!token || !hasPermission('delete_history')) {
+    alert('Akses ditolak. Anda tidak memiliki izin untuk menghapus history.');
+    return;
+  }
 
   const confirmed = window.confirm('Yakin mau menghapus semua history arsip? Data yang dihapus tidak dapat dikembalikan.');
   if (!confirmed) return;
@@ -3230,6 +3284,7 @@ if (archiveTableBody) {
 }
 
 if (archiveSearchInput) archiveSearchInput.addEventListener('input', () => renderMonitoringArchive(monitoringArchiveData));
+if (historySearchInput) historySearchInput.addEventListener('input', () => renderMonitoringHistory(monitoringHistoryData));
 if (bulkArchiveBtn) bulkArchiveBtn.addEventListener('click', moveSelectedToArchive);
 if (restoreArchiveBtn) restoreArchiveBtn.addEventListener('click', restoreSelectedArchive);
 if (selectAllArchive) {
@@ -3534,6 +3589,797 @@ function setupPasswordToggle(inputId, btnId) {
 
 setupPasswordToggle('loginPassword', 'toggleLoginPasswordBtn');
 setupPasswordToggle('registerPassword', 'toggleRegisterPasswordBtn');
+
+// ========================================================
+// MODUL SCANNER PDA & HARDWARE BARCODE SCANNER
+// ========================================================
+let audioCtx = null;
+let scannerSoundMuted = localStorage.getItem('scanner_sound_muted') === 'true';
+let scannerCurrentMode = 'check'; // 'check' | 'update'
+let scannerBatchUpdatedCount = 0;
+let scannerRecentScans = [];
+let scannerUnregisteredScans = [];
+let cameraStream = null;
+let cameraDetectActive = false;
+let lastCameraScannedCode = '';
+let lastCameraScanTime = 0;
+
+// Audio Synthesizer Engine (Zero-Latency Web Audio API)
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+function playScannerSound(type = 'success') {
+  if (scannerSoundMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'success') {
+      // Nada Tinggi (880Hz -> 1100Hz): Scan Sukses / FIFO Aman
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1100, now + 0.09);
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.13);
+    } else if (type === 'warning') {
+      // Nada Dua Tingkat (587Hz -> 784Hz): FIFO Waspada / Overdue
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587, now);
+      osc.frequency.setValueAtTime(784, now + 0.08);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } else if (type === 'error') {
+      // Buzzer Nada Rendah (220Hz -> 175Hz): Waybill Tidak Ditemukan / Gagal
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.setValueAtTime(175, now + 0.15);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.start(now);
+      osc.stop(now + 0.34);
+    }
+  } catch (err) {
+    console.error('Audio synthesizer error:', err);
+  }
+}
+
+// Haptic Vibration Engine
+function triggerHaptic(type = 'success') {
+  if (!navigator.vibrate) return;
+  try {
+    if (type === 'success') {
+      navigator.vibrate(80);
+    } else if (type === 'warning') {
+      navigator.vibrate([100, 50, 100]);
+    } else if (type === 'error') {
+      // Getar 2x tegas untuk resi tidak ditemukan
+      navigator.vibrate([200, 100, 200]);
+    }
+  } catch (err) {}
+}
+
+// DOM References Scanner
+const scannerModal = document.getElementById('scannerModal');
+const closeScannerModalBtn = document.getElementById('closeScannerModalBtn');
+const openScannerBtn = document.getElementById('openScannerBtn');
+const openScannerBtnQuick = document.getElementById('openScannerBtnQuick');
+const navScanner = document.getElementById('navScanner');
+const scannerSoundToggleBtn = document.getElementById('scannerSoundToggleBtn');
+const scannerCameraToggleBtn = document.getElementById('scannerCameraToggleBtn');
+const modeCheckBtn = document.getElementById('modeCheckBtn');
+const modeUpdateBtn = document.getElementById('modeUpdateBtn');
+const scannerUpdateConfigBar = document.getElementById('scannerUpdateConfigBar');
+const scannerActionSelect = document.getElementById('scannerActionSelect');
+const scannerBatchCount = document.getElementById('scannerBatchCount');
+const scannerBarcodeForm = document.getElementById('scannerBarcodeForm');
+const scannerBarcodeInput = document.getElementById('scannerBarcodeInput');
+const scannerClearInputBtn = document.getElementById('scannerClearInputBtn');
+const scannerIdleState = document.getElementById('scannerIdleState');
+const scannerDynamicCard = document.getElementById('scannerDynamicCard');
+const scannerRecentList = document.getElementById('scannerRecentList');
+const recentScanCount = document.getElementById('recentScanCount');
+const toggleUnknownDrawerBtn = document.getElementById('toggleUnknownDrawerBtn');
+const unknownScansDrawer = document.getElementById('unknownScansDrawer');
+const closeUnknownDrawerBtn = document.getElementById('closeUnknownDrawerBtn');
+const unknownScansList = document.getElementById('unknownScansList');
+const unknownScansCounter = document.getElementById('unknownScansCounter');
+const copyUnknownScansBtn = document.getElementById('copyUnknownScansBtn');
+const clearUnknownScansBtn = document.getElementById('clearUnknownScansBtn');
+const scannerCameraArea = document.getElementById('scannerCameraArea');
+const scannerVideoElement = document.getElementById('scannerVideoElement');
+const stopCameraBtn = document.getElementById('stopCameraBtn');
+
+// Modal Input Cepat DOM
+const scannerQuickAddModal = document.getElementById('scannerQuickAddModal');
+const closeQuickAddModalBtn = document.getElementById('closeQuickAddModalBtn');
+const cancelQuickAddBtn = document.getElementById('cancelQuickAddBtn');
+const scannerQuickAddForm = document.getElementById('scannerQuickAddForm');
+const quickAddWaybill = document.getElementById('quickAddWaybill');
+const quickAddTanggal = document.getElementById('quickAddTanggal');
+const quickAddOutlet = document.getElementById('quickAddOutlet');
+const quickAddTlc = document.getElementById('quickAddTlc');
+const quickAddNamaBarang = document.getElementById('quickAddNamaBarang');
+const quickAddAksi = document.getElementById('quickAddAksi');
+
+// Buka & Tutup Modal Scanner
+function openScannerModal() {
+  if (!scannerModal) return;
+  getAudioContext(); // Inisialisasi AudioContext pada interaksi user
+  scannerModal.classList.remove('hidden');
+  scannerModal.setAttribute('aria-hidden', 'false');
+  updateSoundToggleButton();
+  setTimeout(() => {
+    if (scannerBarcodeInput) {
+      scannerBarcodeInput.focus();
+    }
+  }, 100);
+}
+
+function closeScannerModal() {
+  if (!scannerModal) return;
+  stopCameraScanner();
+  scannerModal.classList.add('hidden');
+  scannerModal.setAttribute('aria-hidden', 'true');
+  if (unknownScansDrawer) unknownScansDrawer.classList.add('hidden');
+}
+
+// Buka & Tutup Modal Input Cepat
+function openQuickAddModal(waybill) {
+  if (!scannerQuickAddModal) return;
+  if (quickAddWaybill) quickAddWaybill.value = waybill || '';
+  if (quickAddTanggal) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    quickAddTanggal.value = `${yyyy}-${mm}-${dd}`;
+  }
+  if (quickAddOutlet) quickAddOutlet.value = 'Gudang Utama';
+  if (quickAddTlc) {
+    // Gunakan TLC pertama yang tersedia jika ada
+    quickAddTlc.value = (currentAvailableTlcs && currentAvailableTlcs.length > 0) ? currentAvailableTlcs[0].code : '-';
+  }
+  if (quickAddNamaBarang) quickAddNamaBarang.value = '-';
+  if (quickAddAksi) quickAddAksi.value = 'Dalam Gudang';
+
+  scannerQuickAddModal.classList.remove('hidden');
+  scannerQuickAddModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => quickAddOutlet && quickAddOutlet.focus(), 100);
+}
+
+function closeQuickAddModal() {
+  if (!scannerQuickAddModal) return;
+  scannerQuickAddModal.classList.add('hidden');
+  scannerQuickAddModal.setAttribute('aria-hidden', 'true');
+  if (scannerBarcodeInput) scannerBarcodeInput.focus();
+}
+
+// Toggle Sound Audio Mute
+function updateSoundToggleButton() {
+  if (!scannerSoundToggleBtn) return;
+  const onIcon = scannerSoundToggleBtn.querySelector('.sound-icon-on');
+  const offIcon = scannerSoundToggleBtn.querySelector('.sound-icon-off');
+  if (onIcon) onIcon.classList.toggle('hidden', scannerSoundMuted);
+  if (offIcon) offIcon.classList.toggle('hidden', !scannerSoundMuted);
+  scannerSoundToggleBtn.classList.toggle('active', !scannerSoundMuted);
+}
+
+if (scannerSoundToggleBtn) {
+  scannerSoundToggleBtn.addEventListener('click', () => {
+    scannerSoundMuted = !scannerSoundMuted;
+    localStorage.setItem('scanner_sound_muted', String(scannerSoundMuted));
+    updateSoundToggleButton();
+    if (!scannerSoundMuted) {
+      playScannerSound('success');
+    }
+  });
+}
+
+// Switch Mode Scanner (Mode 1 vs Mode 2)
+function setScannerMode(mode) {
+  scannerCurrentMode = mode;
+  if (modeCheckBtn) modeCheckBtn.classList.toggle('active', mode === 'check');
+  if (modeUpdateBtn) modeUpdateBtn.classList.toggle('active', mode === 'update');
+  if (scannerUpdateConfigBar) scannerUpdateConfigBar.classList.toggle('hidden', mode !== 'update');
+  if (scannerBarcodeInput) {
+    scannerBarcodeInput.placeholder = mode === 'check'
+      ? 'Tembak laser PDA untuk cek status FIFO...'
+      : 'Tembak laser PDA untuk update aksi otomatis...';
+    scannerBarcodeInput.focus();
+  }
+}
+
+if (modeCheckBtn) modeCheckBtn.addEventListener('click', () => setScannerMode('check'));
+if (modeUpdateBtn) modeUpdateBtn.addEventListener('click', () => setScannerMode('update'));
+
+// Handler Pemrosesan Barcode / Waybill
+async function handleScannedWaybill(rawCode) {
+  const cleanCode = String(rawCode || '').trim().replace(/[\r\n]/g, '');
+  if (!cleanCode) return;
+
+  const user = getCurrentUser();
+  const now = new Date();
+  const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  // Cari di data monitoring lokal
+  const upperCode = cleanCode.toUpperCase();
+  let item = (monitoringData || []).find((entry) => String(entry.waybill || '').trim().toUpperCase() === upperCode);
+
+  // Jika tidak ditemukan di memori lokal, coba fetch ulang dari server (siapa tahu baru diinput di device lain)
+  if (!item) {
+    try {
+      const resp = await fetch('/api/monitoring', {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (resp.ok) {
+        const freshData = await resp.json();
+        monitoringData = freshData;
+        item = freshData.find((entry) => String(entry.waybill || '').trim().toUpperCase() === upperCode);
+      }
+    } catch (e) {}
+  }
+
+  if (scannerIdleState) scannerIdleState.classList.add('hidden');
+  if (scannerDynamicCard) scannerDynamicCard.classList.remove('hidden');
+
+  // ==========================================
+  // KASUS 1: WAYBILL DITEMUKAN DALAM SISTEM
+  // ==========================================
+  if (item) {
+    // Hitung Umur Hari FIFO
+    let ageDays = 0;
+    if (item.tanggal) {
+      const itemDate = new Date(item.tanggal);
+      if (!isNaN(itemDate.getTime())) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        itemDate.setHours(0, 0, 0, 0);
+        ageDays = Math.max(0, Math.round((today - itemDate) / (1000 * 60 * 60 * 24)));
+      }
+    }
+
+    // Tentukan Klasifikasi FIFO Badge
+    const sudahUpdate = isSudahUpdate(item);
+    let fifoBadgeClass = 'fifo-badge-safe';
+    let fifoBorderClass = 'border-safe';
+    let fifoLabel = 'FIFO Aman (< 48 Jam)';
+    let chipDotClass = 'dot-safe';
+
+    if (sudahUpdate) {
+      fifoBadgeClass = 'fifo-badge-updated';
+      fifoBorderClass = 'border-updated';
+      fifoLabel = 'Sudah Diupdate';
+      chipDotClass = 'dot-updated';
+    } else if (ageDays === 2 || matchesStuckFilter(item, '48-60')) {
+      fifoBadgeClass = 'fifo-badge-warning';
+      fifoBorderClass = 'border-warning';
+      fifoLabel = 'FIFO Waspada (48-60 Jam)';
+      chipDotClass = 'dot-warning';
+    } else if (ageDays === 3 || matchesStuckFilter(item, '48-72')) {
+      fifoBadgeClass = 'fifo-badge-alert';
+      fifoBorderClass = 'border-alert';
+      fifoLabel = 'FIFO Peringatan (48-72 Jam)';
+      chipDotClass = 'dot-alert';
+    } else if (ageDays >= 4 || matchesStuckFilter(item, '72-up')) {
+      fifoBadgeClass = 'fifo-badge-danger';
+      fifoBorderClass = 'border-danger';
+      fifoLabel = 'FIFO Overdue (72 Jam UP)';
+      chipDotClass = 'dot-danger';
+    }
+
+    // --- MODE 1: CEK STATUS FIFO ---
+    if (scannerCurrentMode === 'check') {
+      if (ageDays >= 3 && !sudahUpdate) {
+        playScannerSound('warning');
+        triggerHaptic('warning');
+      } else {
+        playScannerSound('success');
+        triggerHaptic('success');
+      }
+
+      renderFoundCard(item, ageDays, fifoBadgeClass, fifoBorderClass, fifoLabel, null);
+      addRecentScan(item.waybill, chipDotClass, fifoLabel, `${ageDays} Hari`, timeString);
+    }
+    // --- MODE 2: SCAN & UPDATE AKSI OTOMATIS ---
+    else if (scannerCurrentMode === 'update') {
+      const targetAksi = scannerActionSelect ? scannerActionSelect.value : 'Sudah Scan Kirim';
+
+      try {
+        const response = await fetch('/api/monitoring/bulk-update', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ waybills: [item.waybill], aksi: targetAksi }),
+        });
+
+        if (response.ok) {
+          // Update data lokal
+          item.aksi = targetAksi;
+          item.status = 'Sudah Diupdate';
+          scannerBatchUpdatedCount += 1;
+          if (scannerBatchCount) scannerBatchCount.textContent = scannerBatchUpdatedCount;
+
+          playScannerSound('success');
+          triggerHaptic('success');
+
+          const updateSuccessMsg = `✓ Berhasil diupdate ke "${targetAksi}"`;
+          renderFoundCard(item, ageDays, 'fifo-badge-updated', 'border-updated', 'Sudah Diupdate', updateSuccessMsg);
+          addRecentScan(item.waybill, 'dot-updated', `Update: ${targetAksi}`, `${ageDays} Hari`, timeString);
+
+          // Refresh tabel utama dan kartu statistik di latar belakang
+          if (typeof renderTable === 'function') renderTable(monitoringData);
+          if (typeof updateStats === 'function') updateStats(monitoringData);
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          playScannerSound('error');
+          triggerHaptic('error');
+          alert('Gagal update aksi waybill: ' + (errData.error || 'Terjadi kesalahan server'));
+        }
+      } catch (updateErr) {
+        console.error('Update waybill error:', updateErr);
+        playScannerSound('error');
+        triggerHaptic('error');
+      }
+    }
+  }
+  // ==========================================
+  // KASUS 2: WAYBILL TIDAK DITEMUKAN / BELUM TERDAFTAR
+  // ==========================================
+  else {
+    playScannerSound('error');
+    triggerHaptic('error');
+
+    // Catat ke memori sesi unregistered scans
+    const alreadyLogged = scannerUnregisteredScans.some((u) => u.waybill === cleanCode);
+    if (!alreadyLogged) {
+      scannerUnregisteredScans.unshift({ waybill: cleanCode, time: timeString });
+      updateUnknownScansDrawer();
+    }
+
+    renderNotFoundCard(cleanCode, timeString);
+    addRecentScan(cleanCode, 'dot-unknown', 'TIDAK DITEMUKAN', '-', timeString);
+  }
+
+  // Bersihkan input dan siap tembakan berikutnya
+  if (scannerBarcodeInput) {
+    scannerBarcodeInput.value = '';
+    scannerBarcodeInput.focus();
+  }
+  if (scannerClearInputBtn) scannerClearInputBtn.classList.add('hidden');
+}
+
+// Render Kartu Waybill Ditemukan
+function renderFoundCard(item, ageDays, badgeClass, borderClass, badgeLabel, updateMessage = null) {
+  if (!scannerDynamicCard) return;
+
+  const updateBannerHtml = updateMessage
+    ? `<div style="background: rgba(16, 185, 129, 0.2); border-bottom: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; font-weight: 700; font-size: 0.85rem; padding: 10px 18px; display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>${escapeTlcHtml(updateMessage)}</span>
+       </div>`
+    : '';
+
+  scannerDynamicCard.innerHTML = `
+    <div class="scan-card-found ${borderClass}">
+      ${updateBannerHtml}
+      <div class="scan-card-header">
+        <div class="scan-card-waybill-wrap">
+          <span class="scan-card-waybill-label">Waybill:</span>
+          <span class="scan-card-waybill">${escapeTlcHtml(item.waybill || '-')}</span>
+        </div>
+        <span class="fifo-badge ${badgeClass}">
+          ● ${badgeLabel}
+        </span>
+      </div>
+      <div class="scan-card-grid">
+        <div class="scan-data-item">
+          <span class="scan-data-label">Umur Paket</span>
+          <span class="scan-data-value highlight-age">${ageDays} Hari</span>
+        </div>
+        <div class="scan-data-item">
+          <span class="scan-data-label">Tanggal Masuk</span>
+          <span class="scan-data-value">${formatDate(item.tanggal)}</span>
+        </div>
+        <div class="scan-data-item">
+          <span class="scan-data-label">Outlet Asal</span>
+          <span class="scan-data-value">${escapeTlcHtml(item.outlet || '-')}</span>
+        </div>
+        <div class="scan-data-item">
+          <span class="scan-data-label">TLC / Hub</span>
+          <span class="scan-data-value">${escapeTlcHtml(item.tlc || '-')}</span>
+        </div>
+        <div class="scan-data-item">
+          <span class="scan-data-label">Aksi Saat Ini</span>
+          <span class="scan-data-value" style="color: #38bdf8;">${escapeTlcHtml(item.aksi || '-')}</span>
+        </div>
+        <div class="scan-data-item">
+          <span class="scan-data-label">Status</span>
+          <span class="scan-data-value">${escapeTlcHtml(item.status || 'Open')}</span>
+        </div>
+        <div class="scan-data-item" style="grid-column: 1 / -1;">
+          <span class="scan-data-label">Nama Barang</span>
+          <span class="scan-data-value">${escapeTlcHtml(item.nama_barang || '-')}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Render Kartu Waybill Tidak Ditemukan (Merah Kontras)
+function renderNotFoundCard(waybill, timeString) {
+  if (!scannerDynamicCard) return;
+
+  scannerDynamicCard.innerHTML = `
+    <div class="scan-card-not-found">
+      <div class="not-found-header">
+        <div class="not-found-icon-pulse">!</div>
+        <div class="not-found-title-wrap">
+          <h4>DATA WAYBILL TIDAK DITEMUKAN</h4>
+          <p>Paket ini belum tercatat dalam database Monitoring FIFO saat ini.</p>
+        </div>
+      </div>
+
+      <div class="not-found-waybill-box">
+        <span class="scanned-wb-code">${escapeTlcHtml(waybill)}</span>
+        <span class="scanned-wb-time">Waktu Scan: ${timeString}</span>
+      </div>
+
+      <div class="not-found-actions">
+        <button type="button" class="btn-quick-register" onclick="openQuickAddModal('${escapeTlcHtml(waybill)}')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span>+ Daftarkan Paket Ini Sekarang</span>
+        </button>
+        <button type="button" class="btn-note-unregistered" onclick="document.getElementById('unknownScansDrawer')?.classList.remove('hidden')">
+          Lihat Riwayat Resi Nyasar (${scannerUnregisteredScans.length})
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Tambahkan ke Riwayat Scan Sesi Ini
+function addRecentScan(waybill, dotClass, label, age, time) {
+  scannerRecentScans.unshift({ waybill, dotClass, label, age, time });
+  if (scannerRecentScans.length > 15) scannerRecentScans.pop();
+
+  if (recentScanCount) recentScanCount.textContent = `${scannerRecentScans.length} item`;
+  if (!scannerRecentList) return;
+
+  let html = '';
+  scannerRecentScans.forEach((scan) => {
+    html += `
+      <div class="recent-scan-chip" onclick="handleScannedWaybill('${escapeTlcHtml(scan.waybill)}')">
+        <span class="chip-dot ${scan.dotClass}"></span>
+        <span>${escapeTlcHtml(scan.waybill)}</span>
+      </div>
+    `;
+  });
+  scannerRecentList.innerHTML = html;
+}
+
+// Update Drawer Resi Tidak Ditemukan
+function updateUnknownScansDrawer() {
+  if (unknownScansCounter) unknownScansCounter.textContent = scannerUnregisteredScans.length;
+  if (!unknownScansList) return;
+
+  if (scannerUnregisteredScans.length === 0) {
+    unknownScansList.innerHTML = '<div class="unknown-empty-state">Belum ada waybill tidak ditemukan.</div>';
+    return;
+  }
+
+  let html = '';
+  scannerUnregisteredScans.forEach((u) => {
+    html += `
+      <div class="unknown-item-row">
+        <span class="unknown-item-wb">${escapeTlcHtml(u.waybill)}</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="unknown-item-time">${u.time}</span>
+          <button type="button" class="small-btn primary-btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="openQuickAddModal('${escapeTlcHtml(u.waybill)}')">+ Input</button>
+        </div>
+      </div>
+    `;
+  });
+  unknownScansList.innerHTML = html;
+}
+
+// Global Hardware Wedge Scanner Listener
+let wedgeBuffer = '';
+let lastKeypressTime = 0;
+const WEDGE_MAX_CHAR_INTERVAL_MS = 45; // Hardware laser scanner PDA mengetik < 35ms per karakter
+
+window.addEventListener('keydown', (e) => {
+  const currentTime = Date.now();
+  const timeDiff = currentTime - lastKeypressTime;
+  lastKeypressTime = currentTime;
+
+  // Jika tombol Enter ditekan
+  if (e.key === 'Enter') {
+    if (wedgeBuffer.length >= 3) {
+      const scannedCode = wedgeBuffer.trim();
+      wedgeBuffer = '';
+      if (scannedCode) {
+        e.preventDefault();
+        // Jika modal belum terbuka, buka otomatis
+        if (scannerModal && scannerModal.classList.contains('hidden')) {
+          openScannerModal();
+        }
+        handleScannedWaybill(scannedCode);
+        return;
+      }
+    }
+    wedgeBuffer = '';
+    return;
+  }
+
+  // Karakter yang dapat dicetak (printable characters)
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (timeDiff <= WEDGE_MAX_CHAR_INTERVAL_MS || wedgeBuffer.length === 0) {
+      wedgeBuffer += e.key;
+    } else {
+      // Jeda waktu lambat (ketikan manusia normal) -> mulai buffer baru
+      wedgeBuffer = e.key;
+    }
+  } else if (e.key !== 'Shift') {
+    wedgeBuffer = '';
+  }
+});
+
+// Barcode Form Input Listener
+if (scannerBarcodeForm) {
+  scannerBarcodeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!scannerBarcodeInput) return;
+    const value = scannerBarcodeInput.value.trim();
+    if (value) handleScannedWaybill(value);
+  });
+}
+
+if (scannerBarcodeInput) {
+  scannerBarcodeInput.addEventListener('input', () => {
+    if (scannerClearInputBtn) {
+      scannerClearInputBtn.classList.toggle('hidden', !scannerBarcodeInput.value.trim());
+    }
+  });
+}
+
+if (scannerClearInputBtn) {
+  scannerClearInputBtn.addEventListener('click', () => {
+    if (scannerBarcodeInput) {
+      scannerBarcodeInput.value = '';
+      scannerBarcodeInput.focus();
+    }
+    scannerClearInputBtn.classList.add('hidden');
+  });
+}
+
+// Drawer Toggle Handlers
+if (toggleUnknownDrawerBtn) {
+  toggleUnknownDrawerBtn.addEventListener('click', () => {
+    if (unknownScansDrawer) unknownScansDrawer.classList.toggle('hidden');
+  });
+}
+if (closeUnknownDrawerBtn) {
+  closeUnknownDrawerBtn.addEventListener('click', () => {
+    if (unknownScansDrawer) unknownScansDrawer.classList.add('hidden');
+  });
+}
+if (copyUnknownScansBtn) {
+  copyUnknownScansBtn.addEventListener('click', () => {
+    if (scannerUnregisteredScans.length === 0) return alert('Tidak ada nomor resi untuk disalin.');
+    const textToCopy = scannerUnregisteredScans.map((u) => u.waybill).join('\n');
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert(`Berhasil menyalin ${scannerUnregisteredScans.length} nomor resi ke clipboard!`);
+    }).catch(() => {
+      alert('Gagal menyalin. Silakan salin manual.');
+    });
+  });
+}
+if (clearUnknownScansBtn) {
+  clearUnknownScansBtn.addEventListener('click', () => {
+    if (confirm('Bersihkan riwayat resi tidak terdaftar?')) {
+      scannerUnregisteredScans = [];
+      updateUnknownScansDrawer();
+    }
+  });
+}
+
+// Form Submit: Input Cepat Waybill ke Database
+if (scannerQuickAddForm) {
+  scannerQuickAddForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = getToken();
+    if (!token) return logout();
+
+    const payload = {
+      waybill: quickAddWaybill ? quickAddWaybill.value.trim() : '',
+      tanggal: quickAddTanggal ? quickAddTanggal.value.trim() : '',
+      outlet: quickAddOutlet ? quickAddOutlet.value.trim() : '',
+      tlc: quickAddTlc ? quickAddTlc.value.trim() : '-',
+      nama_barang: quickAddNamaBarang ? quickAddNamaBarang.value.trim() : '-',
+      aksi: quickAddAksi ? quickAddAksi.value.trim() : 'Dalam Gudang',
+      status: 'Open',
+      stuck: '0',
+    };
+
+    if (!payload.waybill || !payload.tanggal || !payload.outlet) {
+      return alert('Waybill, tanggal, dan outlet wajib diisi!');
+    }
+
+    try {
+      const response = await fetch('/api/monitoring', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const resData = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        return alert(resData.error || 'Gagal mendaftarkan data monitoring.');
+      }
+
+      // Hapus dari daftar resi unregistered jika sebelumnya tercatat
+      scannerUnregisteredScans = scannerUnregisteredScans.filter((u) => u.waybill !== payload.waybill);
+      updateUnknownScansDrawer();
+
+      closeQuickAddModal();
+      await fetchMonitoring();
+      playScannerSound('success');
+      triggerHaptic('success');
+
+      // Langsung proses resi yang baru didaftarkan di scanner
+      handleScannedWaybill(payload.waybill);
+    } catch (err) {
+      console.error('Submit quick add error:', err);
+      alert('Terjadi kesalahan jaringan saat menyimpan data.');
+    }
+  });
+}
+
+// Modal Trigger Buttons
+if (openScannerBtn) openScannerBtn.addEventListener('click', openScannerModal);
+if (openScannerBtnQuick) openScannerBtnQuick.addEventListener('click', openScannerModal);
+if (navScanner) navScanner.addEventListener('click', openScannerModal);
+if (closeScannerModalBtn) closeScannerModalBtn.addEventListener('click', closeScannerModal);
+if (closeQuickAddModalBtn) closeQuickAddModalBtn.addEventListener('click', closeQuickAddModal);
+if (cancelQuickAddBtn) cancelQuickAddBtn.addEventListener('click', closeQuickAddModal);
+
+// Tutup Scanner ketika klik overlay backdrop atau tekan ESC
+if (scannerModal) {
+  scannerModal.addEventListener('click', (e) => {
+    if (e.target === scannerModal) closeScannerModal();
+  });
+}
+if (scannerQuickAddModal) {
+  scannerQuickAddModal.addEventListener('click', (e) => {
+    if (e.target === scannerQuickAddModal) closeQuickAddModal();
+  });
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (scannerQuickAddModal && !scannerQuickAddModal.classList.contains('hidden')) {
+      closeQuickAddModal();
+    } else if (scannerModal && !scannerModal.classList.contains('hidden')) {
+      closeScannerModal();
+    }
+  }
+});
+
+// ==========================================
+// CAMERA SCANNER ALTERNATIVE (MOBILE / TABLET)
+// ==========================================
+async function startCameraScanner() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Browser perangkat ini tidak mendukung akses kamera.');
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    if (scannerVideoElement) {
+      scannerVideoElement.srcObject = cameraStream;
+      await scannerVideoElement.play();
+      cameraDetectActive = true;
+      if (scannerCameraArea) scannerCameraArea.classList.remove('hidden');
+      if (scannerCameraToggleBtn) scannerCameraToggleBtn.classList.add('active');
+      initBarcodeDetection(scannerVideoElement);
+    }
+  } catch (err) {
+    console.error('Camera access error:', err);
+    alert('Gagal mengakses kamera: ' + (err.message || 'Izin kamera ditolak.'));
+  }
+}
+
+function stopCameraScanner() {
+  cameraDetectActive = false;
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+  if (scannerVideoElement) {
+    scannerVideoElement.srcObject = null;
+  }
+  if (scannerCameraArea) scannerCameraArea.classList.add('hidden');
+  if (scannerCameraToggleBtn) scannerCameraToggleBtn.classList.remove('active');
+}
+
+async function initBarcodeDetection(videoEl) {
+  if (!window.BarcodeDetector) {
+    console.warn('BarcodeDetector API tidak didukung langsung oleh browser ini.');
+    return;
+  }
+
+  try {
+    const detector = new window.BarcodeDetector({
+      formats: ['code_128', 'code_39', 'qr_code', 'ean_13', 'upc_a'],
+    });
+
+    const scanFrame = async () => {
+      if (!cameraDetectActive) return;
+      try {
+        if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+          const barcodes = await detector.detect(videoEl);
+          if (barcodes && barcodes.length > 0) {
+            const raw = barcodes[0].rawValue;
+            const now = Date.now();
+            if (raw && (raw !== lastCameraScannedCode || now - lastCameraScanTime > 2000)) {
+              lastCameraScannedCode = raw;
+              lastCameraScanTime = now;
+              handleScannedWaybill(raw);
+            }
+          }
+        }
+      } catch (detErr) {}
+      if (cameraDetectActive) {
+        requestAnimationFrame(scanFrame);
+      }
+    };
+    requestAnimationFrame(scanFrame);
+  } catch (err) {
+    console.error('BarcodeDetector initialization error:', err);
+  }
+}
+
+if (scannerCameraToggleBtn) {
+  scannerCameraToggleBtn.addEventListener('click', () => {
+    if (cameraStream) {
+      stopCameraScanner();
+    } else {
+      startCameraScanner();
+    }
+  });
+}
+if (stopCameraBtn) stopCameraBtn.addEventListener('click', stopCameraScanner);
 
 loadLogo();
 loadBackground();

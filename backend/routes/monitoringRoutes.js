@@ -1,7 +1,7 @@
 const express = require('express');
 const monitoringController = require('../controllers/monitoringController');
 const { validateMonitoringPayload } = require('../middleware/monitoringValidation');
-const { authMiddleware, requirePermission } = require('../middleware/auth');
+const { authMiddleware, requirePermission, requireAnyPermission } = require('../middleware/auth');
 const { PERMISSION_KEYS } = require('../services/permissionsService');
 
 const router = express.Router();
@@ -13,7 +13,7 @@ router.delete('/monitoring/history', authMiddleware, requirePermission(PERMISSIO
 
 router.get('/monitoring/archive', authMiddleware, requirePermission(PERMISSION_KEYS.VIEW_HISTORY), monitoringController.getMonitoringArchive);
 
-router.post('/monitoring', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), validateMonitoringPayload, monitoringController.createMonitoring);
+router.post('/monitoring', authMiddleware, requireAnyPermission(PERMISSION_KEYS.EDIT_MONITORING, PERMISSION_KEYS.IMPORT_BULK), validateMonitoringPayload, monitoringController.createMonitoring);
 router.post('/monitoring/import', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), monitoringController.importMonitoringBulk);
 
 router.patch('/monitoring/bulk-update', authMiddleware, requirePermission(PERMISSION_KEYS.EDIT_MONITORING), monitoringController.bulkUpdateMonitoring);

@@ -107,4 +107,34 @@ function requirePermission(...permissionKeys) {
   };
 }
 
-module.exports = { authMiddleware, requireRole, requirePermission };
+function requireAnyPermission(...permissionKeys) {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Sesi tidak ditemukan' });
+    }
+    if (req.user.role === 'super_admin') {
+      req.permissionKeys = permissionKeys;
+      return next();
+    }
+    if (!permissionKeys.length) {
+      return next();
+    }
+
+    try {
+      const checks = await Promise.all(
+        permissionKeys.map((key) => permissionsService.userHasPermission(req.user.id, req.user.role, key))
+      );
+      const anyGranted = checks.some(Boolean);
+      if (!anyGranted) {
+        return res.status(403).json({ error: 'Akses ditolak. Izin Anda tidak mencukupi.' });
+      }
+      req.permissionKeys = permissionKeys;
+      next();
+    } catch (error) {
+      console.error('requireAnyPermission check error:', error.message);
+      return res.status(500).json({ error: 'Gagal memeriksa izin' });
+    }
+  };
+}
+
+module.exports = { authMiddleware, requireRole, requirePermission, requireAnyPermission };

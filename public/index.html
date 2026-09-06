@@ -166,6 +166,22 @@
             </span>
             <span class="nav-text">History Update</span>
           </a>
+          <a href="javascript:void(0)" class="nav-link nav-scanner-trigger" id="navScanner">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="8" x2="7" y2="16"/>
+                <line x1="10" y1="8" x2="10" y2="16"/>
+                <line x1="14" y1="8" x2="14" y2="16"/>
+                <line x1="17" y1="8" x2="17" y2="16"/>
+              </svg>
+            </span>
+            <span class="nav-text">Scanner PDA</span>
+            <span class="nav-pda-tag">PDA</span>
+          </a>
 
           <div class="nav-label-group nav-admin-item">ADMINISTRASI</div>
           <a href="#/users" class="nav-link nav-admin-item" id="navUsers">
@@ -354,6 +370,22 @@
                   </span>
                   <span class="btn-text-main">Template CSV</span>
                 </button>
+                <button type="button" class="btn-executive btn-executive-scanner" id="openScannerBtn" title="Buka Scanner Barcode / PDA Fisik">
+                  <span class="btn-icon-circle scanner-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                      <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                      <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                      <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                      <line x1="7" y1="8" x2="7" y2="16"/>
+                      <line x1="10" y1="8" x2="10" y2="16"/>
+                      <line x1="14" y1="8" x2="14" y2="16"/>
+                      <line x1="17" y1="8" x2="17" y2="16"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Scanner PDA</span>
+                  <span class="scanner-live-tag">● READY</span>
+                </button>
               </div>
               <input id="bulkImportInput" type="file" accept=".csv,.txt,.tsv" hidden />
             </div>
@@ -498,9 +530,22 @@
           <!-- VIEW 3: HISTORY -->
           <div id="viewHistory" class="view-page hidden">
             <section id="historyPanel" class="panel audit-panel">
-              <div class="panel-header">
-                <h2>Riwayat Pembaruan</h2>
-                <div class="panel-actions">
+              <div class="panel-header history-panel-header">
+                <div class="history-header-titles">
+                  <div class="history-header-icon-box">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <div class="history-header-text">
+                    <span class="history-header-eyebrow">LOG AKTIVITAS &amp; ARSIP</span>
+                    <h2 class="history-header-title">Riwayat Pembaruan</h2>
+                  </div>
+                  <span id="historyCountBadge" class="history-count-badge">0 riwayat</span>
+                </div>
+                <div class="panel-actions history-panel-actions">
+                  <input id="historySearchInput" type="text" class="history-search-input" placeholder="Cari waybill / outlet / status / updater..." />
                   <button type="button" class="btn-danger-modern" id="deleteHistoryBtn">
                     <span class="btn-danger-icon">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -514,11 +559,11 @@
                   </button>
                 </div>
               </div>
-              <div class="table-wrap">
+              <div class="table-wrap history-table-wrap">
                 <table class="history-table">
                   <thead>
                     <tr>
-                      <th>Waybill</th>
+                      <th class="history-th-waybill">Waybill</th>
                       <th>Tanggal</th>
                       <th>Outlet</th>
                       <th>Status</th>
@@ -676,8 +721,22 @@
           <div id="viewSettings" class="view-page hidden">
             <section id="adminControlPanel" class="panel admin-panel">
               <div class="admin-toolbar-header">
-                <span class="admin-toolbar-badge">🛠️</span>
-                <span>Pengaturan Sistem & Admin</span>
+                <div class="admin-toolbar-title-wrap">
+                  <div class="admin-toolbar-icon-box">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </div>
+                  <div class="admin-toolbar-text-group">
+                    <span class="admin-toolbar-eyebrow">PUSAT KONTROL &amp; BRANDING</span>
+                    <h3 class="admin-toolbar-title">Pengaturan Sistem &amp; Admin</h3>
+                  </div>
+                </div>
+                <div class="admin-toolbar-badge-modern">
+                  <span class="admin-badge-pulse"></span>
+                  <span>Panel Super Admin</span>
+                </div>
               </div>
 
               <div class="settings-shortcuts-bar">
@@ -1005,6 +1064,281 @@
         <h3 id="appAlertTitle">Informasi</h3>
         <p id="appAlertMessage"></p>
         <button id="appAlertClose" class="primary-btn app-alert-close" type="button">Mengerti</button>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL SCANNER BARCODE / PDA (HARDWARE TRIGGER) -->
+    <!-- ============================================ -->
+    <div id="scannerModal" class="modal hidden scanner-modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="scannerModalTitle">
+      <div class="scanner-modal-card">
+        <!-- HEADER SCANNER -->
+        <div class="scanner-header">
+          <div class="scanner-brand-wrap">
+            <div class="scanner-brand-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="8" x2="7" y2="16"/>
+                <line x1="10" y1="8" x2="10" y2="16"/>
+                <line x1="14" y1="8" x2="14" y2="16"/>
+                <line x1="17" y1="8" x2="17" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <div class="scanner-title-row">
+                <h3 id="scannerModalTitle">Scanner Barcode / PDA</h3>
+                <span class="scanner-hardware-badge" id="scannerHwStatus" title="Mendukung scan otomatis lewat tombol laser fisik PDA">
+                  <span class="pulse-dot"></span> Laser Ready
+                </span>
+              </div>
+              <p class="scanner-subtext">Arahkan laser PDA atau gunakan kamera untuk membaca waybill</p>
+            </div>
+          </div>
+
+          <div class="scanner-header-actions">
+            <!-- MUTE / AUDIO TOGGLE -->
+            <button type="button" id="scannerSoundToggleBtn" class="scanner-tool-btn" title="Nyalakan / Matikan Suara Bip Audio" aria-label="Toggle Suara Bip">
+              <svg class="sound-icon-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+              <svg class="sound-icon-off hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <line x1="22" y1="9" x2="16" y2="15"/>
+                <line x1="16" y1="9" x2="22" y2="15"/>
+              </svg>
+            </button>
+
+            <!-- CAMERA TOGGLE -->
+            <button type="button" id="scannerCameraToggleBtn" class="scanner-tool-btn" title="Aktifkan Pemindai Kamera Ponsel / Tablet" aria-label="Toggle Kamera">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                <circle cx="12" cy="13" r="3"/>
+              </svg>
+            </button>
+
+            <!-- CLOSE BUTTON -->
+            <button type="button" id="closeScannerModalBtn" class="scanner-close-btn" aria-label="Tutup Scanner">✕</button>
+          </div>
+        </div>
+
+        <!-- MODE TABS -->
+        <div class="scanner-mode-bar">
+          <button type="button" id="modeCheckBtn" class="scanner-mode-btn active" data-mode="check">
+            <span class="mode-icon">🔍</span>
+            <span class="mode-title">Mode 1: Cek Status FIFO</span>
+          </button>
+          <button type="button" id="modeUpdateBtn" class="scanner-mode-btn" data-mode="update">
+            <span class="mode-icon">⚡</span>
+            <span class="mode-title">Mode 2: Scan &amp; Update Aksi</span>
+          </button>
+        </div>
+
+        <!-- MODE 2 CONFIGURATION BAR (VISIBLE WHEN IN UPDATE MODE) -->
+        <div id="scannerUpdateConfigBar" class="scanner-update-config-bar hidden">
+          <div class="config-bar-inner">
+            <div class="config-action-choice">
+              <label for="scannerActionSelect" class="config-label">
+                <span class="label-badge">PILIH AKSI TARGET:</span>
+              </label>
+              <select id="scannerActionSelect" class="scanner-dropdown-select">
+                <option value="Sudah Scan Kirim" selected>Sudah Scan Kirim</option>
+                <option value="Dalam Gudang">Dalam Gudang</option>
+                <option value="Miss Route">Miss Route</option>
+                <option value="Crosslabel">Crosslabel</option>
+                <option value="Penangguhan">Penangguhan</option>
+                <option value="Investigasi">Investigasi</option>
+              </select>
+            </div>
+            <div class="config-counter-pill">
+              <span class="counter-label">Berhasil Diupdate:</span>
+              <strong id="scannerBatchCount" class="counter-value">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- CAMERA VIEWFINDER (TOGGLEABLE) -->
+        <div id="scannerCameraArea" class="scanner-camera-area hidden">
+          <div class="scanner-camera-box">
+            <video id="scannerVideoElement" autoplay playsinline muted></video>
+            <div class="camera-scan-reticle">
+              <div class="reticle-corner corner-tl"></div>
+              <div class="reticle-corner corner-tr"></div>
+              <div class="reticle-corner corner-bl"></div>
+              <div class="reticle-corner corner-br"></div>
+              <div class="reticle-laser-line"></div>
+            </div>
+            <div class="camera-overlay-note">Arahkan barcode / QR code ke dalam kotak</div>
+            <button type="button" id="stopCameraBtn" class="camera-close-action">Matikan Kamera</button>
+          </div>
+        </div>
+
+        <!-- SCANNER INPUT (VISIBLE & FOCUSABLE FOR PDA KEYBOARD WEDGE) -->
+        <div class="scanner-input-container">
+          <form id="scannerBarcodeForm" class="scanner-input-form" onsubmit="return false;">
+            <div class="scanner-input-wrapper">
+              <span class="scanner-input-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                  <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                  <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                  <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                  <line x1="7" y1="8" x2="7" y2="16"/>
+                  <line x1="10" y1="8" x2="10" y2="16"/>
+                  <line x1="14" y1="8" x2="14" y2="16"/>
+                  <line x1="17" y1="8" x2="17" y2="16"/>
+                </svg>
+              </span>
+              <input
+                type="text"
+                id="scannerBarcodeInput"
+                class="scanner-barcode-input"
+                placeholder="Tembak barcode laser PDA atau ketik resi disini..."
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+              <button type="button" id="scannerClearInputBtn" class="scanner-clear-btn hidden" aria-label="Bersihkan Input">✕</button>
+              <button type="submit" id="scannerSubmitBtn" class="scanner-submit-btn">Proses</button>
+            </div>
+          </form>
+          <div class="scanner-guidance-pill">
+            <span class="guide-laser-dot"></span>
+            <span>Laser PDA Wedge Siap: Tembak fisik laser PDA langsung terbaca otomatis tanpa klik.</span>
+          </div>
+        </div>
+
+        <!-- SCAN RESULT DISPLAY AREA -->
+        <div id="scannerResultArea" class="scanner-result-area">
+          <!-- INITIAL IDLE STATE -->
+          <div id="scannerIdleState" class="scanner-idle-card">
+            <div class="idle-radar-pulse">
+              <div class="radar-circle"></div>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="8" x2="7" y2="16"/>
+                <line x1="10" y1="8" x2="10" y2="16"/>
+                <line x1="14" y1="8" x2="14" y2="16"/>
+                <line x1="17" y1="8" x2="17" y2="16"/>
+              </svg>
+            </div>
+            <h4>Menunggu Tembakan Scanner...</h4>
+            <p>Arahkan laser scanner PDA ke barcode waybill / paket untuk melihat status FIFO atau memperbarui aksi secara instan.</p>
+          </div>
+
+          <!-- DYNAMIC RESULT CARD CONTAINER (FILLED VIA JAVASCRIPT) -->
+          <div id="scannerDynamicCard" class="scanner-dynamic-card hidden"></div>
+        </div>
+
+        <!-- RECENT SCANS STRIP -->
+        <div class="scanner-recent-section">
+          <div class="recent-header">
+            <span class="recent-title">Riwayat Scan Sesi Ini</span>
+            <span id="recentScanCount" class="recent-badge">0 item</span>
+          </div>
+          <div id="scannerRecentList" class="scanner-recent-list">
+            <span class="recent-empty-hint">Belum ada waybill yang di-scan.</span>
+          </div>
+        </div>
+
+        <!-- FOOTER: UNKNOWN WAYBILL DRAWER TRIGGER -->
+        <div class="scanner-footer-bar">
+          <button type="button" id="toggleUnknownDrawerBtn" class="scanner-drawer-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>Daftar Waybill Belum Terdaftar (<strong id="unknownScansCounter">0</strong>)</span>
+          </button>
+        </div>
+
+        <!-- UNREGISTERED DRAWER POPUP -->
+        <div id="unknownScansDrawer" class="unknown-scans-drawer hidden">
+          <div class="drawer-header">
+            <h4>Waybill Tidak Ditemukan / Belum Terdaftar</h4>
+            <button type="button" id="closeUnknownDrawerBtn" class="close-btn-mini">✕</button>
+          </div>
+          <div class="drawer-body">
+            <p class="drawer-tip">Daftar resi di bawah adalah hasil scan yang tidak ditemukan di sistem. Anda dapat menyalin semuanya untuk laporan ke supervisor.</p>
+            <div id="unknownScansList" class="unknown-scans-list">
+              <div class="unknown-empty-state">Belum ada waybill tidak ditemukan.</div>
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" id="copyUnknownScansBtn" class="secondary-btn small-btn">Salin Semua Nomor Resi</button>
+            <button type="button" id="clearUnknownScansBtn" class="secondary-btn small-btn text-danger">Bersihkan Daftar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL INPUT CEPAT WAYBILL (DARI SCANNER PDA) -->
+    <!-- ============================================ -->
+    <div id="scannerQuickAddModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="quickAddTitle">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">INPUT CEPAT WAYBILL</span>
+            <h3 id="quickAddTitle">Daftarkan Waybill ke Monitoring</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeQuickAddModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="scannerQuickAddForm">
+          <div class="form-grid">
+            <label>
+              <span>Nomor Waybill *</span>
+              <input type="text" id="quickAddWaybill" name="waybill" placeholder="WBxxxxxxxx" required readonly />
+            </label>
+
+            <label>
+              <span>Tanggal Masuk *</span>
+              <input type="date" id="quickAddTanggal" name="tanggal" required />
+            </label>
+
+            <label>
+              <span>Outlet Asal / Gudang *</span>
+              <input type="text" id="quickAddOutlet" name="outlet" placeholder="Contoh: Gudang Utama / Jakarta" required />
+            </label>
+
+            <label>
+              <span>TLC / Hub Tujuan</span>
+              <input type="text" id="quickAddTlc" name="tlc" placeholder="Contoh: TLC-JKT / Hub Barat" />
+            </label>
+
+            <label>
+              <span>Nama Barang</span>
+              <input type="text" id="quickAddNamaBarang" name="nama_barang" placeholder="Contoh: Paket Elektronik / Pakaian" />
+            </label>
+
+            <label>
+              <span>Aksi Awal</span>
+              <select id="quickAddAksi" name="aksi">
+                <option value="Dalam Gudang" selected>Dalam Gudang</option>
+                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                <option value="Miss Route">Miss Route</option>
+                <option value="Crosslabel">Crosslabel</option>
+                <option value="Penangguhan">Penangguhan</option>
+                <option value="Investigasi">Investigasi</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelQuickAddBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="submitQuickAddBtn">Daftarkan Sekarang</button>
+          </div>
+        </form>
       </div>
     </div>
   </body>
