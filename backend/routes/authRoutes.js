@@ -24,11 +24,17 @@ router.post('/users/:id/promote-admin', authMiddleware, requireRole('super_admin
 router.get('/permissions/catalog', authMiddleware, requirePermission(PERMISSION_KEYS.ACCESS_CONFIG), authController.getPermissionCatalog);
 
 router.get('/logo', authController.getLogo);
+router.get('/logo/:type', authController.getLogo);
 router.put('/logo', authMiddleware, requireRole('super_admin'), (req, res, next) => { req.upload.single('logo')(req, res, next); }, authController.updateLogo);
+router.put('/logo/:type', authMiddleware, requireRole('super_admin'), (req, res, next) => { req.upload.single('logo')(req, res, next); }, authController.updateLogo);
+router.patch('/logo/:type/size', authMiddleware, requireRole('super_admin'), authController.updateLogoSize);
+router.patch('/logo/size', authMiddleware, requireRole('super_admin'), authController.updateLogoSize);
 router.delete('/logo', authMiddleware, requireRole('super_admin'), authController.deleteAppLogo);
+router.delete('/logo/:type', authMiddleware, requireRole('super_admin'), authController.deleteAppLogo);
 
 router.get('/background', authController.getBackground);
 router.put('/background', authMiddleware, requireRole('super_admin'), (req, res, next) => { req.upload.single('background')(req, res, next); }, authController.updateBackground);
+router.patch('/background/opacity', authMiddleware, requireRole('super_admin'), authController.updateBackgroundOpacity);
 router.delete('/background', authMiddleware, requireRole('super_admin'), authController.deleteAppBackground);
 
 router.get('/debug/users', authMiddleware, authController.debugUsers);

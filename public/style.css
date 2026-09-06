@@ -172,14 +172,33 @@ h1, h2, h3, h4, h5, h6 {
 
 .login-logo-img {
   display: block;
-  width: min(100%, 320px);
+  width: min(100%, 420px);
   height: auto;
-  max-height: 140px;
+  max-height: var(--login-logo-size, 140px);
   object-fit: contain;
   border-radius: 0;
   background: transparent;
   border: none;
   padding: 0;
+  transition: max-height 0.15s ease, max-width 0.15s ease;
+}
+
+/* UKURAN PRESET LOGO LOGIN */
+.login-logo-img.login-logo-size-compact {
+  max-height: 110px;
+  max-width: 240px;
+}
+.login-logo-img.login-logo-size-normal {
+  max-height: 150px;
+  max-width: 320px;
+}
+.login-logo-img.login-logo-size-large {
+  max-height: 180px;
+  max-width: 380px;
+}
+.login-logo-img.login-logo-size-jumbo {
+  max-height: 220px;
+  max-width: 440px;
 }
 
 .auth-logo-text {
@@ -492,9 +511,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar-logo-img {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+  width: var(--sidebar-logo-size, 44px);
+  height: var(--sidebar-logo-size, 44px);
+  min-width: var(--sidebar-logo-size, 44px);
   border-radius: 12px;
   object-fit: contain;
   border: 1px solid rgba(96, 165, 250, 0.35);
@@ -504,6 +523,7 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
   z-index: 2;
   flex-shrink: 0;
+  transition: width 0.15s ease, height 0.15s ease, max-height 0.15s ease;
 }
 
 /* TATA LETAK KHUSUS LOGO PANJANG / BANNER PERUSAHAAN (J&T Cargo dsb) */
@@ -524,8 +544,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar-brand.brand-wide-layout .sidebar-logo-img {
   width: auto;
-  max-width: 195px;
-  max-height: 42px;
+  max-width: 210px;
+  max-height: var(--sidebar-logo-size, 44px);
   height: auto;
   object-fit: contain;
   border: none;
@@ -1092,6 +1112,12 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(168, 85, 247, 0.35);
 }
 
+.media-header-icon.icon-emerald {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
 .media-card-header h4 {
   margin: 0;
   font-size: 1rem;
@@ -1161,6 +1187,111 @@ h1, h2, h3, h4, h5, h6 {
   color: #94a3b8;
   border: 1px solid rgba(255, 255, 255, 0.12);
   letter-spacing: 0.03em;
+}
+
+.media-size-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.media-size-control label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.01em;
+}
+
+.media-select-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.media-select-input:focus,
+.media-select-input:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.media-select-input option {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+.media-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.media-slider-header label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.media-badge-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.18);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.media-badge-val.badge-blue {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.media-badge-val.badge-emerald {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.media-range-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.25);
+  outline: none;
+  accent-color: #a855f7;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.media-range-slider.slider-blue {
+  accent-color: #3b82f6;
+}
+
+.media-range-slider.slider-emerald {
+  accent-color: #10b981;
+}
+
+.media-slider-hint {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .media-card-controls {

@@ -273,17 +273,27 @@ module.exports = {
   updateCredentials,
   getLogo,
   updateLogo,
+  updateLogoSize,
   deleteAppLogo,
   getBackground,
   updateBackground,
+  updateBackgroundOpacity,
   deleteAppBackground,
 };
 
 async function getLogo(req, res) {
   try {
-    const logo = await require('../services/logoService').getLogo();
-    if (!logo || !logo.data) return res.json({ logo: null });
-    res.json({ logo });
+    const type = req.params.type || req.query.type;
+    if (type) {
+      const logo = await require('../services/logoService').getLogo(type);
+      return res.json({ logo });
+    }
+    const allLogos = await require('../services/logoService').getAllLogos();
+    const primaryLogo = allLogos.sidebar || allLogos.login || null;
+    res.json({
+      logo: primaryLogo,
+      logos: allLogos
+    });
   } catch (error) {
     console.error('Controller getLogo error:', error);
     res.status(500).json({ error: 'Gagal memuat logo' });
@@ -293,20 +303,35 @@ async function getLogo(req, res) {
 async function updateLogo(req, res) {
   try {
     if (!req.file) return res.status(400).json({ error: 'File logo wajib diupload.' });
+    const type = req.params.type || req.body.type || 'sidebar';
+    const size = req.body.size_mode || req.body.size || 'normal';
     const base64 = req.file.buffer.toString('base64');
     const mime = req.file.mimetype || 'image/png';
-    await require('../services/logoService').saveLogo(base64, mime);
-    res.json({ message: 'Logo berhasil diperbarui.' });
+    await require('../services/logoService').saveLogo(type, base64, mime, size);
+    res.json({ message: `Logo ${type} berhasil diperbarui.` });
   } catch (error) {
     console.error('Controller updateLogo error:', error);
     res.status(500).json({ error: 'Gagal menyimpan logo' });
   }
 }
 
+async function updateLogoSize(req, res) {
+  try {
+    const type = req.params.type || req.body.type || 'sidebar';
+    const size = req.body.size_mode || req.body.size || 'normal';
+    await require('../services/logoService').saveLogoSize(type, size);
+    res.json({ message: `Ukuran logo ${type} berhasil diperbarui.` });
+  } catch (error) {
+    console.error('Controller updateLogoSize error:', error);
+    res.status(500).json({ error: 'Gagal memperbarui ukuran logo' });
+  }
+}
+
 async function deleteAppLogo(req, res) {
   try {
-    await require('../services/logoService').deleteLogo();
-    res.json({ message: 'Logo berhasil dihapus.' });
+    const type = req.params.type || req.query.type || 'sidebar';
+    await require('../services/logoService').deleteLogo(type);
+    res.json({ message: `Logo ${type} berhasil dihapus.` });
   } catch (error) {
     console.error('Controller deleteAppLogo error:', error);
     res.status(500).json({ error: 'Gagal menghapus logo' });
@@ -336,6 +361,17 @@ async function updateBackground(req, res) {
   } catch (error) {
     console.error('Controller updateBackground error:', error);
     res.status(500).json({ error: 'Gagal menyimpan background' });
+  }
+}
+
+async function updateBackgroundOpacity(req, res) {
+  try {
+    const opacity = req.body.opacity !== undefined ? Number(req.body.opacity) : 0.35;
+    await require('../services/logoService').updateBackgroundOpacity(opacity);
+    res.json({ message: 'Kegelapan / opacity background berhasil diperbarui.' });
+  } catch (error) {
+    console.error('Controller updateBackgroundOpacity error:', error);
+    res.status(500).json({ error: 'Gagal memperbarui opacity background' });
   }
 }
 

@@ -72,16 +72,29 @@ const permissionsMessage = document.getElementById('permissionsMessage');
 const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
 const deleteAllMonitoringBtn = document.getElementById('deleteAllMonitoringBtn');
 const toggleUserPanelBtn = document.getElementById('toggleUserPanelBtn');
-const logoInput = document.getElementById('logoInput');
-const uploadLogoBtn = document.getElementById('uploadLogoBtn');
-const deleteLogoBtn = document.getElementById('deleteLogoBtn');
-const adminLogoPreview = document.getElementById('adminLogoPreview');
-const logoMessage = document.getElementById('logoMessage');
+const sidebarLogoInput = document.getElementById('sidebarLogoInput');
+const uploadSidebarLogoBtn = document.getElementById('uploadSidebarLogoBtn');
+const deleteSidebarLogoBtn = document.getElementById('deleteSidebarLogoBtn');
+const adminSidebarLogoPreview = document.getElementById('adminSidebarLogoPreview');
+const sidebarLogoMessage = document.getElementById('sidebarLogoMessage');
+const sidebarLogoSizeSlider = document.getElementById('sidebarLogoSizeSlider');
+const sidebarLogoSizeVal = document.getElementById('sidebarLogoSizeVal');
+
+const loginLogoInput = document.getElementById('loginLogoInput');
+const uploadLoginLogoBtn = document.getElementById('uploadLoginLogoBtn');
+const deleteLoginLogoBtn = document.getElementById('deleteLoginLogoBtn');
+const adminLoginLogoPreview = document.getElementById('adminLoginLogoPreview');
+const loginLogoMessage = document.getElementById('loginLogoMessage');
+const loginLogoSizeSlider = document.getElementById('loginLogoSizeSlider');
+const loginLogoSizeVal = document.getElementById('loginLogoSizeVal');
+
 const bgInput = document.getElementById('bgInput');
 const uploadBgBtn = document.getElementById('uploadBgBtn');
 const deleteBgBtn = document.getElementById('deleteBgBtn');
 const adminBgPreview = document.getElementById('adminBgPreview');
 const bgMessage = document.getElementById('bgMessage');
+const bgOpacitySlider = document.getElementById('bgOpacitySlider');
+const bgOpacityVal = document.getElementById('bgOpacityVal');
 const userSearchInput = document.getElementById('userSearchInput');
 const selectAllUsers = document.getElementById('selectAllUsers');
 const headerSelectAllUsers = document.getElementById('headerSelectAllUsers');
@@ -2532,112 +2545,291 @@ async function saveConfigRole() {
   }
 }
 
-async function uploadLogo() {
-  const file = logoInput?.files?.[0];
-  if (!file) return alert('Pilih file logo terlebih dahulu.');
+async function uploadSidebarLogo() {
+  const file = sidebarLogoInput?.files?.[0];
+  if (!file) return alert('Pilih file logo sidebar terlebih dahulu.');
   const form = new FormData();
   form.append('logo', file);
-  const response = await fetch('/api/auth/logo', {
+  form.append('size_mode', sidebarLogoSizeSlider?.value || '44');
+  const response = await fetch('/api/auth/logo/sidebar', {
     method: 'PUT',
     credentials: 'include',
     body: form,
   });
   const result = await parseResponseJson(response);
   if (!response.ok) {
-    if (logoMessage) {
-      logoMessage.textContent = result.error || 'Gagal upload logo';
-      logoMessage.classList.add('error');
+    if (sidebarLogoMessage) {
+      sidebarLogoMessage.textContent = result.error || 'Gagal upload logo sidebar';
+      sidebarLogoMessage.classList.add('error');
     }
     return;
   }
-  if (logoMessage) {
-    logoMessage.textContent = 'Logo berhasil diperbarui.';
-    logoMessage.classList.remove('error');
+  if (sidebarLogoMessage) {
+    sidebarLogoMessage.textContent = 'Logo sidebar berhasil diperbarui.';
+    sidebarLogoMessage.classList.remove('error');
+    setTimeout(() => { if (sidebarLogoMessage) sidebarLogoMessage.textContent = ''; }, 3500);
   }
   await loadLogo();
+}
+
+async function uploadLoginLogo() {
+  const file = loginLogoInput?.files?.[0];
+  if (!file) return alert('Pilih file logo login terlebih dahulu.');
+  const form = new FormData();
+  form.append('logo', file);
+  form.append('size_mode', loginLogoSizeSlider?.value || '140');
+  const response = await fetch('/api/auth/logo/login', {
+    method: 'PUT',
+    credentials: 'include',
+    body: form,
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (loginLogoMessage) {
+      loginLogoMessage.textContent = result.error || 'Gagal upload logo login';
+      loginLogoMessage.classList.add('error');
+    }
+    return;
+  }
+  if (loginLogoMessage) {
+    loginLogoMessage.textContent = 'Logo login berhasil diperbarui.';
+    loginLogoMessage.classList.remove('error');
+    setTimeout(() => { if (loginLogoMessage) loginLogoMessage.textContent = ''; }, 3500);
+  }
+  await loadLogo();
+}
+
+async function removeSidebarLogo() {
+  if (!confirm('Yakin ingin menghapus logo sidebar? Logo bawaan akan digunakan kembali.')) return;
+  const response = await fetch('/api/auth/logo/sidebar', {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (sidebarLogoMessage) {
+      sidebarLogoMessage.textContent = result.error || 'Gagal menghapus logo sidebar';
+      sidebarLogoMessage.classList.add('error');
+    }
+    return;
+  }
+  if (sidebarLogoMessage) {
+    sidebarLogoMessage.textContent = 'Logo sidebar berhasil dihapus.';
+    sidebarLogoMessage.classList.remove('error');
+    setTimeout(() => { if (sidebarLogoMessage) sidebarLogoMessage.textContent = ''; }, 3500);
+  }
+  await loadLogo();
+}
+
+async function removeLoginLogo() {
+  if (!confirm('Yakin ingin menghapus logo khusus login? Halaman login akan menggunakan logo sidebar / bawaan.')) return;
+  const response = await fetch('/api/auth/logo/login', {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const result = await parseResponseJson(response);
+  if (!response.ok) {
+    if (loginLogoMessage) {
+      loginLogoMessage.textContent = result.error || 'Gagal menghapus logo login';
+      loginLogoMessage.classList.add('error');
+    }
+    return;
+  }
+  if (loginLogoMessage) {
+    loginLogoMessage.textContent = 'Logo login berhasil dihapus.';
+    loginLogoMessage.classList.remove('error');
+    setTimeout(() => { if (loginLogoMessage) loginLogoMessage.textContent = ''; }, 3500);
+  }
+  await loadLogo();
+}
+
+function applySidebarLogoSize(size) {
+  const numSize = Math.max(24, Math.min(90, Number(size) || 44));
+  const sidebarLogo = document.getElementById('sidebarLogoImg');
+  const sidebarBrand = document.querySelector('.sidebar-brand');
+
+  if (sidebarLogoSizeSlider) sidebarLogoSizeSlider.value = numSize;
+  if (sidebarLogoSizeVal) sidebarLogoSizeVal.textContent = `${numSize}px`;
+
+  if (sidebarLogo) {
+    sidebarLogo.style.setProperty('--sidebar-logo-size', `${numSize}px`);
+    if (sidebarLogo.naturalWidth && sidebarLogo.naturalHeight && (sidebarLogo.naturalWidth / sidebarLogo.naturalHeight > 1.4)) {
+      sidebarBrand?.classList.add('brand-wide-layout');
+      sidebarLogo.style.width = 'auto';
+      sidebarLogo.style.height = 'auto';
+      sidebarLogo.style.maxHeight = `${numSize}px`;
+      sidebarLogo.style.maxWidth = `${Math.min(210, Math.round(numSize * 3.5))}px`;
+    } else {
+      sidebarBrand?.classList.remove('brand-wide-layout');
+      sidebarLogo.style.width = `${numSize}px`;
+      sidebarLogo.style.height = `${numSize}px`;
+      sidebarLogo.style.minWidth = `${numSize}px`;
+      sidebarLogo.style.maxWidth = `${numSize}px`;
+      sidebarLogo.style.maxHeight = `${numSize}px`;
+    }
+  }
+}
+
+function applyLoginLogoSize(size) {
+  const numSize = Math.max(50, Math.min(280, Number(size) || 140));
+  const loginLogo = document.getElementById('loginLogo');
+
+  if (loginLogoSizeSlider) loginLogoSizeSlider.value = numSize;
+  if (loginLogoSizeVal) loginLogoSizeVal.textContent = `${numSize}px`;
+
+  if (loginLogo) {
+    loginLogo.style.setProperty('--login-logo-size', `${numSize}px`);
+    loginLogo.style.maxHeight = `${numSize}px`;
+    loginLogo.style.width = 'auto';
+  }
+}
+
+let sidebarLogoDebounceTimer = null;
+function onSidebarLogoSizeInput(e) {
+  const size = Number(e.target.value) || 44;
+  applySidebarLogoSize(size);
+
+  clearTimeout(sidebarLogoDebounceTimer);
+  sidebarLogoDebounceTimer = setTimeout(async () => {
+    try {
+      const response = await fetch('/api/auth/logo/sidebar/size', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ size_mode: String(size) }),
+      });
+      const res = await parseResponseJson(response);
+      if (!response.ok && sidebarLogoMessage) {
+        sidebarLogoMessage.textContent = res.error || 'Gagal mengubah ukuran logo sidebar';
+        sidebarLogoMessage.classList.add('error');
+      }
+    } catch (err) {
+      console.error('Error saving sidebar logo size:', err);
+    }
+  }, 300);
+}
+
+let loginLogoDebounceTimer = null;
+function onLoginLogoSizeInput(e) {
+  const size = Number(e.target.value) || 140;
+  applyLoginLogoSize(size);
+
+  clearTimeout(loginLogoDebounceTimer);
+  loginLogoDebounceTimer = setTimeout(async () => {
+    try {
+      const response = await fetch('/api/auth/logo/login/size', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ size_mode: String(size) }),
+      });
+      const res = await parseResponseJson(response);
+      if (!response.ok && loginLogoMessage) {
+        loginLogoMessage.textContent = res.error || 'Gagal mengubah ukuran logo login';
+        loginLogoMessage.classList.add('error');
+      }
+    } catch (err) {
+      console.error('Error saving login logo size:', err);
+    }
+  }, 300);
 }
 
 async function loadLogo() {
   const response = await fetch('/api/auth/logo', { credentials: 'include' });
   const result = await parseResponseJson(response);
   if (!response.ok) return;
-  const preview = adminLogoPreview;
-  const logoPlaceholder = document.getElementById('logoEmptyPlaceholder');
-  const loginLogo = document.getElementById('loginLogo');
-  const loginDefaultIcon = document.getElementById('loginDefaultIcon');
+
+  const logos = result.logos || {};
+  const sidebarData = logos.sidebar || result.logo;
+  const loginData = logos.login || null;
+
   const sidebarLogo = document.getElementById('sidebarLogoImg');
   const sidebarDefaultIcon = document.getElementById('sidebarDefaultIcon');
   const sidebarBrand = document.querySelector('.sidebar-brand');
+  const sidebarPlaceholder = document.getElementById('sidebarLogoEmptyPlaceholder');
+  const sidebarPreview = adminSidebarLogoPreview;
 
-  const applySidebarLogoAspect = () => {
-    if (!sidebarLogo) return;
-    if (sidebarLogo.naturalWidth && sidebarLogo.naturalHeight) {
-      const ratio = sidebarLogo.naturalWidth / sidebarLogo.naturalHeight;
-      if (ratio > 1.4) {
-        sidebarBrand?.classList.add('brand-wide-layout');
-      } else {
-        sidebarBrand?.classList.remove('brand-wide-layout');
-      }
-    }
+  const loginLogo = document.getElementById('loginLogo');
+  const loginDefaultIcon = document.getElementById('loginDefaultIcon');
+  const loginPlaceholder = document.getElementById('loginLogoEmptyPlaceholder');
+  const loginPreview = adminLoginLogoPreview;
+
+  const parseSize = (raw, fallback, map = {}) => {
+    if (map[raw]) return map[raw];
+    const n = Number(raw);
+    return (!isNaN(n) && n > 0) ? n : fallback;
   };
 
-  if (result.logo && result.logo.data) {
-    const src = `data:${result.logo.mime};base64,${result.logo.data}`;
-    if (preview) {
-      preview.src = src;
-      preview.classList.remove('hidden');
+  const sidebarSize = parseSize(sidebarData?.size, 44, { small: 38, normal: 44, large: 52, banner: 48 });
+  const loginSize = parseSize(loginData?.size, 140, { compact: 110, normal: 140, large: 180, jumbo: 220 });
+
+  // --- 1. SIDEBAR LOGO ---
+  if (sidebarData && sidebarData.data) {
+    const src = `data:${sidebarData.mime};base64,${sidebarData.data}`;
+    if (sidebarPreview) {
+      sidebarPreview.src = src;
+      sidebarPreview.classList.remove('hidden');
     }
-    if (logoPlaceholder) logoPlaceholder.classList.add('hidden');
-    if (loginLogo) {
-      loginLogo.src = src;
-      loginLogo.classList.remove('hidden');
-    }
-    if (loginDefaultIcon) loginDefaultIcon.classList.add('hidden');
+    if (sidebarPlaceholder) sidebarPlaceholder.classList.add('hidden');
     if (sidebarLogo) {
       sidebarLogo.src = src;
       sidebarLogo.classList.remove('hidden');
-      sidebarLogo.onload = applySidebarLogoAspect;
-      if (sidebarLogo.complete) applySidebarLogoAspect();
+      applySidebarLogoSize(sidebarSize);
+      sidebarLogo.onload = () => applySidebarLogoSize(sidebarSize);
     }
     if (sidebarDefaultIcon) sidebarDefaultIcon.classList.add('hidden');
   } else {
-    if (preview) {
-      preview.src = '';
-      preview.classList.add('hidden');
+    if (sidebarPreview) {
+      sidebarPreview.src = '';
+      sidebarPreview.classList.add('hidden');
     }
-    if (logoPlaceholder) logoPlaceholder.classList.remove('hidden');
-    if (loginLogo) {
-      loginLogo.src = '';
-      loginLogo.classList.add('hidden');
-    }
-    if (loginDefaultIcon) loginDefaultIcon.classList.remove('hidden');
+    if (sidebarPlaceholder) sidebarPlaceholder.classList.remove('hidden');
     if (sidebarLogo) {
       sidebarLogo.src = '';
       sidebarLogo.classList.add('hidden');
     }
     if (sidebarDefaultIcon) sidebarDefaultIcon.classList.remove('hidden');
     if (sidebarBrand) sidebarBrand.classList.remove('brand-wide-layout');
+    applySidebarLogoSize(44);
   }
-}
 
-async function removeAppLogo() {
-  const response = await fetch('/api/auth/logo', {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-  const result = await parseResponseJson(response);
-  if (!response.ok) {
-    if (logoMessage) {
-      logoMessage.textContent = result.error || 'Gagal menghapus logo';
-      logoMessage.classList.add('error');
+  // --- 2. LOGIN LOGO ---
+  if (loginData && loginData.data) {
+    const src = `data:${loginData.mime};base64,${loginData.data}`;
+    if (loginPreview) {
+      loginPreview.src = src;
+      loginPreview.classList.remove('hidden');
     }
-    return;
+    if (loginPlaceholder) {
+      if (loginData.isFallback) {
+        loginPlaceholder.textContent = 'Menggunakan logo sidebar (belum ada logo login terpisah)';
+        loginPlaceholder.classList.remove('hidden');
+      } else {
+        loginPlaceholder.classList.add('hidden');
+      }
+    }
+    if (loginLogo) {
+      loginLogo.src = src;
+      loginLogo.classList.remove('hidden');
+      applyLoginLogoSize(loginSize);
+    }
+    if (loginDefaultIcon) loginDefaultIcon.classList.add('hidden');
+  } else {
+    if (loginPreview) {
+      loginPreview.src = '';
+      loginPreview.classList.add('hidden');
+    }
+    if (loginPlaceholder) {
+      loginPlaceholder.textContent = 'Belum ada logo khusus login (mengikuti logo sidebar)';
+      loginPlaceholder.classList.remove('hidden');
+    }
+    if (loginLogo) {
+      loginLogo.src = '';
+      loginLogo.classList.add('hidden');
+    }
+    if (loginDefaultIcon) loginDefaultIcon.classList.remove('hidden');
+    applyLoginLogoSize(140);
   }
-  if (logoMessage) {
-    logoMessage.textContent = 'Logo berhasil dihapus.';
-    logoMessage.classList.remove('error');
-  }
-  await loadLogo();
 }
 
 async function uploadBackground() {
@@ -2645,6 +2837,7 @@ async function uploadBackground() {
   if (!file) return alert('Pilih file gambar latar belakang terlebih dahulu.');
   const form = new FormData();
   form.append('background', file);
+  form.append('opacity', bgOpacitySlider?.value || 0.35);
   const response = await fetch('/api/auth/background', {
     method: 'PUT',
     credentials: 'include',
@@ -2661,6 +2854,7 @@ async function uploadBackground() {
   if (bgMessage) {
     bgMessage.textContent = 'Latar belakang berhasil diperbarui.';
     bgMessage.classList.remove('error');
+    setTimeout(() => { if (bgMessage) bgMessage.textContent = ''; }, 3500);
   }
   await loadBackground();
 }
@@ -2672,7 +2866,16 @@ async function loadBackground() {
   const preview = adminBgPreview;
   const bgPlaceholder = document.getElementById('bgEmptyPlaceholder');
   const loginPage = document.getElementById('loginView');
-  if (result.background) {
+  const opacity = result.background?.opacity !== undefined ? Number(result.background.opacity) : 0.35;
+
+  if (bgOpacitySlider) {
+    bgOpacitySlider.value = opacity;
+  }
+  if (bgOpacityVal) {
+    bgOpacityVal.textContent = Math.round(opacity * 100) + '%';
+  }
+
+  if (result.background && result.background.data) {
     const src = `data:${result.background.mime};base64,${result.background.data}`;
     if (preview) {
       preview.src = src;
@@ -2681,7 +2884,7 @@ async function loadBackground() {
     if (bgPlaceholder) bgPlaceholder.classList.add('hidden');
     if (loginPage) {
       loginPage.style.setProperty('--auth-bg-image', `url('${src}')`);
-      loginPage.style.setProperty('--auth-bg-opacity', String(result.background.opacity ?? 0.35));
+      loginPage.style.setProperty('--auth-bg-opacity', String(opacity));
     }
   } else {
     if (preview) {
@@ -2696,7 +2899,33 @@ async function loadBackground() {
   }
 }
 
+let bgOpacityDebounceTimer = null;
+function onBgOpacityChange(e) {
+  const val = Number(e.target.value);
+  if (bgOpacityVal) {
+    bgOpacityVal.textContent = Math.round(val * 100) + '%';
+  }
+  const loginPage = document.getElementById('loginView');
+  if (loginPage) {
+    loginPage.style.setProperty('--auth-bg-opacity', String(val));
+  }
+  clearTimeout(bgOpacityDebounceTimer);
+  bgOpacityDebounceTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/auth/background/opacity', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ opacity: val }),
+      });
+    } catch (err) {
+      console.error('Error saving background opacity:', err);
+    }
+  }, 350);
+}
+
 async function removeAppBackground() {
+  if (!confirm('Yakin ingin menghapus latar belakang kustom? Halaman login akan kembali ke tema gelap bawaan.')) return;
   const response = await fetch('/api/auth/background', {
     method: 'DELETE',
     credentials: 'include',
@@ -2712,6 +2941,7 @@ async function removeAppBackground() {
   if (bgMessage) {
     bgMessage.textContent = 'Latar belakang berhasil dihapus.';
     bgMessage.classList.remove('error');
+    setTimeout(() => { if (bgMessage) bgMessage.textContent = ''; }, 3500);
   }
   await loadBackground();
 }
@@ -3220,32 +3450,52 @@ if (auditTableBody) {
   document.addEventListener(eventName, resetSessionTimer);
 });
 
-if (uploadLogoBtn) {
-  uploadLogoBtn.addEventListener('click', () => logoInput && logoInput.click());
+// Sidebar Logo Controls
+if (uploadSidebarLogoBtn) {
+  uploadSidebarLogoBtn.addEventListener('click', () => sidebarLogoInput && sidebarLogoInput.click());
 }
-
-if (logoInput) {
-  logoInput.addEventListener('change', () => {
-    if (logoInput.files?.[0]) uploadLogo();
+if (sidebarLogoInput) {
+  sidebarLogoInput.addEventListener('change', () => {
+    if (sidebarLogoInput.files?.[0]) uploadSidebarLogo();
   });
 }
-
-if (deleteLogoBtn) {
-  deleteLogoBtn.addEventListener('click', removeAppLogo);
+if (deleteSidebarLogoBtn) {
+  deleteSidebarLogoBtn.addEventListener('click', removeSidebarLogo);
+}
+if (sidebarLogoSizeSlider) {
+  sidebarLogoSizeSlider.addEventListener('input', onSidebarLogoSizeInput);
 }
 
+// Login Logo Controls
+if (uploadLoginLogoBtn) {
+  uploadLoginLogoBtn.addEventListener('click', () => loginLogoInput && loginLogoInput.click());
+}
+if (loginLogoInput) {
+  loginLogoInput.addEventListener('change', () => {
+    if (loginLogoInput.files?.[0]) uploadLoginLogo();
+  });
+}
+if (deleteLoginLogoBtn) {
+  deleteLoginLogoBtn.addEventListener('click', removeLoginLogo);
+}
+if (loginLogoSizeSlider) {
+  loginLogoSizeSlider.addEventListener('input', onLoginLogoSizeInput);
+}
+
+// Login Background & Opacity Controls
 if (uploadBgBtn) {
   uploadBgBtn.addEventListener('click', () => bgInput && bgInput.click());
 }
-
 if (bgInput) {
   bgInput.addEventListener('change', () => {
     if (bgInput.files?.[0]) uploadBackground();
   });
 }
-
 if (deleteBgBtn) {
   deleteBgBtn.addEventListener('click', removeAppBackground);
+}
+if (bgOpacitySlider) {
+  bgOpacitySlider.addEventListener('input', onBgOpacityChange);
 }
 
 // Sidebar Drawer & Router Events
