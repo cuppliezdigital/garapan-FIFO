@@ -1677,7 +1677,7 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     min-height: unset;
   }
 
@@ -1685,55 +1685,59 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
+  .topbar-left > div {
+    min-width: 0;
+    overflow: hidden;
+  }
+
   .topbar-left .eyebrow {
-    font-size: 0.6rem;
-    margin-bottom: 0;
-    line-height: 1.1;
+    display: none;
   }
 
   .topbar-left h1 {
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     margin: 0;
-    line-height: 1.15;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .topbar-actions {
-    width: auto;
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-wrap: nowrap;
+    gap: 5px;
+    flex-shrink: 0;
   }
 
   .user-pill {
     width: auto;
-    height: 28px;
-    padding: 3px 8px;
-    font-size: 0.7rem;
-    max-width: 120px;
+    height: 26px;
+    padding: 2px 7px;
+    font-size: 0.68rem;
+    max-width: 85px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-radius: 20px;
-    display: flex;
+    border-radius: 999px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 1;
   }
 
   .topbar-actions .primary-btn,
   .topbar-actions .secondary-btn {
-    height: 28px;
-    min-height: 28px;
-    padding: 0 10px;
-    font-size: 0.72rem;
-    border-radius: 8px;
+    height: 26px;
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 0.7rem;
+    border-radius: 7px;
+    flex-shrink: 0;
   }
 
   .summary-strip {
@@ -2556,12 +2560,12 @@ thead th input[type="checkbox"] {
   .monitoring-table tbody tr,
   .archive-table tbody tr {
     display: grid;
-    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-columns: auto auto 1fr auto;
     align-items: center;
-    gap: 5px 6px;
-    padding: 10px 14px;
+    gap: 5px 8px;
+    padding: 10px 12px;
     border: 1px solid rgba(96, 165, 250, 0.22);
-    border-radius: 13px;
+    border-radius: 12px;
     background: linear-gradient(145deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.72));
     box-shadow: 0 4px 14px rgba(2, 6, 23, 0.35);
   }
@@ -2615,27 +2619,33 @@ thead th input[type="checkbox"] {
     grid-column: unset;
   }
 
-  /* BARIS 1: Checkbox + Waybill (kiri) & Badges Stuck + Status (kanan) */
+  /* BARIS 1: Checkbox + Waybill rapat (kiri) & Badge Stuck (kanan) */
   .col-check {
     grid-column: 1;
     grid-row: 1;
     width: auto;
-    margin-right: 4px;
+    display: flex;
+    align-items: center;
+    margin-right: 0;
   }
   .col-check input[type="checkbox"] {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     cursor: pointer;
     accent-color: #3b82f6;
   }
 
   .col-waybill {
-    grid-column: 2;
+    grid-column: 2 / 4;
     grid-row: 1;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: #ffffff;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
+    margin-left: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .col-waybill .cell-value {
     color: #ffffff;
@@ -2656,21 +2666,7 @@ thead th input[type="checkbox"] {
     white-space: nowrap;
   }
 
-  .col-status {
-    grid-column: 5;
-    grid-row: 1;
-    justify-self: end;
-  }
-  .col-status .status {
-    font-size: 0.68rem !important;
-    padding: 2px 8px !important;
-    border-radius: 6px !important;
-    font-weight: 700 !important;
-    text-transform: capitalize;
-    white-space: nowrap;
-  }
-
-  /* BARIS 2: Rute Outlet ➔ TLC (kiri) & Tanggal (kanan) */
+  /* BARIS 2: Rute Outlet ➔ TLC rapat berdampingan (kiri) & Tanggal (kanan) */
   .col-outlet {
     grid-column: 1 / 3;
     grid-row: 2;
@@ -2681,6 +2677,7 @@ thead th input[type="checkbox"] {
     align-items: center;
     gap: 4px;
     padding-top: 1px;
+    white-space: nowrap;
   }
   .col-outlet::before {
     content: "🏢 ";
@@ -2692,12 +2689,15 @@ thead th input[type="checkbox"] {
   .col-tlc {
     grid-column: 3;
     grid-row: 2;
+    justify-self: start;
     font-size: 0.8rem;
     font-weight: 700;
     color: #38bdf8;
     display: flex;
     align-items: center;
     padding-top: 1px;
+    white-space: nowrap;
+    margin-left: -2px;
   }
   .col-tlc::before {
     content: "➔ ";
@@ -2707,17 +2707,22 @@ thead th input[type="checkbox"] {
     display: inline-block;
   }
 
+  .archive-table .col-outlet {
+    grid-column: 1 / 4;
+  }
+
   .col-tanggal {
-    grid-column: 4 / 6;
+    grid-column: 4;
     grid-row: 2;
     justify-self: end;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     font-weight: 600;
     color: #94a3b8;
     display: flex;
     align-items: center;
     gap: 4px;
     padding-top: 1px;
+    white-space: nowrap;
   }
   .col-tanggal::before {
     content: "📅 ";
@@ -2756,16 +2761,19 @@ thead th input[type="checkbox"] {
     display: inline-block;
   }
 
-  /* BARIS 4: Diupdate Oleh (kiri) & Tombol Update (kanan) */
+  /* BARIS 4: Diupdate Oleh (kiri) & Status + Tombol Update (kanan) */
   .col-updated {
-    grid-column: 1 / 4;
+    grid-column: 1 / 3;
     grid-row: 4;
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     color: #94a3b8;
     display: flex;
     align-items: center;
     gap: 4px;
     padding-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .col-updated::before {
     content: "👤 Diupdate: ";
@@ -2774,8 +2782,25 @@ thead th input[type="checkbox"] {
     display: inline-block;
   }
 
+  .col-status {
+    grid-column: 3;
+    grid-row: 4;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    padding-top: 2px;
+  }
+  .col-status .status {
+    font-size: 0.68rem !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+
   .col-aksi {
-    grid-column: 4 / -1;
+    grid-column: 4;
     grid-row: 4;
     justify-self: end;
     display: flex;
@@ -2784,20 +2809,28 @@ thead th input[type="checkbox"] {
   }
   .col-aksi .action-group {
     width: auto;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
   }
   .col-aksi .table-btn {
-    height: 26px !important;
-    min-height: 26px !important;
-    padding: 0 11px !important;
-    font-size: 0.72rem !important;
+    height: 25px !important;
+    min-height: 25px !important;
+    padding: 0 10px !important;
+    font-size: 0.68rem !important;
     font-weight: 700 !important;
     border-radius: 6px !important;
     width: auto !important;
+    white-space: nowrap;
   }
   .col-aksi .read-only-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: #64748b;
     font-style: italic;
+    min-height: unset;
+    padding: 2px 6px;
+    white-space: nowrap;
   }
 
   .monitoring-bulk-controls {
