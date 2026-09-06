@@ -2960,6 +2960,15 @@ if (tbody) {
       updateSelectedMonitoringCount();
       return;
     }
+    const colBarang = event.target.closest('.col-barang');
+    if (colBarang) {
+      const willExpand = !colBarang.classList.contains('is-expanded');
+      tbody.querySelectorAll('.col-barang.is-expanded').forEach((el) => {
+        if (el !== colBarang) el.classList.remove('is-expanded');
+      });
+      colBarang.classList.toggle('is-expanded', willExpand);
+      return;
+    }
     handleTableAction(event);
   });
 }
@@ -2972,6 +2981,15 @@ if (archiveTableBody) {
       else selectedArchiveWaybills.delete(checkbox.dataset.waybill);
       checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
       updateArchiveSelectionCount();
+      return;
+    }
+    const colAksiText = event.target.closest('.col-aksi-text');
+    if (colAksiText) {
+      const willExpand = !colAksiText.classList.contains('is-expanded');
+      archiveTableBody.querySelectorAll('.col-aksi-text.is-expanded').forEach((el) => {
+        if (el !== colAksiText) el.classList.remove('is-expanded');
+      });
+      colAksiText.classList.toggle('is-expanded', willExpand);
       return;
     }
     const row = event.target.closest('tr');
