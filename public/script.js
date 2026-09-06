@@ -2765,7 +2765,7 @@ function applySidebarLogoSize(size) {
 }
 
 function applyLoginLogoSize(size) {
-  const numSize = Math.max(50, Math.min(280, Number(size) || 140));
+  const numSize = Math.max(24, Math.min(280, Number(size) || 140));
   const loginLogo = document.getElementById('loginLogo');
 
   if (loginLogoSizeSlider) loginLogoSizeSlider.value = numSize;

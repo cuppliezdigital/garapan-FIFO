@@ -203,9 +203,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .login-logo-img {
   display: block;
-  width: min(100%, 420px);
+  width: auto;
+  max-width: min(100%, 280px);
+  min-width: 24px;
   height: auto;
   max-height: var(--login-logo-size, 140px);
+  min-height: 24px;
   object-fit: contain;
   border-radius: 0;
   background: transparent;
@@ -217,19 +220,19 @@ h1, h2, h3, h4, h5, h6 {
 /* UKURAN PRESET LOGO LOGIN */
 .login-logo-img.login-logo-size-compact {
   max-height: 110px;
-  max-width: 240px;
+  max-width: min(100%, 280px);
 }
 .login-logo-img.login-logo-size-normal {
   max-height: 150px;
-  max-width: 320px;
+  max-width: min(100%, 280px);
 }
 .login-logo-img.login-logo-size-large {
   max-height: 180px;
-  max-width: 380px;
+  max-width: min(100%, 280px);
 }
 .login-logo-img.login-logo-size-jumbo {
   max-height: 220px;
-  max-width: 440px;
+  max-width: min(100%, 280px);
 }
 
 .auth-logo-text {
