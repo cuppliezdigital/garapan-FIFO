@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="cyberBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Cyan Armor Gradient -->
+    <linearGradient id="armorCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Laser Visor Gradient -->
+    <linearGradient id="laserVisor" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="45%" stop-color="#ffffff" />
+      <stop offset="55%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#00c6ff" />
+    </linearGradient>
+
+    <!-- Visor Intense Glow -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.6" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Base Squircle Badge -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#cyberBg)" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.85"/>
+
+  <!-- Mecha Head Crest (Antenna Apex) -->
+  <polygon points="32,6 37,13 27,13" fill="url(#armorCyan)" />
+  <line x1="32" y1="7" x2="32" y2="14" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Left & Right Ear Sensor Pods -->
+  <rect x="7" y="25" width="4.5" height="15" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+  <rect x="52.5" y="25" width="4.5" height="15" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+  <circle cx="9.25" cy="32.5" r="1.2" fill="#00f2fe"/>
+  <circle cx="54.75" cy="32.5" r="1.2" fill="#00f2fe"/>
+
+  <!-- Robot Helmet Outer Armor Shell (Angular Silhouette) -->
+  <path d="M14 20 L27 14 L37 14 L50 20 L48 42 L40 52 L32 56 L24 52 L16 42 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="2.2" stroke-linejoin="round"/>
+
+  <!-- Forehead Armor Plate -->
+  <polygon points="26,16 38,16 42,22 22,22" fill="#334155" stroke="#0284c7" stroke-width="1.2" />
+
+  <!-- Inner Faceplate Mask -->
+  <path d="M18 24 L32 21 L46 24 L44 40 L38 48 L32 51 L26 48 L20 40 Z" fill="#090d16" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Glowing Laser Eye Visor (Dominant Cyber Eye) -->
+  <rect x="20" y="28" width="24" height="6.5" rx="3.25" fill="url(#laserVisor)" filter="url(#neonGlow)"/>
+
+  <!-- Visor Flare Highlight Line -->
+  <line x1="26" y1="30" x2="33" y2="30" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- Lower Mouth / Ventilation Slits -->
+  <line x1="27" y1="41" x2="37" y2="41" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="29" y1="44.5" x2="35" y2="44.5" stroke="#0284c7" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Cyber Chin Triangle -->
+  <polygon points="29.5,52 34.5,52 32,55" fill="#00f2fe"/>
+</svg>
