@@ -2628,16 +2628,16 @@ thead th input[type="checkbox"] {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 8px 4px;
+    padding: 8px 2px;
   }
 
   .monitoring-table tbody tr,
   .archive-table tbody tr {
     display: grid;
-    grid-template-columns: 20px auto 1fr auto;
+    grid-template-columns: 18px auto 1fr auto;
     align-items: center;
-    gap: 5px 6px;
-    padding: 10px 12px;
+    gap: 5px 4px;
+    padding: 9px 9px;
     border: 1px solid rgba(96, 165, 250, 0.22);
     border-radius: 12px;
     background: linear-gradient(145deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.72));
@@ -2683,9 +2683,9 @@ thead th input[type="checkbox"] {
   .monitoring-table tbody td:first-child,
   .archive-table tbody td:first-child {
     padding: 0 !important;
-    width: 20px !important;
-    min-width: 20px !important;
-    max-width: 20px !important;
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
   }
 
   .monitoring-table tbody td::before,
@@ -2730,9 +2730,9 @@ thead th input[type="checkbox"] {
   .col-check {
     grid-column: 1;
     grid-row: 1;
-    width: 20px !important;
-    min-width: 20px !important;
-    max-width: 20px !important;
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -2740,8 +2740,8 @@ thead th input[type="checkbox"] {
     margin: 0 !important;
   }
   .col-check input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     cursor: pointer;
     accent-color: #3b82f6;
     margin: 0;
@@ -2750,34 +2750,39 @@ thead th input[type="checkbox"] {
   .col-waybill {
     grid-column: 2 / 4;
     grid-row: 1;
-    font-size: 0.86rem;
+    font-size: 0.79rem;
     font-weight: 800;
     color: #ffffff;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
     margin: 0 !important;
-    margin-left: 2px !important;
     padding: 0 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }
   .col-waybill .cell-value {
     color: #ffffff;
     font-weight: 800;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
   }
 
   .col-stuck {
     grid-column: 4;
     grid-row: 1;
     justify-self: end;
+    min-width: 0;
   }
   .col-stuck .badge-stuck,
   .col-stuck .badge {
-    font-size: 0.68rem !important;
-    padding: 2px 7px !important;
+    font-size: 0.63rem !important;
+    padding: 2px 5px !important;
     border-radius: 6px !important;
     font-weight: 700 !important;
     white-space: nowrap;
+    letter-spacing: -0.01em;
   }
 
   /* BARIS 2: Rute Outlet ➔ TLC rapat berdampingan (kiri) & Tanggal (kanan) */
