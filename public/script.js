@@ -367,6 +367,48 @@ function applyUIPermissions() {
   }
 }
 
+function renderRoleBadge(role) {
+  const norm = String(role || 'user').toLowerCase().trim();
+  if (norm === 'super_admin') {
+    return `
+      <span class="role-badge-pill role-super-admin">
+        <svg class="role-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
+        </svg>
+        <span class="role-badge-text">GM</span>
+      </span>
+    `;
+  }
+  if (norm === 'admin') {
+    return `
+      <span class="role-badge-pill role-admin">
+        <svg class="role-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span class="role-badge-text">ADMIN</span>
+      </span>
+    `;
+  }
+  if (norm === 'client') {
+    return `
+      <span class="role-badge-pill role-client">
+        <svg class="role-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h12l4 6-10 13L2 9z"/>
+        </svg>
+        <span class="role-badge-text">CLIENT</span>
+      </span>
+    `;
+  }
+  return `
+    <span class="role-badge-pill role-operator">
+      <svg class="role-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <span class="role-badge-text">OPERATOR</span>
+    </span>
+  `;
+}
+
 function setAuthState() {
   const token = getToken();
 
@@ -381,9 +423,12 @@ function setAuthState() {
   const isClient = user.role === 'client';
 
   if (userPill) {
-    const roleLabel = user.role ? (isSuperAdmin ? '🔒 GM' : `(${user.role})`) : '';
-    userPill.textContent = `${user.full_name || user.username || 'User'} ${roleLabel}`.trim();
-    userPill.classList.toggle('is-super-admin', isSuperAdmin);
+    const fullName = user.full_name || user.username || 'User';
+    userPill.innerHTML = `
+      <span class="user-pill-name">${escapeTlcHtml(fullName)}</span>
+      ${renderRoleBadge(user.role)}
+    `;
+    userPill.className = `user-pill is-${user.role ? user.role.replace(/_/g, '-') : 'user'}`;
   }
 
   if (sidebarUserName) {
@@ -689,7 +734,7 @@ function renderTable(data) {
 
   pageRows.forEach((item) => {
     const tr = document.createElement('tr');
-    tr.className = `${getUrgencyClass(item.stuck)}${isSudahUpdate(item) ? ' is-updated' : ''}`;
+    tr.className = `${getUrgencyClass(item.stuck)}${isSudahUpdate(item) ? ' is-updated' : ''}${selectedMonitoringWaybills.has(item.waybill) ? ' is-selected' : ''}`;
     const actionButtons = canMutate
       ? `
         <div class="action-group">
@@ -2911,6 +2956,7 @@ if (tbody) {
     if (checkbox) {
       if (checkbox.checked) selectedMonitoringWaybills.add(checkbox.dataset.waybill);
       else selectedMonitoringWaybills.delete(checkbox.dataset.waybill);
+      checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
       updateSelectedMonitoringCount();
       return;
     }
@@ -2924,6 +2970,7 @@ if (archiveTableBody) {
     if (checkbox) {
       if (checkbox.checked) selectedArchiveWaybills.add(checkbox.dataset.waybill);
       else selectedArchiveWaybills.delete(checkbox.dataset.waybill);
+      checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
       updateArchiveSelectionCount();
       return;
     }
@@ -2943,6 +2990,7 @@ if (selectAllArchive) {
       checkbox.checked = selectAllArchive.checked;
       if (checkbox.checked) selectedArchiveWaybills.add(checkbox.dataset.waybill);
       else selectedArchiveWaybills.delete(checkbox.dataset.waybill);
+      checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
     });
     updateArchiveSelectionCount();
   });
@@ -2960,6 +3008,20 @@ if (selectAllMonitoring) {
       checkbox.checked = selectAllMonitoring.checked;
       if (checkbox.checked) selectedMonitoringWaybills.add(checkbox.dataset.waybill);
       else selectedMonitoringWaybills.delete(checkbox.dataset.waybill);
+      checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
+    });
+    updateSelectedMonitoringCount();
+  });
+}
+
+const clearMonitoringSelectionBtn = document.getElementById('clearMonitoringSelectionBtn');
+if (clearMonitoringSelectionBtn) {
+  clearMonitoringSelectionBtn.addEventListener('click', () => {
+    selectedMonitoringWaybills.clear();
+    if (selectAllMonitoring) selectAllMonitoring.checked = false;
+    tbody?.querySelectorAll('.monitoring-select-checkbox').forEach((checkbox) => {
+      checkbox.checked = false;
+      checkbox.closest('tr')?.classList.remove('is-selected');
     });
     updateSelectedMonitoringCount();
   });
