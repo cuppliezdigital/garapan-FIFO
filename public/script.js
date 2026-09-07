@@ -192,9 +192,9 @@ function handleHashRoute() {
     archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
     history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
     users: { title: 'Manajemen User', eyebrow: 'Administrasi Sistem' },
-    permissions: { title: 'Konfigurasi Akses', eyebrow: 'Hak Akses Pengguna' },
+    permissions: { title: 'Hak Akses', eyebrow: 'Hak Akses Pengguna' },
     audit: { title: 'Audit Log', eyebrow: 'Keamanan Sistem' },
-    settings: { title: 'Pengaturan Sistem', eyebrow: 'Konfigurasi & Branding' },
+    settings: { title: 'Pengaturan', eyebrow: 'Konfigurasi & Branding' },
   };
 
   const target = routeConfig[activeRoute] ? activeRoute : 'monitoring';
