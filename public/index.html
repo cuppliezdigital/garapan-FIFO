@@ -469,32 +469,74 @@
                 </div>
 
                 <div id="monitoringBulkControls" class="monitoring-bulk-controls">
-                  <span class="bulk-count-indicator"><span id="selectedMonitoringCountBadge">0</span> terpilih</span>
-                  <select id="bulkActionSelect" class="filter-select bulk-select" aria-label="Pilih aksi untuk data terpilih">
-                    <option value="">Pilih aksi massal...</option>
-                    <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
-                    <option value="Dalam Gudang">Dalam Gudang</option>
-                    <option value="Miss Route">Miss Route</option>
-                    <option value="Crosslabel">Crosslabel</option>
-                    <option value="Penangguhan">Penangguhan</option>
-                    <option value="manual">Ketik manual...</option>
-                  </select>
-                  <input id="bulkActionManual" class="bulk-action-manual hidden" type="text" placeholder="Ketik aksi untuk data terpilih..." maxlength="150" />
-                  <button class="primary-btn small-btn" id="bulkUpdateBtn" type="button">Update <span id="selectedMonitoringCount">0</span></button>
-                  <button class="admin-secondary-btn small-btn btn-bulk-restore hidden" id="bulkRestoreUpdateBtn" type="button" title="Kembalikan waybill terpilih ke status Pending">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                      <path d="M3 3v5h5"/>
-                    </svg>
-                    <span>Restore Pending</span>
-                  </button>
-                  <button class="admin-secondary-btn small-btn" id="bulkArchiveBtn" type="button">Arsipkan <span id="selectedMonitoringArchiveCount">0</span></button>
-                  <button class="bulk-clear-btn" id="clearMonitoringSelectionBtn" type="button" title="Batalkan semua pilihan (✕)" aria-label="Batalkan semua pilihan">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
+                  <!-- Glowing top line -->
+                  <div class="bulk-dock-glow-bar" aria-hidden="true"></div>
+
+                  <!-- Counter Group -->
+                  <div class="bulk-left-group">
+                    <div class="bulk-count-pill">
+                      <span class="bulk-pulse-dot" aria-hidden="true"></span>
+                      <strong id="selectedMonitoringCountBadge">0</strong>
+                      <span class="bulk-label-text">terpilih</span>
+                    </div>
+                  </div>
+
+                  <!-- Action Selector -->
+                  <div class="bulk-middle-group">
+                    <div class="bulk-select-wrap">
+                      <div class="bulk-select-icon" aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                      </div>
+                      <select id="bulkActionSelect" class="filter-select bulk-select" aria-label="Pilih aksi untuk data terpilih">
+                        <option value="">Pilih aksi massal...</option>
+                        <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                        <option value="Dalam Gudang">Dalam Gudang</option>
+                        <option value="Miss Route">Miss Route</option>
+                        <option value="Crosslabel">Crosslabel</option>
+                        <option value="Penangguhan">Penangguhan</option>
+                        <option value="manual">Ketik Manual...</option>
+                      </select>
+                      <div class="bulk-select-chevron" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </div>
+                    </div>
+                    <input id="bulkActionManual" class="bulk-action-manual hidden" type="text" placeholder="Ketik aksi untuk data terpilih..." maxlength="150" />
+                  </div>
+
+                  <!-- Buttons Group -->
+                  <div class="bulk-right-group">
+                    <button class="bulk-btn-action bulk-btn-update" id="bulkUpdateBtn" type="button" title="Update aksi waybill terpilih">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>Update (<span id="selectedMonitoringCount">0</span>)</span>
+                    </button>
+                    <button class="bulk-btn-action bulk-btn-restore hidden" id="bulkRestoreUpdateBtn" type="button" title="Kembalikan waybill terpilih ke status Pending">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                      </svg>
+                      <span>Restore</span>
+                    </button>
+                    <button class="bulk-btn-action bulk-btn-archive" id="bulkArchiveBtn" type="button" title="Arsipkan waybill terpilih">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                        <rect x="1" y="3" width="22" height="5"></rect>
+                        <line x1="10" y1="12" x2="14" y2="12"></line>
+                      </svg>
+                      <span>Arsip (<span id="selectedMonitoringArchiveCount">0</span>)</span>
+                    </button>
+                    <button class="bulk-clear-btn" id="clearMonitoringSelectionBtn" type="button" title="Batalkan semua pilihan (✕)" aria-label="Batalkan semua pilihan">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 

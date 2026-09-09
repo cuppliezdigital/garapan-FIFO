@@ -4363,64 +4363,8 @@ thead th input[type="checkbox"] {
     padding: 2px 6px;
   }
 
-  .monitoring-bulk-controls {
-    display: none;
-    width: 100%;
-    padding: 8px;
-    border: 1px solid rgba(96, 165, 250, 0.28);
-    border-radius: 12px;
-    background: rgba(30, 64, 175, 0.12);
-  }
-
-  .monitoring-bulk-controls.has-selection {
-    display: flex;
-    position: fixed;
-    z-index: 50;
-    right: 14px;
-    bottom: 14px;
-    left: 14px;
-    width: auto;
-    align-items: stretch;
-    padding: 10px;
-    border-color: rgba(96, 165, 250, 0.55);
-    background: rgba(8, 20, 42, 0.96);
-    box-shadow: 0 14px 36px rgba(2, 6, 23, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.08);
-    backdrop-filter: blur(16px);
-  }
-
-  .monitoring-bulk-controls .filter-select,
-  .monitoring-bulk-controls .bulk-action-manual,
-  .monitoring-bulk-controls button {
-    flex: 1 1 100%;
-    width: 100%;
-    min-height: 42px;
-  }
-
   .monitoring-table tbody td[data-label="Nama Barang"] {
     padding-top: 12px;
-  }
-
-  .monitoring-bulk-controls .filter-select,
-  .monitoring-bulk-controls .bulk-action-manual {
-    flex: 1 1 42%;
-    width: auto;
-  }
-
-  .monitoring-bulk-controls button {
-    flex: 1 1 28%;
-    width: auto;
-  }
-
-  .monitoring-bulk-controls .bulk-clear-btn {
-    flex: 0 0 38px !important;
-    width: 38px !important;
-    min-height: 38px !important;
-    height: 38px !important;
-    margin-left: 2px !important;
-    padding: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
   }
 
   .monitoring-table .empty-state,
@@ -4612,63 +4556,310 @@ thead th input[type="checkbox"] {
   letter-spacing: 0.02em;
 }
 
+/* ============================================================ */
+/* MODERN FLOATING CYBER-DOCK BULK CONTROLS                     */
+/* ============================================================ */
 .monitoring-bulk-controls {
   display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  transition: all 0.25s ease;
 }
 
 .monitoring-bulk-controls.has-selection {
-  display: flex;
-  background: rgba(30, 58, 138, 0.28);
-  border-color: rgba(96, 165, 250, 0.45);
-  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.18);
+  display: flex !important;
+  position: fixed !important;
+  z-index: 1000 !important;
+  bottom: 22px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: min(820px, calc(100% - 24px)) !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 12px 18px !important;
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 17, 34, 0.98) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.38) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 24px 60px -10px rgba(0, 0, 0, 0.85),
+    0 0 35px -5px rgba(56, 189, 248, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  animation: bulkDockSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.bulk-count-indicator {
+@keyframes bulkDockSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 25px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* Glowing top accent line */
+.bulk-dock-glow-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #34d399 100%);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+/* Left: Counter Pill */
+.bulk-left-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.bulk-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #67e8f9;
   font-size: 0.8rem;
   font-weight: 700;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.15);
+  white-space: nowrap;
+}
+
+.bulk-count-pill strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.bulk-label-text {
+  letter-spacing: -0.01em;
+}
+
+.bulk-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+  animation: pulseGreenDock 1.8s infinite ease-in-out;
+}
+
+@keyframes pulseGreenDock {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.5; }
+}
+
+/* Middle: Select & Input */
+.bulk-middle-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bulk-select-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 240px;
+}
+
+.bulk-select-wrap .bulk-select-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #38bdf8;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.bulk-select-wrap .bulk-select-chevron {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #94a3b8;
-  padding: 0 4px;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
 }
 
-.monitoring-bulk-controls.has-selection .bulk-count-indicator {
-  color: #60a5fa;
+.bulk-select-wrap select {
+  width: 100% !important;
+  max-width: none !important;
+  height: 38px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding: 8px 30px 8px 32px !important;
+  border-radius: 10px !important;
+  background: rgba(15, 23, 42, 0.92) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #f1f5f9 !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.18s ease;
 }
 
-.bulk-select {
-  width: auto !important;
-  min-width: 140px;
-  max-width: 170px;
+.bulk-select-wrap select:focus {
+  outline: none;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
 }
 
-.bulk-clear-btn {
-  width: 32px;
-  height: 32px;
+.bulk-action-manual {
+  height: 38px !important;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  color: #ffffff !important;
+  font-size: 0.82rem !important;
+  flex: 1;
+}
+
+/* Right: Buttons */
+.bulk-right-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.bulk-btn-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.16);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #fca5a5;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0;
-  flex-shrink: 0;
-  margin-left: 2px;
+  white-space: nowrap;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bulk-btn-update {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.bulk-btn-update:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.55), 0 0 16px rgba(56, 189, 248, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.bulk-btn-update:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.bulk-btn-restore {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  color: #fbbf24 !important;
+}
+
+.bulk-btn-restore:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.28) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.bulk-btn-archive {
+  background: rgba(30, 41, 59, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #cbd5e1 !important;
+}
+
+.bulk-btn-archive:hover:not(:disabled) {
+  background: rgba(51, 65, 85, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+  transform: translateY(-1px);
+}
+
+.bulk-clear-btn {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  border-radius: 10px !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  border: 1px solid rgba(239, 68, 68, 0.38) !important;
+  color: #fca5a5 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 .bulk-clear-btn:hover {
-  background: rgba(239, 68, 68, 0.35);
-  border-color: #ef4444;
-  color: #ffffff;
-  transform: scale(1.06);
+  background: rgba(239, 68, 68, 0.3) !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+  transform: rotate(90deg) scale(1.08) !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Mobile Responsiveness for Floating Dock */
+@media (max-width: 640px) {
+  .monitoring-bulk-controls.has-selection {
+    bottom: 12px !important;
+    left: 10px !important;
+    right: 10px !important;
+    transform: none !important;
+    width: auto !important;
+    padding: 12px 14px !important;
+    border-radius: 16px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 9px !important;
+  }
+  .bulk-middle-group {
+    width: 100%;
+  }
+  .bulk-select-wrap {
+    max-width: none !important;
+    width: 100% !important;
+  }
+  .bulk-left-group {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .bulk-right-group {
+    width: 100%;
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+  }
+  .bulk-btn-action {
+    flex: 1 1 0;
+    padding: 0 8px;
+    font-size: 0.74rem;
+  }
+  .bulk-clear-btn {
+    flex-shrink: 0;
+  }
 }
 
 /* TOOLBAR PENCARIAN & FILTER */
@@ -5162,19 +5353,6 @@ thead th input[type="checkbox"] {
   .panel-counter-badge {
     font-size: 0.72rem;
     padding: 2px 8px;
-  }
-  .monitoring-bulk-controls {
-    width: 100%;
-    flex-wrap: wrap;
-    padding: 8px 10px;
-  }
-  .monitoring-bulk-controls .bulk-select {
-    flex: 1 1 130px;
-    max-width: none !important;
-  }
-  .monitoring-bulk-controls button {
-    flex: 1;
-    min-height: 36px;
   }
   .monitoring-filter-bar {
     padding: 8px 12px !important;
