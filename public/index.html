@@ -1087,38 +1087,203 @@
       </div>
     </div>
 
-    <div id="monitoringModal" class="modal hidden" aria-hidden="true">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="modalTitle">Tambah Data Monitoring</h3>
-          <button type="button" class="close-btn" id="closeModalBtn" aria-label="Tutup modal">×</button>
+    <!-- ============================================ -->
+    <!-- MODAL UPDATE DATA MONITORING (MODERN & ELEGANT) -->
+    <!-- ============================================ -->
+    <div id="monitoringModal" class="modal hidden update-modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-content update-modal-card">
+        <!-- TOP ACCENT GLOW BAR -->
+        <div class="update-modal-glow-bar" aria-hidden="true"></div>
+
+        <!-- MODAL HEADER -->
+        <div class="update-modal-header">
+          <div class="update-modal-title-group">
+            <div class="update-modal-icon-badge" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="update-modal-eyebrow">
+                <span class="eyebrow-pulse-dot"></span>
+                <span>FIFO MONITORING • DISPATCH ACTION</span>
+              </div>
+              <h3 id="modalTitle" class="update-modal-title">Update Data Monitoring</h3>
+            </div>
+          </div>
+          <button type="button" class="update-modal-close-btn" id="closeModalBtn" aria-label="Tutup modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
 
-        <form id="monitoringForm">
-          <div class="form-grid">
-            <label>
-              <span>Status</span>
-              <input type="text" id="status" name="status" value="Pending" readonly />
-            </label>
-
-            <label>
-              <span>Aksi Update</span>
-              <select id="actionSelect" name="actionSelect">
-                <option value="">Pilih aksi...</option>
-                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
-                <option value="Dalam Gudang">Dalam Gudang</option>
-                <option value="Miss Route">Miss Route</option>
-                <option value="Crosslabel">Crosslabel</option>
-                <option value="Penangguhan">Penangguhan</option>
-                <option value="manual">Ketik Manual...</option>
-              </select>
-              <input type="text" id="actionManual" name="actionManual" class="manual-action-input hidden" placeholder="Ketik aksi manual..." />
-            </label>
+        <!-- WAYBILL CONTEXT SUMMARY CARD -->
+        <div id="modalWaybillContext" class="update-context-card">
+          <div class="context-card-top">
+            <div class="context-waybill-wrap">
+              <span class="context-label">NO. WAYBILL</span>
+              <div class="context-waybill-row">
+                <strong id="modalWaybillText" class="context-waybill-code">-</strong>
+                <button type="button" id="modalCopyWaybillBtn" class="context-copy-btn" title="Salin nomor waybill">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span class="copy-label">Salin</span>
+                </button>
+              </div>
+            </div>
+            <div id="modalStuckBadge" class="context-aging-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span id="modalStuckText">-</span>
+            </div>
           </div>
 
-          <div class="form-actions">
-            <button type="button" class="secondary-btn" id="cancelBtn">Batal</button>
-            <button type="submit" class="primary-btn">Simpan</button>
+          <div class="context-meta-row">
+            <div class="context-meta-item">
+              <span class="meta-label">OUTLET / TLC</span>
+              <span class="meta-value" id="modalOutletText">-</span>
+            </div>
+            <div class="context-meta-item">
+              <span class="meta-label">TANGGAL</span>
+              <span class="meta-value" id="modalDateText">-</span>
+            </div>
+          </div>
+
+          <div class="context-barang-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="barang-icon">
+              <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span id="modalBarangText" class="context-barang-title">-</span>
+          </div>
+        </div>
+
+        <form id="monitoringForm" class="update-monitoring-form">
+          <!-- STATUS TRANSITION PREVIEW STRIP -->
+          <div class="status-preview-section">
+            <div class="status-preview-card">
+              <div class="status-box">
+                <span class="status-caption">STATUS SAAT INI</span>
+                <div class="status-pill-wrap">
+                  <span id="modalCurrentStatusBadge" class="modern-status-badge status-pending">
+                    <span class="badge-dot"></span>
+                    <span id="modalCurrentStatusText">Pending</span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="status-transition-arrow" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </div>
+
+              <div class="status-box">
+                <span class="status-caption">STATUS SETELAH UPDATE</span>
+                <div class="status-pill-wrap">
+                  <span id="modalTargetStatusBadge" class="modern-status-badge status-pending">
+                    <span class="badge-dot"></span>
+                    <span id="modalTargetStatusText">Pending</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <!-- Keep input id="status" for form submission compatibility -->
+            <input type="hidden" id="status" name="status" value="Pending" />
+          </div>
+
+          <!-- QUICK ACTION PILLS (ONE-TOUCH CHIPS) -->
+          <div class="action-selection-section">
+            <div class="section-heading-row">
+              <label class="action-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Pilih Tindakan / Aksi Cepat</span>
+              </label>
+              <span class="action-hint">Klik chip di bawah</span>
+            </div>
+
+            <div class="quick-chips-grid" id="modalQuickChips">
+              <button type="button" class="quick-chip-btn" data-action="Sudah Scan Kirim">
+                <span class="chip-emoji">🚚</span>
+                <span class="chip-text">Sudah Scan Kirim</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Dalam Gudang">
+                <span class="chip-emoji">🏢</span>
+                <span class="chip-text">Dalam Gudang</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Miss Route">
+                <span class="chip-emoji">🔀</span>
+                <span class="chip-text">Miss Route</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Crosslabel">
+                <span class="chip-emoji">🏷️</span>
+                <span class="chip-text">Crosslabel</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Penangguhan">
+                <span class="chip-emoji">⏳</span>
+                <span class="chip-text">Penangguhan</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="manual">
+                <span class="chip-emoji">✍️</span>
+                <span class="chip-text">Ketik Manual...</span>
+              </button>
+            </div>
+
+            <!-- DROPDOWN SELECT (CUSTOM STYLED) -->
+            <div class="custom-select-wrap">
+              <div class="custom-select-icon" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 6h16M4 12h16M4 18h10"></path>
+                </svg>
+              </div>
+              <select id="actionSelect" name="actionSelect" class="modern-action-select">
+                <option value="">-- Atau pilih dari dropdown --</option>
+                <option value="Sudah Scan Kirim">🚚 Sudah Scan Kirim</option>
+                <option value="Dalam Gudang">🏢 Dalam Gudang</option>
+                <option value="Miss Route">🔀 Miss Route</option>
+                <option value="Crosslabel">🏷️ Crosslabel</option>
+                <option value="Penangguhan">⏳ Penangguhan</option>
+                <option value="manual">✍️ Ketik Manual...</option>
+              </select>
+              <div class="custom-select-chevron" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
+
+            <!-- MANUAL INPUT (EXPANDED WHEN MANUAL IS SELECTED) -->
+            <div id="manualActionWrapper" class="manual-action-wrapper hidden">
+              <label for="actionManual" class="manual-action-label">Catatan / Tindakan Khusus:</label>
+              <div class="manual-input-inner">
+                <input type="text" id="actionManual" name="actionManual" class="manual-action-input" placeholder="Contoh: Retur vendor, tunggu konfirmasi client..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL ACTIONS -->
+          <div class="update-modal-footer">
+            <button type="button" class="btn-ghost-cancel" id="cancelBtn">
+              <span>Batal</span>
+            </button>
+            <button type="submit" class="btn-gradient-save" id="saveMonitoringBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Simpan Update</span>
+            </button>
           </div>
         </form>
       </div>

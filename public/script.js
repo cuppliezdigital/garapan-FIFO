@@ -599,6 +599,20 @@ async function bootstrapAuth() {
   setAuthState();
 }
 
+function updateQuickChipsUI(selectedVal) {
+  const chips = document.querySelectorAll('#modalQuickChips .quick-chip-btn');
+  chips.forEach((chip) => {
+    const action = chip.dataset.action;
+    if (selectedVal && action === selectedVal) {
+      chip.classList.add('active');
+    } else if (action === 'manual' && selectedVal === 'manual') {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+}
+
 function openModal(mode = 'create', item = null) {
   if (!monitoringModal) return;
 
@@ -609,8 +623,34 @@ function openModal(mode = 'create', item = null) {
   monitoringForm.reset();
   document.getElementById('status').value = 'Pending';
   if (actionManual) actionManual.classList.add('hidden');
+  const manualWrapper = document.getElementById('manualActionWrapper');
+  if (manualWrapper) manualWrapper.classList.add('hidden');
 
-  if ((mode === 'edit' || mode === 'archive-edit') && item) {
+  const contextCard = document.getElementById('modalWaybillContext');
+  const waybillText = document.getElementById('modalWaybillText');
+  const outletText = document.getElementById('modalOutletText');
+  const dateText = document.getElementById('modalDateText');
+  const stuckText = document.getElementById('modalStuckText');
+  const barangText = document.getElementById('modalBarangText');
+  const currentStatusBadge = document.getElementById('modalCurrentStatusBadge');
+  const currentStatusText = document.getElementById('modalCurrentStatusText');
+
+  if (item && (mode === 'edit' || mode === 'archive-edit')) {
+    if (contextCard) contextCard.classList.remove('hidden');
+    if (waybillText) waybillText.textContent = item.waybill || '-';
+    const outletParts = [item.outlet, item.tlc].filter((v) => v && v !== '-');
+    if (outletText) outletText.textContent = outletParts.length ? outletParts.join(' • ') : (item.outlet || '-');
+    if (dateText) dateText.textContent = normalizeDateString(item.tanggal) || '-';
+    if (stuckText) stuckText.textContent = item.stuck || '0';
+    if (barangText) barangText.textContent = item.nama_barang || '-';
+
+    const isUpdated = (item.aksi && item.aksi !== '-') || String(item.status || '').toLowerCase() === 'sudah diupdate' || String(item.status || '').toLowerCase() === 'sudah scan kirim';
+    const currentStatusVal = isUpdated ? 'Sudah Diupdate' : (item.status || 'Pending');
+    if (currentStatusText) currentStatusText.textContent = currentStatusVal;
+    if (currentStatusBadge) {
+      currentStatusBadge.className = `modern-status-badge ${isUpdated ? 'status-success' : 'status-pending'}`;
+    }
+
     const savedAction = item.aksi === '-' ? '' : (item.aksi || '');
     const actionOptions = Array.from(actionSelect?.options || []).map((option) => option.value);
     if (actionSelect && actionOptions.includes(savedAction)) {
@@ -619,7 +659,16 @@ function openModal(mode = 'create', item = null) {
       actionSelect.value = savedAction ? 'manual' : '';
       if (actionManual) actionManual.value = savedAction;
     }
-    if (actionManual) actionManual.classList.toggle('hidden', actionSelect?.value !== 'manual');
+    const isManual = actionSelect?.value === 'manual';
+    if (actionManual) actionManual.classList.toggle('hidden', !isManual);
+    if (manualWrapper) manualWrapper.classList.toggle('hidden', !isManual);
+    updateQuickChipsUI(actionSelect?.value);
+    syncStatusWithAction();
+  } else {
+    if (contextCard) contextCard.classList.add('hidden');
+    if (currentStatusText) currentStatusText.textContent = 'Data Baru';
+    if (currentStatusBadge) currentStatusBadge.className = 'modern-status-badge status-pending';
+    updateQuickChipsUI('');
     syncStatusWithAction();
   }
 
@@ -634,6 +683,10 @@ function closeModal() {
   monitoringForm.reset();
   editingWaybill = null;
   editingArchiveWaybill = null;
+  updateQuickChipsUI('');
+  const manualWrapper = document.getElementById('manualActionWrapper');
+  if (manualWrapper) manualWrapper.classList.add('hidden');
+  if (actionManual) actionManual.classList.add('hidden');
 }
 
 function openRegisterModal() {
@@ -716,12 +769,26 @@ function normalizeDateString(value) {
 
 function syncStatusWithAction() {
   const statusInput = document.getElementById('status');
+  const targetStatusBadge = document.getElementById('modalTargetStatusBadge');
+  const targetStatusText = document.getElementById('modalTargetStatusText');
   if (!statusInput) return;
 
   const selectedAction = actionSelect?.value === 'manual'
-    ? actionManual?.value.trim()
-    : actionSelect?.value.trim();
-  statusInput.value = selectedAction || 'Pending';
+    ? (actionManual?.value || '').trim()
+    : (actionSelect?.value || '').trim();
+
+  const hasAction = Boolean(selectedAction && selectedAction !== '-');
+  statusInput.value = hasAction ? 'Sudah Diupdate' : 'Pending';
+
+  if (targetStatusBadge && targetStatusText) {
+    if (hasAction) {
+      targetStatusBadge.className = 'modern-status-badge status-success';
+      targetStatusText.textContent = 'Sudah Diupdate';
+    } else {
+      targetStatusBadge.className = 'modern-status-badge status-pending';
+      targetStatusText.textContent = 'Pending';
+    }
+  }
 }
 
 function renderStatusOverview(data) {
@@ -3426,14 +3493,64 @@ if (monitoringForm) {
 if (actionSelect) {
   actionSelect.addEventListener('change', () => {
     const isManual = actionSelect.value === 'manual';
+    const manualWrapper = document.getElementById('manualActionWrapper');
     actionManual?.classList.toggle('hidden', !isManual);
+    if (manualWrapper) manualWrapper.classList.toggle('hidden', !isManual);
+    updateQuickChipsUI(actionSelect.value);
     syncStatusWithAction();
     if (isManual) actionManual?.focus();
   });
 }
 
 if (actionManual) {
-  actionManual.addEventListener('input', syncStatusWithAction);
+  actionManual.addEventListener('input', () => {
+    syncStatusWithAction();
+  });
+}
+
+const modalQuickChips = document.getElementById('modalQuickChips');
+if (modalQuickChips) {
+  modalQuickChips.addEventListener('click', (event) => {
+    const chip = event.target.closest('.quick-chip-btn');
+    if (!chip) return;
+
+    const actionVal = chip.dataset.action;
+    const manualWrapper = document.getElementById('manualActionWrapper');
+
+    if (actionVal === 'manual') {
+      if (actionSelect) actionSelect.value = 'manual';
+      actionManual?.classList.remove('hidden');
+      if (manualWrapper) manualWrapper.classList.remove('hidden');
+      updateQuickChipsUI('manual');
+      actionManual?.focus();
+    } else {
+      if (actionSelect) actionSelect.value = actionVal;
+      actionManual?.classList.add('hidden');
+      if (manualWrapper) manualWrapper.classList.add('hidden');
+      if (actionManual) actionManual.value = '';
+      updateQuickChipsUI(actionVal);
+    }
+    syncStatusWithAction();
+  });
+}
+
+const modalCopyWaybillBtn = document.getElementById('modalCopyWaybillBtn');
+if (modalCopyWaybillBtn) {
+  modalCopyWaybillBtn.addEventListener('click', () => {
+    const waybillText = document.getElementById('modalWaybillText')?.textContent?.trim();
+    if (waybillText && waybillText !== '-') {
+      navigator.clipboard.writeText(waybillText).then(() => {
+        const copyLabel = modalCopyWaybillBtn.querySelector('.copy-label') || modalCopyWaybillBtn;
+        const originalText = copyLabel.textContent;
+        copyLabel.textContent = 'Tersalin! ✓';
+        modalCopyWaybillBtn.classList.add('copied');
+        setTimeout(() => {
+          copyLabel.textContent = originalText;
+          modalCopyWaybillBtn.classList.remove('copied');
+        }, 1500);
+      }).catch(() => {});
+    }
+  });
 }
 
 if (tbody) {
