@@ -4253,6 +4253,10 @@ const clearUnknownScansBtn = document.getElementById('clearUnknownScansBtn');
 const scannerCameraArea = document.getElementById('scannerCameraArea');
 const scannerVideoElement = document.getElementById('scannerVideoElement');
 const stopCameraBtn = document.getElementById('stopCameraBtn');
+const scannerGuideToggleBtn = document.getElementById('scannerGuideToggleBtn');
+const scannerGuideDrawer = document.getElementById('scannerGuideDrawer');
+const closeScannerGuideBtn = document.getElementById('closeScannerGuideBtn');
+const gotItGuideBtn = document.getElementById('gotItGuideBtn');
 
 // Modal Input Cepat DOM
 const scannerQuickAddModal = document.getElementById('scannerQuickAddModal');
@@ -4267,17 +4271,21 @@ const quickAddNamaBarang = document.getElementById('quickAddNamaBarang');
 const quickAddAksi = document.getElementById('quickAddAksi');
 
 // Buka & Tutup Modal Scanner
+function focusScannerInput() {
+  if (scannerBarcodeInput && scannerModal && !scannerModal.classList.contains('hidden')) {
+    scannerBarcodeInput.focus();
+  }
+}
+
 function openScannerModal() {
   if (!scannerModal) return;
   getAudioContext(); // Inisialisasi AudioContext pada interaksi user
   scannerModal.classList.remove('hidden');
   scannerModal.setAttribute('aria-hidden', 'false');
   updateSoundToggleButton();
-  setTimeout(() => {
-    if (scannerBarcodeInput) {
-      scannerBarcodeInput.focus();
-    }
-  }, 100);
+  focusScannerInput();
+  setTimeout(focusScannerInput, 80);
+  setTimeout(focusScannerInput, 250);
 }
 
 function closeScannerModal() {
@@ -4286,6 +4294,7 @@ function closeScannerModal() {
   scannerModal.classList.add('hidden');
   scannerModal.setAttribute('aria-hidden', 'true');
   if (unknownScansDrawer) unknownScansDrawer.classList.add('hidden');
+  if (scannerGuideDrawer) scannerGuideDrawer.classList.add('hidden');
 }
 
 // Buka & Tutup Modal Input Cepat
@@ -4665,26 +4674,142 @@ function updateUnknownScansDrawer() {
   unknownScansList.innerHTML = html;
 }
 
-// Global Hardware Wedge Scanner Listener
+// ==============================================================
+// HARDWARE PDA SCANNER WEDGE & AUTO-BURST DETECTION ENGINE
+// ==============================================================
+let barcodeBurstTimer = null;
 let wedgeBuffer = '';
 let lastKeypressTime = 0;
-const WEDGE_MAX_CHAR_INTERVAL_MS = 75; // Hardware laser scanner PDA mengetik < 60ms per karakter
+const WEDGE_MAX_CHAR_INTERVAL_MS = 250; // Toleransi jeda ketik hardware PDA lebih longgar (250ms)
 
+// 1. Direct Listener pada Input Barcode (Sangat Akurat untuk PDA)
+if (scannerBarcodeInput) {
+  // A. Deteksi Input & Auto-Burst:
+  // Ketika laser PDA menembak, karakter diketik secara cepat.
+  // Jika dalam 160ms tidak ada ketikan baru (laser selesai nembak), proses otomatis tanpa perlu klik tombol / Enter!
+  scannerBarcodeInput.addEventListener('input', () => {
+    if (scannerClearInputBtn) {
+      scannerClearInputBtn.classList.toggle('hidden', !scannerBarcodeInput.value.trim());
+    }
+
+    const currentVal = scannerBarcodeInput.value;
+
+    // Jika mengandung newline / enter / tab dari laser
+    if (currentVal.includes('\n') || currentVal.includes('\r') || currentVal.includes('\t')) {
+      clearTimeout(barcodeBurstTimer);
+      const clean = currentVal.replace(/[\r\n\t]/g, '').trim();
+      if (clean) {
+        handleScannedWaybill(clean);
+      }
+      return;
+    }
+
+    // Auto-burst trigger: jika panjang >= 5 digit resi, pasang timer cepat 160ms
+    clearTimeout(barcodeBurstTimer);
+    const trimmed = currentVal.trim();
+    if (trimmed.length >= 5) {
+      barcodeBurstTimer = setTimeout(() => {
+        const finalVal = scannerBarcodeInput.value.replace(/[\r\n\t]/g, '').trim();
+        if (finalVal.length >= 5) {
+          handleScannedWaybill(finalVal);
+        }
+      }, 160);
+    }
+  });
+
+  // B. Tangani penekanan Enter / Tab / Android Action Key langsung di Input
+  scannerBarcodeInput.addEventListener('keydown', (e) => {
+    const isEnterOrTab = (
+      e.key === 'Enter' ||
+      e.key === 'Tab' ||
+      e.keyCode === 13 ||
+      e.keyCode === 9 ||
+      e.keyCode === 66 || // Android KeyEvent.KEYCODE_ENTER
+      e.which === 13 ||
+      e.which === 9
+    );
+
+    if (isEnterOrTab) {
+      e.preventDefault();
+      clearTimeout(barcodeBurstTimer);
+      const val = scannerBarcodeInput.value.replace(/[\r\n\t]/g, '').trim();
+      if (val) {
+        handleScannedWaybill(val);
+      }
+    }
+  });
+
+  // C. Tangani Paste (jika PDA diset mode Clipboard Paste)
+  scannerBarcodeInput.addEventListener('paste', () => {
+    clearTimeout(barcodeBurstTimer);
+    setTimeout(() => {
+      const val = scannerBarcodeInput.value.replace(/[\r\n\t]/g, '').trim();
+      if (val.length >= 3) {
+        handleScannedWaybill(val);
+      }
+    }, 40);
+  });
+}
+
+// 2. Barcode Form Submit Listener (Tombol "Proses" Manual)
+if (scannerBarcodeForm) {
+  scannerBarcodeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearTimeout(barcodeBurstTimer);
+    if (!scannerBarcodeInput) return;
+    const value = scannerBarcodeInput.value.trim();
+    if (value) handleScannedWaybill(value);
+  });
+}
+
+if (scannerClearInputBtn) {
+  scannerClearInputBtn.addEventListener('click', () => {
+    clearTimeout(barcodeBurstTimer);
+    if (scannerBarcodeInput) {
+      scannerBarcodeInput.value = '';
+      scannerBarcodeInput.focus();
+    }
+    scannerClearInputBtn.classList.add('hidden');
+  });
+}
+
+// 3. Global Hardware Wedge Scanner Listener (ketika modal tertutup atau input tidak sengaja kehilangan fokus)
+let globalWedgeTimer = null;
 window.addEventListener('keydown', (e) => {
-  if (!e || typeof e.key !== 'string') return;
+  if (!e) return;
+
+  // Jika belum login, abaikan
+  if (loginView && !loginView.classList.contains('hidden')) return;
+
+  // Jangan tangkap jika user sedang mengetik di input lain (seperti searchInput, login, filter)
+  const activeEl = document.activeElement;
+  const isOtherInput = activeEl && activeEl !== scannerBarcodeInput && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+  if (isOtherInput) return;
+
+  // Jika scannerBarcodeInput sedang aktif dan fokus, biarkan listener input di atas yang menangani
+  if (activeEl === scannerBarcodeInput) return;
+
+  const isEnterOrTab = (
+    e.key === 'Enter' ||
+    e.key === 'Tab' ||
+    e.keyCode === 13 ||
+    e.keyCode === 9 ||
+    e.keyCode === 66 ||
+    e.which === 13 ||
+    e.which === 9
+  );
 
   const currentTime = Date.now();
   const timeDiff = currentTime - lastKeypressTime;
   lastKeypressTime = currentTime;
 
-  // Jika tombol Enter ditekan
-  if (e.key === 'Enter') {
+  if (isEnterOrTab) {
+    clearTimeout(globalWedgeTimer);
     if (wedgeBuffer && wedgeBuffer.length >= 3) {
       const scannedCode = wedgeBuffer.trim();
       wedgeBuffer = '';
       if (scannedCode) {
         e.preventDefault();
-        // Jika modal belum terbuka, buka otomatis
         if (scannerModal && scannerModal.classList.contains('hidden')) {
           openScannerModal();
         }
@@ -4696,46 +4821,32 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Karakter yang dapat dicetak (printable characters)
-  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  // Karakter yang dapat dicetak (printable)
+  if (typeof e.key === 'string' && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
     if (timeDiff <= WEDGE_MAX_CHAR_INTERVAL_MS || wedgeBuffer.length === 0) {
       wedgeBuffer += e.key;
     } else {
-      // Jeda waktu lambat (ketikan manusia normal) -> mulai buffer baru
       wedgeBuffer = e.key;
     }
-  } else if (e.key !== 'Shift') {
-    wedgeBuffer = '';
+
+    // Auto-burst global jika laser PDA tidak mengirim tombol Enter (jeda 180ms)
+    clearTimeout(globalWedgeTimer);
+    if (wedgeBuffer.length >= 5) {
+      globalWedgeTimer = setTimeout(() => {
+        if (wedgeBuffer.length >= 5) {
+          const scannedCode = wedgeBuffer.trim();
+          wedgeBuffer = '';
+          if (scannedCode) {
+            if (scannerModal && scannerModal.classList.contains('hidden')) {
+              openScannerModal();
+            }
+            handleScannedWaybill(scannedCode);
+          }
+        }
+      }, 180);
+    }
   }
 });
-
-// Barcode Form Input Listener
-if (scannerBarcodeForm) {
-  scannerBarcodeForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (!scannerBarcodeInput) return;
-    const value = scannerBarcodeInput.value.trim();
-    if (value) handleScannedWaybill(value);
-  });
-}
-
-if (scannerBarcodeInput) {
-  scannerBarcodeInput.addEventListener('input', () => {
-    if (scannerClearInputBtn) {
-      scannerClearInputBtn.classList.toggle('hidden', !scannerBarcodeInput.value.trim());
-    }
-  });
-}
-
-if (scannerClearInputBtn) {
-  scannerClearInputBtn.addEventListener('click', () => {
-    if (scannerBarcodeInput) {
-      scannerBarcodeInput.value = '';
-      scannerBarcodeInput.focus();
-    }
-    scannerClearInputBtn.classList.add('hidden');
-  });
-}
 
 // Drawer Toggle Handlers
 if (toggleUnknownDrawerBtn) {
@@ -4746,6 +4857,26 @@ if (toggleUnknownDrawerBtn) {
 if (closeUnknownDrawerBtn) {
   closeUnknownDrawerBtn.addEventListener('click', () => {
     if (unknownScansDrawer) unknownScansDrawer.classList.add('hidden');
+    focusScannerInput();
+  });
+}
+
+// Panduan Setting PDA Drawer Toggle Handlers
+if (scannerGuideToggleBtn) {
+  scannerGuideToggleBtn.addEventListener('click', () => {
+    if (scannerGuideDrawer) scannerGuideDrawer.classList.toggle('hidden');
+  });
+}
+if (closeScannerGuideBtn) {
+  closeScannerGuideBtn.addEventListener('click', () => {
+    if (scannerGuideDrawer) scannerGuideDrawer.classList.add('hidden');
+    focusScannerInput();
+  });
+}
+if (gotItGuideBtn) {
+  gotItGuideBtn.addEventListener('click', () => {
+    if (scannerGuideDrawer) scannerGuideDrawer.classList.add('hidden');
+    focusScannerInput();
   });
 }
 if (copyUnknownScansBtn) {
@@ -4835,7 +4966,20 @@ if (cancelQuickAddBtn) cancelQuickAddBtn.addEventListener('click', closeQuickAdd
 // Tutup Scanner ketika klik overlay backdrop atau tekan ESC
 if (scannerModal) {
   scannerModal.addEventListener('click', (e) => {
-    if (e.target === scannerModal) closeScannerModal();
+    if (e.target === scannerModal) {
+      closeScannerModal();
+      return;
+    }
+    const interactiveTag = e.target.closest('button, select, input, a, textarea');
+    if (!interactiveTag) {
+      focusScannerInput();
+    }
+  });
+}
+
+if (scannerActionSelect) {
+  scannerActionSelect.addEventListener('change', () => {
+    setTimeout(focusScannerInput, 60);
   });
 }
 if (scannerQuickAddModal) {
