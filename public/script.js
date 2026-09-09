@@ -1227,10 +1227,11 @@ function initCardFilters() {
         
         // Kasih efek visual dikit biar ketauan mana yang aktif
         cards.forEach(card => {
-            const cardEl = document.getElementById(card.id);
+          const cardEl = document.getElementById(card.id);
           if (cardEl) cardEl.classList.toggle('is-active', activeSummaryCardId === card.id);
         });
 
+        monitoringPage = 1;
         applyFilter();
       });
     }
@@ -4322,13 +4323,15 @@ let lastKeypressTime = 0;
 const WEDGE_MAX_CHAR_INTERVAL_MS = 75; // Hardware laser scanner PDA mengetik < 60ms per karakter
 
 window.addEventListener('keydown', (e) => {
+  if (!e || typeof e.key !== 'string') return;
+
   const currentTime = Date.now();
   const timeDiff = currentTime - lastKeypressTime;
   lastKeypressTime = currentTime;
 
   // Jika tombol Enter ditekan
   if (e.key === 'Enter') {
-    if (wedgeBuffer.length >= 3) {
+    if (wedgeBuffer && wedgeBuffer.length >= 3) {
       const scannedCode = wedgeBuffer.trim();
       wedgeBuffer = '';
       if (scannedCode) {
@@ -4493,7 +4496,7 @@ if (scannerQuickAddModal) {
   });
 }
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
+  if (e && e.key === 'Escape') {
     if (scannerQuickAddModal && !scannerQuickAddModal.classList.contains('hidden')) {
       closeQuickAddModal();
     } else if (scannerModal && !scannerModal.classList.contains('hidden')) {
