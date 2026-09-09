@@ -5990,6 +5990,7 @@ thead th input[type="checkbox"]:active {
   position: sticky;
   top: 0;
   z-index: 10;
+  flex-shrink: 0;
 }
 .scanner-brand-wrap {
   display: flex;
@@ -6104,6 +6105,7 @@ thead th input[type="checkbox"]:active {
   padding: 12px 24px;
   background: rgba(15, 23, 42, 0.6);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 .scanner-mode-btn {
   flex: 1;
@@ -6278,6 +6280,7 @@ thead th input[type="checkbox"]:active {
 
 .scanner-input-container {
   padding: 18px 24px 10px;
+  flex-shrink: 0;
 }
 .scanner-input-wrapper {
   position: relative;
@@ -6363,10 +6366,11 @@ thead th input[type="checkbox"]:active {
 
 .scanner-result-area {
   padding: 10px 24px 18px;
-  min-height: 180px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  flex: 1 0 auto;
+  min-height: 0;
 }
 
 .scanner-idle-card {
@@ -6375,6 +6379,7 @@ thead th input[type="checkbox"]:active {
   align-items: center;
   text-align: center;
   padding: 24px 20px;
+  margin: auto 0;
   border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   background: rgba(30, 41, 59, 0.3);
@@ -6648,8 +6653,9 @@ thead th input[type="checkbox"]:active {
 
 .scanner-recent-section {
   padding: 12px 24px;
-  background: rgba(15, 23, 42, 0.5);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 .recent-header {
   display: flex;
@@ -6713,9 +6719,11 @@ thead th input[type="checkbox"]:active {
 
 .scanner-footer-bar {
   padding: 10px 24px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: flex-end;
+  background: #0f172a;
+  flex-shrink: 0;
 }
 .scanner-drawer-btn {
   display: inline-flex;
@@ -6825,32 +6833,225 @@ thead th input[type="checkbox"]:active {
 }
 
 @media (max-width: 640px) {
+  .scanner-modal-overlay {
+    padding: 0 !important;
+  }
+
   .scanner-modal-card {
-    border-radius: 0;
-    max-height: 100vh;
-    height: 100vh;
+    border-radius: 0 !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    background: #0a0f1d !important;
   }
+
+  /* Compact PDA Header */
   .scanner-header {
-    padding: 14px 16px 10px;
+    padding: 9px 12px 7px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: #0f172a !important;
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
   }
+  .scanner-brand-wrap {
+    gap: 8px !important;
+  }
+  .scanner-brand-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+  }
+  .scanner-brand-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .scanner-title-row {
+    gap: 6px !important;
+    align-items: center !important;
+  }
+  .scanner-title-row h3 {
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+    line-height: 1.15 !important;
+    margin: 0 !important;
+  }
+  .scanner-hardware-badge {
+    padding: 1px 6px !important;
+    font-size: 0.58rem !important;
+    letter-spacing: 0.02em !important;
+  }
+  .scanner-subtext {
+    display: none !important;
+  }
+  .scanner-header-actions {
+    gap: 5px !important;
+  }
+  .scanner-tool-btn {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 7px !important;
+  }
+  .scanner-tool-btn svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  .scanner-close-btn {
+    font-size: 1.1rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Compact Mode Bar */
   .scanner-mode-bar {
-    padding: 8px 16px;
+    padding: 6px 12px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
   }
   .scanner-mode-btn {
-    font-size: 0.76rem;
-    padding: 8px 6px;
+    font-size: 0.72rem !important;
+    padding: 6px 6px !important;
+    border-radius: 8px !important;
+    gap: 4px !important;
   }
+  .scanner-mode-btn .mode-icon {
+    font-size: 0.82rem !important;
+  }
+
+  .scanner-update-config-bar {
+    padding: 8px 12px !important;
+    flex-shrink: 0 !important;
+  }
+  .config-action-choice {
+    min-width: 0 !important;
+  }
+
+  /* Compact Input Box */
   .scanner-input-container {
-    padding: 12px 16px 6px;
+    padding: 8px 12px 6px !important;
+    flex-shrink: 0 !important;
   }
+  .scanner-input-wrapper {
+    padding: 2px 4px 2px 10px !important;
+    border-radius: 9px !important;
+  }
+  .scanner-input-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .scanner-barcode-input {
+    font-size: 0.88rem !important;
+    padding: 6px 0 !important;
+  }
+  .scanner-barcode-input::placeholder {
+    font-size: 0.75rem !important;
+  }
+  .scanner-submit-btn {
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    border-radius: 7px !important;
+  }
+  .scanner-guidance-pill {
+    display: none !important;
+  }
+
+  /* Result Area & Card */
   .scanner-result-area {
-    padding: 8px 16px 14px;
+    padding: 6px 12px 10px !important;
+    flex: 1 0 auto !important;
+    min-height: auto !important;
   }
+  .scan-card-found {
+    border-radius: 12px !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+  }
+  .scan-card-header {
+    padding: 8px 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 5px !important;
+  }
+  .scan-card-waybill-wrap {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+  .scan-card-waybill-label {
+    font-size: 0.65rem !important;
+  }
+  .scan-card-waybill {
+    font-size: 1.02rem !important;
+    word-break: break-all !important;
+  }
+  .fifo-badge {
+    font-size: 0.66rem !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+  }
+  .scan-card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px 10px !important;
+    padding: 10px 12px !important;
+  }
+  .scan-data-label {
+    font-size: 0.58rem !important;
+  }
+  .scan-data-value {
+    font-size: 0.78rem !important;
+    word-break: break-word !important;
+  }
+  .scan-data-value.highlight-age {
+    font-size: 0.85rem !important;
+  }
+  .scan-data-item[style*="grid-column"] {
+    padding-top: 6px !important;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* Recent Scans Strip */
   .scanner-recent-section {
-    padding: 10px 16px;
+    padding: 8px 12px !important;
+    background: #0f172a !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    flex-shrink: 0 !important;
   }
+  .recent-header {
+    margin-bottom: 5px !important;
+  }
+  .recent-title {
+    font-size: 0.68rem !important;
+  }
+  .recent-badge {
+    font-size: 0.65rem !important;
+  }
+  .recent-scan-chip {
+    padding: 4px 8px !important;
+    font-size: 0.72rem !important;
+    border-radius: 6px !important;
+  }
+
+  /* Footer Drawer */
   .scanner-footer-bar {
-    padding: 8px 16px 12px;
+    padding: 8px 12px 10px !important;
+    background: #0f172a !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    flex-shrink: 0 !important;
+  }
+  .scanner-drawer-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 7px 10px !important;
+    font-size: 0.74rem !important;
   }
 }
 

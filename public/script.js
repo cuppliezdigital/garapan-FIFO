@@ -4523,6 +4523,9 @@ async function handleScannedWaybill(rawCode) {
     scannerBarcodeInput.focus();
   }
   if (scannerClearInputBtn) scannerClearInputBtn.classList.add('hidden');
+  if (scannerDynamicCard && !scannerDynamicCard.classList.contains('hidden')) {
+    scannerDynamicCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 // Render Kartu Waybill Ditemukan
