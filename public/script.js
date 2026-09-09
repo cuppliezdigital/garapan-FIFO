@@ -3873,8 +3873,16 @@ if (modeUpdateBtn) modeUpdateBtn.addEventListener('click', () => setScannerMode(
 
 // Handler Pemrosesan Barcode / Waybill
 async function handleScannedWaybill(rawCode) {
-  const cleanCode = String(rawCode || '').trim().replace(/[\r\n]/g, '');
+  let cleanCode = String(rawCode || '').trim().replace(/[\r\n\t]/g, '');
   if (!cleanCode) return;
+
+  // Bersihkan input teks segera agar siap scan berikutnya dan tidak double-submit
+  if (scannerBarcodeInput) {
+    scannerBarcodeInput.value = '';
+  }
+  if (scannerClearInputBtn) {
+    scannerClearInputBtn.classList.add('hidden');
+  }
 
   const user = getCurrentUser();
   const now = new Date();
@@ -3989,7 +3997,8 @@ async function handleScannedWaybill(rawCode) {
           addRecentScan(item.waybill, 'dot-updated', `Update: ${targetAksi}`, `${ageDays} Hari`, timeString);
 
           // Refresh tabel utama dan kartu statistik di latar belakang
-          if (typeof renderTable === 'function') renderTable(monitoringData);
+          if (typeof applyFilter === 'function') applyFilter();
+          else if (typeof renderTable === 'function') renderTable(monitoringData);
           if (typeof updateStats === 'function') updateStats(monitoringData);
         } else {
           const errData = await response.json().catch(() => ({}));
@@ -4170,7 +4179,7 @@ function updateUnknownScansDrawer() {
 // Global Hardware Wedge Scanner Listener
 let wedgeBuffer = '';
 let lastKeypressTime = 0;
-const WEDGE_MAX_CHAR_INTERVAL_MS = 45; // Hardware laser scanner PDA mengetik < 35ms per karakter
+const WEDGE_MAX_CHAR_INTERVAL_MS = 75; // Hardware laser scanner PDA mengetik < 60ms per karakter
 
 window.addEventListener('keydown', (e) => {
   const currentTime = Date.now();
@@ -4396,6 +4405,8 @@ function stopCameraScanner() {
 async function initBarcodeDetection(videoEl) {
   if (!window.BarcodeDetector) {
     console.warn('BarcodeDetector API tidak didukung langsung oleh browser ini.');
+    alert('Browser perangkat ini belum mendukung fitur scan kamera otomatis (BarcodeDetector API). Gunakan tombol laser scanner PDA fisik atau ketik nomor resi di kolom input.');
+    stopCameraScanner();
     return;
   }
 
