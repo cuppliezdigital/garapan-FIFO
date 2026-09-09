@@ -499,6 +499,7 @@ function logout() {
 
   authUser = null;
   sessionStorage.removeItem('monitoring_user');
+  window.location.hash = '#/monitoring';
   fetch('/api/auth/logout', {
     method: 'POST',
     credentials: 'include',
@@ -563,6 +564,7 @@ async function loginUser(username, password) {
     setCurrentPermissions([]);
   }
 
+  window.location.hash = '#/monitoring';
   setAuthState();
 }
 
