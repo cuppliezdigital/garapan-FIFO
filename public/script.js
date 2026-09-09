@@ -1,3 +1,13 @@
+// Pastikan fetch selalu menyertakan session cookie (credentials: 'include') secara global
+const _nativeFetch = window.fetch;
+window.fetch = function (resource, init = {}) {
+  const options = Object.assign({}, init);
+  if (!options.credentials) {
+    options.credentials = 'include';
+  }
+  return _nativeFetch.call(this, resource, options);
+};
+
 const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
 const loginView = document.getElementById('loginView');
@@ -264,10 +274,12 @@ let permissionCatalog = [];
 let configUsersList = [];
 let selectedConfigUserId = null;
 
-function showAppAlert(message) {
+function showAppAlert(message, isErrorOverride = null) {
   if (!appAlertModal) return;
   const text = String(message || 'Terjadi sesuatu pada aplikasi.');
-  const isError = /gagal|error|ditolak|tidak valid|wajib|belum/i.test(text);
+  const isError = isErrorOverride !== null
+    ? Boolean(isErrorOverride)
+    : /gagal|error|ditolak|tidak|batal|salah|habis|kadaluarsa|unauthorized|forbidden|invalid|wajib|belum/i.test(text);
   if (appAlertTitle) appAlertTitle.textContent = isError ? 'Proses belum berhasil' : 'Proses berhasil';
   if (appAlertMessage) appAlertMessage.textContent = text;
   if (appAlertIcon) {
@@ -346,16 +358,20 @@ function applyUIPermissions() {
   toggle(importBulkBtn, hasPermission('import_bulk'));
   toggle(deleteAllMonitoringBtn, hasPermission('delete_global'));
 
+  const createAccountCard = document.getElementById('createAccountCard');
+  toggle(createAccountCard, hasPermission('create_user'));
+
   // Sidebar navigation visibility
   const canManageUsers = hasPermission('manage_users');
   const canViewHistory = hasPermission('view_history');
   const canAccessConfig = hasPermission('access_config');
-  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global'];
+  const canCreateUser = hasPermission('create_user');
+  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user'];
   const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
 
   toggle(navLinks.users, canManageUsers);
   toggle(navLinks.history, canViewHistory);
-  toggle(navLinks.permissions, canAccessConfig);
+  toggle(navLinks.permissions, canAccessConfig || canCreateUser);
   toggle(navLinks.audit, canViewHistory);
   toggle(navLinks.settings, hasAdminPermission);
 
@@ -1900,6 +1916,7 @@ async function handleBulkMonitoringUpdate() {
 
   const response = await fetch('/api/monitoring/bulk-update', {
     method: 'PATCH',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getToken()}`,
@@ -2461,7 +2478,7 @@ function syncPanelButtonStates() {
 }
 
 async function fetchConfigUsers() {
-  if (!hasPermission('access_config') && getCurrentUser().role !== 'admin') return;
+  if (!hasPermission('access_config') && !hasPermission('create_user') && getCurrentUser().role !== 'admin') return;
   const response = await fetch('/api/auth/users', { credentials: 'include' });
   if (!response.ok) return;
   configUsersList = await response.json();
@@ -3043,9 +3060,9 @@ async function removeAppBackground() {
 }
 
 async function createAccountHandler() {
-  if (getCurrentUser().role !== 'super_admin') {
+  if (!hasPermission('create_user') && getCurrentUser().role !== 'super_admin') {
     if (createAccountMessage) {
-      createAccountMessage.textContent = 'Hanya super_admin yang dapat membuat akun.';
+      createAccountMessage.textContent = 'Anda tidak memiliki izin untuk membuat akun.';
       createAccountMessage.classList.add('error');
     }
     return;
@@ -3949,6 +3966,7 @@ async function handleScannedWaybill(rawCode) {
       try {
         const response = await fetch('/api/monitoring/bulk-update', {
           method: 'PATCH',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${getToken()}`,

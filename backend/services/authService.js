@@ -536,7 +536,13 @@ async function loginUser({ username, password }) {
   };
 }
 
+async function initAuthTables() {
+  await ensureUsersTable();
+  await ensureDefaultAdmin();
+}
+
 module.exports = {
+  initAuthTables,
   registerUser,
   loginUser,
   findUserByUsername,

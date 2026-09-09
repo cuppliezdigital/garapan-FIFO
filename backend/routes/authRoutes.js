@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 
 const authController = require('../controllers/authController');
 const { authMiddleware, requireRole, requirePermission } = require('../middleware/auth');
@@ -6,12 +7,20 @@ const { PERMISSION_KEYS } = require('../services/permissionsService');
 
 const router = express.Router();
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+const loginLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 menit
+  max: 5, // maksimal 5 percobaan per menit
+  message: { error: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit lagi.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/register', authMiddleware, requirePermission(PERMISSION_KEYS.CREATE_USER), authController.register);
+router.post('/login', loginLimiter, authController.login);
 router.post('/logout', authMiddleware, authController.logout);
 
 router.get('/users', authMiddleware, requirePermission(PERMISSION_KEYS.MANAGE_USERS), authController.getUsers);
-router.post('/users', authMiddleware, requireRole('super_admin'), authController.createUser);
+router.post('/users', authMiddleware, requirePermission(PERMISSION_KEYS.CREATE_USER), authController.createUser);
 router.patch('/users/:id/status', authMiddleware, requirePermission(PERMISSION_KEYS.MANAGE_USERS), authController.toggleUserStatus);
 router.delete('/users/:id', authMiddleware, requirePermission(PERMISSION_KEYS.MANAGE_USERS), authController.deleteUser);
 
@@ -37,7 +46,7 @@ router.put('/background', authMiddleware, requireRole('super_admin'), (req, res,
 router.patch('/background/opacity', authMiddleware, requireRole('super_admin'), authController.updateBackgroundOpacity);
 router.delete('/background', authMiddleware, requireRole('super_admin'), authController.deleteAppBackground);
 
-router.get('/debug/users', authMiddleware, authController.debugUsers);
+router.get('/debug/users', authMiddleware, requireRole('super_admin'), authController.debugUsers);
 
 router.get('/me', authMiddleware, (req, res) => {
   res.json({ user: req.user, permissions: req.permissions || [] });

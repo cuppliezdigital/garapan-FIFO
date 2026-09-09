@@ -110,6 +110,12 @@ async function ensureMonitoringArchiveTable() {
   `);
 }
 
+async function initMonitoringTables() {
+  await ensureMonitoringTable();
+  await ensureMonitoringHistoryTable();
+  await ensureMonitoringArchiveTable();
+}
+
 function normalizeMonitoringRow(raw = {}) {
   const waybill = String(raw.waybill || raw.Waybill || '').trim();
   if (!waybill) return null;
@@ -183,12 +189,11 @@ function normalizeStuckCategory(value) {
   return String(value || '0').trim() || '0';
 }
 
-async function archiveMonitoringRecord(record, source = 'archive') {
+async function archiveMonitoringRecord(record, source = 'archive', client = null) {
   if (!record || !record.waybill) return;
 
-  await ensureMonitoringHistoryTable();
-
-  await db.query(
+  const dbClient = client || db;
+  await dbClient.query(
     `INSERT INTO monitoring_history
       (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -219,26 +224,21 @@ async function archiveMonitoringRecord(record, source = 'archive') {
 }
 
 async function getAllMonitoring() {
-  await ensureMonitoringTable();
   const [rows] = await db.query('SELECT * FROM monitoring_stuck ORDER BY tanggal DESC, created_at DESC');
   return rows;
 }
 
 async function getAllMonitoringHistory() {
-  await ensureMonitoringHistoryTable();
   const [rows] = await db.query('SELECT * FROM monitoring_history ORDER BY archived_at DESC');
   return rows;
 }
 
 async function getAllMonitoringArchive() {
-  await ensureMonitoringArchiveTable();
   const [rows] = await db.query('SELECT * FROM monitoring_archive ORDER BY archived_at DESC');
   return rows;
 }
 
 async function archiveMonitoring(waybills) {
-  await ensureMonitoringTable();
-  await ensureMonitoringArchiveTable();
   let archivedCount = 0;
 
   for (const waybill of waybills) {
@@ -261,8 +261,6 @@ async function archiveMonitoring(waybills) {
 }
 
 async function restoreMonitoring(waybills) {
-  await ensureMonitoringTable();
-  await ensureMonitoringArchiveTable();
   let restoredCount = 0;
 
   for (const waybill of waybills) {
@@ -284,7 +282,6 @@ async function restoreMonitoring(waybills) {
 }
 
 async function updateMonitoringArchive(waybillParam, payload, actor = null) {
-  await ensureMonitoringArchiveTable();
   const normalized = normalizeMonitoringRow({ ...payload, waybill: waybillParam });
   if (!normalized) return { success: false };
   const actorName = actor ? (actor.role === 'super_admin' ? 'System' : `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})`) : 'System';
@@ -296,7 +293,6 @@ async function updateMonitoringArchive(waybillParam, payload, actor = null) {
 }
 
 async function deleteAllMonitoringHistory(actor = null) {
-  await ensureMonitoringHistoryTable();
   const connection = await db.getConnection();
   let deletedCount = 0;
 
@@ -334,8 +330,6 @@ async function deleteAllMonitoringHistory(actor = null) {
 }
 
 async function createMonitoring(payload, actor = null) {
-  await ensureMonitoringTable();
-
   const normalized = normalizeMonitoringRow(payload);
   if (!normalized) {
     throw new Error('Data monitoring tidak valid');
@@ -390,8 +384,6 @@ async function createMonitoring(payload, actor = null) {
 }
 
 async function updateMonitoring(waybillParam, payload, actor = null) {
-  await ensureMonitoringTable();
-
   const [existingRows] = await db.query('SELECT * FROM monitoring_stuck WHERE waybill = ?', [waybillParam]);
   const before = existingRows[0] || null;
 
@@ -509,8 +501,6 @@ async function bulkUpdateMonitoring(waybills, aksi, actor = null) {
 }
 
 async function deleteMonitoring(waybillParam, actor = null) {
-  await ensureMonitoringTable();
-
   const [existingRows] = await db.query('SELECT * FROM monitoring_stuck WHERE waybill = ?', [waybillParam]);
   const existing = existingRows[0] || null;
   const [result] = await db.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [waybillParam]);
@@ -537,7 +527,6 @@ async function deleteMonitoring(waybillParam, actor = null) {
 }
 
 async function deleteAllMonitoring(actor = null) {
-  await ensureMonitoringTable();
   const connection = await db.getConnection();
   let deletedCount = 0;
 
@@ -579,9 +568,6 @@ async function deleteAllMonitoring(actor = null) {
 }
 
 async function bulkImportMonitoring(rows, actor = null) {
-  await ensureMonitoringTable();
-  await ensureMonitoringHistoryTable();
-
   const normalizedRows = [];
   const seen = new Map();
 
@@ -594,70 +580,85 @@ async function bulkImportMonitoring(rows, actor = null) {
     }
   }
 
-  const [existingRows] = await db.query('SELECT * FROM monitoring_stuck');
-  const [historyRows] = await db.query('SELECT waybill FROM monitoring_history');
-  const historyWaybills = new Set(historyRows.map((row) => String(row.waybill)));
-  const skippedCount = normalizedRows.filter((row) => historyWaybills.has(row.waybill)).length;
-  const importRows = normalizedRows.filter((row) => !historyWaybills.has(row.waybill));
-  const incomingWaybills = new Set(importRows.map((row) => row.waybill));
+  const connection = await db.getConnection();
+  let importedCount = 0;
   let deletedCount = 0;
   let overwrittenCount = 0;
   let historyCount = 0;
+  let skippedCount = 0;
+  let importRows = [];
 
-  for (const existing of existingRows) {
-    const oldAksi = String(existing.aksi || '').trim();
-    const oldStatus = String(existing.status || 'Open').trim().toLowerCase();
-    const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
+  try {
+    await connection.beginTransaction();
 
-    if (historyWaybills.has(String(existing.waybill)) && isUpdated) {
-      await db.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
-      continue;
+    const [existingRows] = await connection.query('SELECT * FROM monitoring_stuck');
+    const [historyRows] = await connection.query('SELECT waybill FROM monitoring_history');
+    const historyWaybills = new Set(historyRows.map((row) => String(row.waybill)));
+    skippedCount = normalizedRows.filter((row) => historyWaybills.has(row.waybill)).length;
+    importRows = normalizedRows.filter((row) => !historyWaybills.has(row.waybill));
+    const incomingWaybills = new Set(importRows.map((row) => row.waybill));
+
+    for (const existing of existingRows) {
+      const oldAksi = String(existing.aksi || '').trim();
+      const oldStatus = String(existing.status || 'Open').trim().toLowerCase();
+      const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
+
+      if (historyWaybills.has(String(existing.waybill)) && isUpdated) {
+        await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
+        continue;
+      }
+
+      if (!incomingWaybills.has(existing.waybill) && !historyWaybills.has(String(existing.waybill))) {
+        await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
+        deletedCount += 1;
+        continue;
+      }
+
+      if (isUpdated && incomingWaybills.has(existing.waybill)) {
+        await archiveMonitoringRecord(existing, 'import_replace', connection);
+        historyCount += 1;
+      } else if (incomingWaybills.has(existing.waybill)) {
+        overwrittenCount += 1;
+      }
     }
 
-    if (!incomingWaybills.has(existing.waybill) && !historyWaybills.has(String(existing.waybill))) {
-      await db.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
-      deletedCount += 1;
-      continue;
+    for (const item of importRows) {
+      const [result] = await connection.query(
+        `INSERT INTO monitoring_stuck
+         (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           tanggal = VALUES(tanggal),
+           outlet = VALUES(outlet),
+           stuck = VALUES(stuck),
+           tlc = VALUES(tlc),
+           status = VALUES(status),
+           aksi = VALUES(aksi),
+           nama_barang = VALUES(nama_barang),
+           updated_by = VALUES(updated_by),
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          item.waybill,
+          item.tanggal || null,
+          item.outlet || '-',
+          item.stuck || 0,
+          item.tlc || '-',
+          item.status || 'Open',
+          item.aksi || '-',
+          item.nama_barang || '-',
+          item.updated_by || 'System',
+        ]
+      );
+
+      importedCount += result.affectedRows || 1;
     }
 
-    if (isUpdated && incomingWaybills.has(existing.waybill)) {
-      await archiveMonitoringRecord(existing, 'import_replace');
-      historyCount += 1;
-    } else if (incomingWaybills.has(existing.waybill)) {
-      overwrittenCount += 1;
-    }
-  }
-
-  let importedCount = 0;
-  for (const item of importRows) {
-    const [result] = await db.query(
-      `INSERT INTO monitoring_stuck
-       (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         tanggal = VALUES(tanggal),
-         outlet = VALUES(outlet),
-         stuck = VALUES(stuck),
-         tlc = VALUES(tlc),
-         status = VALUES(status),
-         aksi = VALUES(aksi),
-         nama_barang = VALUES(nama_barang),
-         updated_by = VALUES(updated_by),
-         updated_at = CURRENT_TIMESTAMP`,
-      [
-        item.waybill,
-        item.tanggal || null,
-        item.outlet || '-',
-        item.stuck || 0,
-        item.tlc || '-',
-        item.status || 'Open',
-        item.aksi || '-',
-        item.nama_barang || '-',
-        item.updated_by || 'System',
-      ]
-    );
-
-    importedCount += result.affectedRows || 1;
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
 
   if (actor) {
@@ -696,4 +697,5 @@ module.exports = {
   deleteMonitoring,
   deleteAllMonitoring,
   bulkImportMonitoring,
+  initMonitoringTables,
 };

@@ -85,7 +85,7 @@
             </label>
 
             <button type="submit" class="primary-btn auth-btn">Masuk</button>
-            <button type="button" class="secondary-btn auth-btn" id="showRegisterBtn">Buat akun baru</button>
+            <button type="button" class="secondary-btn auth-btn hidden" id="showRegisterBtn" style="display:none;">Buat akun baru</button>
             <p id="loginMessage" class="auth-message" aria-live="polite"></p>
           </form>
         </div>
@@ -697,9 +697,9 @@
                 </div>
               </div>
               <div class="config-grid">
-                <div class="config-card gm-only">
+                <div class="config-card hidden" id="createAccountCard">
                   <h3>Buat Akun Baru</h3>
-                  <p class="config-hint">Hanya super_admin. Akun admin/user/client dapat dibuat di sini.</p>
+                  <p class="config-hint">Akun admin/user/client dapat dibuat di sini.</p>
                   <label class="config-row">
                     <span>Username</span>
                     <input type="text" id="newAccountUsername" placeholder="username_baru" />
