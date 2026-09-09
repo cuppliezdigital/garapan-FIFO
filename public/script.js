@@ -342,13 +342,13 @@ function hasPermission(key) {
   return Boolean(currentPermissions[key]);
 }
 
-function applyUIPermissions() {
-  const toggle = (el, show) => {
-    if (!el) return;
-    if (show) el.classList.remove('hidden');
-    else el.classList.add('hidden');
-  };
+function toggle(el, show) {
+  if (!el) return;
+  if (show) el.classList.remove('hidden');
+  else el.classList.add('hidden');
+}
 
+function applyUIPermissions() {
   const role = getCurrentUser().role;
 
   toggle(toggleHistoryBtn, hasPermission('view_history'));
