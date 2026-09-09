@@ -1768,9 +1768,55 @@ h1 {
 }
 
 .edit-btn {
-  background: linear-gradient(180deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.75));
-  border-color: rgba(96, 165, 250, 0.42);
-  color: #dbeafe;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 116, 144, 0.28));
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  color: #e0f2fe;
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0 9px;
+  min-width: 58px;
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(14, 116, 144, 0.45));
+  border-color: rgba(125, 211, 252, 0.85);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+.restore-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(180, 83, 9, 0.28));
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #fef3c7;
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0 9px;
+  min-width: 68px;
+}
+
+.restore-btn:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(180, 83, 9, 0.45));
+  border-color: rgba(251, 191, 36, 0.85);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
+.btn-bulk-restore {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.24));
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fef3c7;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-bulk-restore:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.32), rgba(217, 119, 6, 0.4));
+  border-color: rgba(251, 191, 36, 0.75);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
 }
 
 .update-btn {
@@ -2907,8 +2953,21 @@ tbody tr.is-updated .search-highlight {
 }
 
 .status.pending {
-  background: rgba(251, 191, 36, 0.12);
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.35);
   color: #fde68a;
+}
+
+.status.sudah-diupdate {
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+}
+
+.status.sudah-scan-kirim {
+  background: rgba(96, 165, 250, 0.14);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
 }
 
 .status.closed {
@@ -2921,6 +2980,7 @@ tbody tr.is-updated .search-highlight {
 .archive-table .action-group {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   background: transparent;
   border: none;
   padding: 0;

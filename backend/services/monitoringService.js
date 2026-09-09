@@ -10,7 +10,7 @@ async function ensureMonitoringTable() {
       outlet VARCHAR(150),
       stuck VARCHAR(100) DEFAULT '0',
       tlc VARCHAR(100),
-      status VARCHAR(50) DEFAULT 'Open',
+      status VARCHAR(50) DEFAULT 'Pending',
       aksi VARCHAR(150),
       nama_barang VARCHAR(200),
       updated_by VARCHAR(100),
@@ -55,7 +55,7 @@ async function ensureMonitoringHistoryTable() {
       outlet VARCHAR(150),
       stuck VARCHAR(100) DEFAULT '0',
       tlc VARCHAR(100),
-      status VARCHAR(50) DEFAULT 'Open',
+      status VARCHAR(50) DEFAULT 'Pending',
       aksi VARCHAR(150),
       nama_barang VARCHAR(200),
       updated_by VARCHAR(100),
@@ -100,7 +100,7 @@ async function ensureMonitoringArchiveTable() {
       outlet VARCHAR(150),
       stuck VARCHAR(100) DEFAULT '0',
       tlc VARCHAR(100),
-      status VARCHAR(50) DEFAULT 'Open',
+      status VARCHAR(50) DEFAULT 'Pending',
       aksi VARCHAR(150),
       nama_barang VARCHAR(200),
       updated_by VARCHAR(100),
@@ -114,6 +114,12 @@ async function initMonitoringTables() {
   await ensureMonitoringTable();
   await ensureMonitoringHistoryTable();
   await ensureMonitoringArchiveTable();
+  try {
+    await db.query("UPDATE monitoring_stuck SET status = 'Pending' WHERE status = 'Open' OR status IS NULL OR status = ''");
+    await db.query("UPDATE monitoring_archive SET status = 'Pending' WHERE status = 'Open' OR status IS NULL OR status = ''");
+  } catch (err) {
+    console.error('Migration update Open to Pending warning:', err.message);
+  }
 }
 
 function normalizeMonitoringRow(raw = {}) {
@@ -122,7 +128,7 @@ function normalizeMonitoringRow(raw = {}) {
 
   const tanggal = normalizeMonitoringDate(raw.tanggal || raw.Tanggal || raw.date || '');
   const outlet = raw.outlet || raw.Outlet || raw.outlet_name || '';
-  const status = (raw.status || raw.Status || 'Open').toString().trim() || 'Open';
+  const status = (raw.status || raw.Status || 'Pending').toString().trim() || 'Pending';
   const aksi = raw.aksi || raw.Aksi || '-';
   const namaBarang = raw.nama_barang || raw.NamaBarang || raw.namaBarang || '-';
   const updatedBy = raw.updated_by || raw.UpdatedBy || raw.updatedBy || 'System';
@@ -214,7 +220,7 @@ async function archiveMonitoringRecord(record, source = 'archive', client = null
       record.outlet || '-',
       String(record.stuck || '0').trim() || '0',
       record.tlc || '-',
-      record.status || 'Open',
+      record.status || 'Pending',
       record.aksi || '-',
       record.nama_barang || '-',
       record.updated_by || 'System',
@@ -281,13 +287,55 @@ async function restoreMonitoring(waybills) {
   return { restoredCount };
 }
 
+async function restoreMonitoringUpdate(waybills, actor = null) {
+  const list = Array.isArray(waybills) ? waybills.filter(Boolean) : [waybills].filter(Boolean);
+  if (!list.length) return { restoredCount: 0, waybills: [] };
+
+  const actorName = actor
+    ? (actor.role === 'super_admin' ? 'System' : `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})`)
+    : 'System';
+
+  let restoredCount = 0;
+  for (const waybill of list) {
+    const [result] = await db.query(
+      `UPDATE monitoring_stuck
+       SET aksi = '-', status = 'Pending', updated_by = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE waybill = ?`,
+      [actorName, waybill]
+    );
+    if (result.affectedRows > 0) {
+      restoredCount += 1;
+    }
+  }
+
+  if (actor && restoredCount > 0) {
+    await auditService.logAudit({
+      userId: actor.id,
+      username: actor.username,
+      action: 'restore_monitoring_update',
+      entityType: 'monitoring',
+      entityId: list.length === 1 ? String(list[0]) : 'BULK_RESTORE',
+      details: {
+        restoredCount,
+        waybills: list.slice(0, 50),
+        newStatus: 'Pending',
+        newAksi: '-',
+        restoredBy: actorName,
+        actorRole: actor.role,
+      },
+    });
+  }
+
+  return { restoredCount, waybills: list };
+}
+
 async function updateMonitoringArchive(waybillParam, payload, actor = null) {
   const normalized = normalizeMonitoringRow({ ...payload, waybill: waybillParam });
   if (!normalized) return { success: false };
   const actorName = actor ? (actor.role === 'super_admin' ? 'System' : `${actor.username || actor.full_name || 'User'} (${actor.role || 'user'})`) : 'System';
   const [result] = await db.query(
     `UPDATE monitoring_archive SET tanggal = ?, outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ? WHERE waybill = ?`,
-    [normalized.tanggal || null, normalized.outlet || '-', normalized.stuck, normalized.tlc || '-', normalized.status || 'Open', normalized.aksi || '-', normalized.nama_barang || '-', actorName, waybillParam]
+    [normalized.tanggal || null, normalized.outlet || '-', normalized.stuck, normalized.tlc || '-', normalized.status || 'Pending', normalized.aksi || '-', normalized.nama_barang || '-', actorName, waybillParam]
   );
   return { success: result.affectedRows > 0 };
 }
@@ -355,7 +403,7 @@ async function createMonitoring(payload, actor = null) {
       normalized.outlet || '-',
       normalized.stuck || 0,
       normalized.tlc || '-',
-      normalized.status || 'Open',
+      normalized.status || 'Pending',
       normalized.aksi || '-',
       normalized.nama_barang || '-',
       normalized.updated_by || 'System',
@@ -400,7 +448,7 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
 
   const finalStatus = (newAksi && newAksi !== '-' && newAksi !== '')
     ? 'Sudah Diupdate'
-    : (normalized.status || before?.status || 'Open');
+    : (normalized.status || before?.status || 'Pending');
 
   const preservedTanggal = normalized.tanggal && normalized.tanggal !== ''
     ? normalized.tanggal
@@ -600,7 +648,7 @@ async function bulkImportMonitoring(rows, actor = null) {
 
     for (const existing of existingRows) {
       const oldAksi = String(existing.aksi || '').trim();
-      const oldStatus = String(existing.status || 'Open').trim().toLowerCase();
+      const oldStatus = String(existing.status || 'Pending').trim().toLowerCase();
       const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
 
       if (historyWaybills.has(String(existing.waybill)) && isUpdated) {
@@ -643,7 +691,7 @@ async function bulkImportMonitoring(rows, actor = null) {
           item.outlet || '-',
           item.stuck || 0,
           item.tlc || '-',
-          item.status || 'Open',
+          item.status || 'Pending',
           item.aksi || '-',
           item.nama_barang || '-',
           item.updated_by || 'System',
@@ -689,6 +737,7 @@ module.exports = {
   getAllMonitoringArchive,
   archiveMonitoring,
   restoreMonitoring,
+  restoreMonitoringUpdate,
   updateMonitoringArchive,
   deleteAllMonitoringHistory,
   createMonitoring,

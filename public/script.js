@@ -47,6 +47,7 @@ const cardArchive = document.getElementById('card-archive');
 const archiveCardCount = document.getElementById('archiveCardCount');
 const selectAllArchive = document.getElementById('selectAllArchive');
 const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
+const bulkRestoreUpdateBtn = document.getElementById('bulkRestoreUpdateBtn');
 const restoreArchiveBtn = document.getElementById('restoreArchiveBtn');
 const selectedArchiveCount = document.getElementById('selectedArchiveCount');
 const selectedMonitoringArchiveCount = document.getElementById('selectedMonitoringArchiveCount');
@@ -360,13 +361,14 @@ function applyUIPermissions() {
 
   const createAccountCard = document.getElementById('createAccountCard');
   toggle(createAccountCard, hasPermission('create_user'));
+  toggle(bulkRestoreUpdateBtn, hasPermission('restore_updated'));
 
   // Sidebar navigation visibility
   const canManageUsers = hasPermission('manage_users');
   const canViewHistory = hasPermission('view_history');
   const canAccessConfig = hasPermission('access_config');
   const canCreateUser = hasPermission('create_user');
-  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user'];
+  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user', 'restore_updated'];
   const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
 
   toggle(navLinks.users, canManageUsers);
@@ -712,14 +714,16 @@ function renderStatusOverview(data) {
   if (!statusChart) return;
 
   const counts = {
-    Open: 0,
     Pending: 0,
-    Closed: 0,
+    'Sudah Diupdate': 0,
   };
 
   data.forEach((item) => {
-    const status = item.status || 'Open';
-    if (counts[status] !== undefined) counts[status] += 1;
+    if (isSudahUpdate(item)) {
+      counts['Sudah Diupdate'] += 1;
+    } else {
+      counts.Pending += 1;
+    }
   });
 
   const maxValue = Math.max(...Object.values(counts), 1);
@@ -766,14 +770,30 @@ function renderTable(data) {
 
   pageRows.forEach((item) => {
     const tr = document.createElement('tr');
-    tr.className = `${getUrgencyClass(item.stuck)}${isSudahUpdate(item) ? ' is-updated' : ''}${selectedMonitoringWaybills.has(item.waybill) ? ' is-selected' : ''}`;
-    const actionButtons = canMutate
-      ? `
-        <div class="action-group">
-          <button type="button" class="table-btn update-btn" data-action="update" data-waybill="${item.waybill || ''}">UPDATE</button>
-        </div>
-      `
-      : '<span class="read-only-label">Read only</span>';
+    const updated = isSudahUpdate(item);
+    tr.className = `${getUrgencyClass(item.stuck)}${updated ? ' is-updated' : ''}${selectedMonitoringWaybills.has(item.waybill) ? ' is-selected' : ''}`;
+
+    let actionButtons = '<span class="read-only-label">Read only</span>';
+    if (canMutate) {
+      if (updated) {
+        const canRestore = hasPermission('restore_updated');
+        actionButtons = `
+          <div class="action-group">
+            <button type="button" class="table-btn edit-btn" data-action="edit" data-waybill="${item.waybill || ''}" title="Edit tindakan waybill">EDIT</button>
+            ${canRestore ? `<button type="button" class="table-btn restore-btn" data-action="restore-update" data-waybill="${item.waybill || ''}" title="Kembalikan waybill ke status Pending">RESTORE</button>` : ''}
+          </div>
+        `;
+      } else {
+        actionButtons = `
+          <div class="action-group">
+            <button type="button" class="table-btn update-btn" data-action="update" data-waybill="${item.waybill || ''}">UPDATE</button>
+          </div>
+        `;
+      }
+    }
+
+    const currentStatus = item.status && String(item.status).toLowerCase() !== 'open' ? item.status : 'Pending';
+    const statusClass = currentStatus.toLowerCase().replace(/\s+/g, '-');
 
     tr.innerHTML = `
       <td class="col-check" data-label="Pilih"><input type="checkbox" class="monitoring-select-checkbox" data-waybill="${item.waybill || ''}" ${selectedMonitoringWaybills.has(item.waybill) ? 'checked' : ''} /></td>
@@ -782,7 +802,7 @@ function renderTable(data) {
       <td class="col-outlet" data-label="Outlet"><span class="cell-value">${highlightSearch(item.outlet || '-')}</span></td>
       <td class="col-stuck" data-label="Stuck"><span class="cell-value"><span class="badge badge-stuck">${highlightSearch(item.stuck || 0)}</span></span></td>
       <td class="col-tlc" data-label="TLC"><span class="cell-value">${highlightSearch(item.tlc || '-')}</span></td>
-      <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${item.status ? item.status.toLowerCase().replace(/\s+/g, '-') : 'open'}">${highlightSearch(item.status || 'Open')}</span></span></td>
+      <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${statusClass}">${highlightSearch(currentStatus)}</span></span></td>
       <td class="col-aksi" data-label="Aksi">${actionButtons}</td>
       <td class="col-barang" data-label="Nama Barang" title="${escapeTlcHtml(item.nama_barang || '')}"><span class="cell-value">${highlightSearch(item.nama_barang || '-')}</span></td>
       <td class="col-updated" data-label="Updated By"><span class="cell-value">${highlightSearch(item.updated_by || '-')}</span></td>
@@ -808,16 +828,22 @@ function highlightSearch(value, searchValue = searchInput?.value) {
 }
 
 function updateSelectedMonitoringCount() {
-  if (selectedMonitoringCount) selectedMonitoringCount.textContent = selectedMonitoringWaybills.size;
-  if (selectedMonitoringArchiveCount) selectedMonitoringArchiveCount.textContent = selectedMonitoringWaybills.size;
-  if (bulkArchiveBtn) bulkArchiveBtn.disabled = selectedMonitoringWaybills.size === 0;
   const count = selectedMonitoringWaybills.size;
   if (selectedMonitoringCount) selectedMonitoringCount.textContent = count;
   if (selectedMonitoringArchiveCount) selectedMonitoringArchiveCount.textContent = count;
   if (selectedMonitoringCountBadge) selectedMonitoringCountBadge.textContent = count;
   if (bulkArchiveBtn) bulkArchiveBtn.disabled = count === 0;
+
+  if (bulkRestoreUpdateBtn) {
+    const hasUpdatedSelected = [...selectedMonitoringWaybills].some((wb) => {
+      const item = monitoringData.find((m) => m.waybill === wb);
+      return item && isSudahUpdate(item);
+    });
+    bulkRestoreUpdateBtn.disabled = count === 0 || !hasUpdatedSelected;
+    toggle(bulkRestoreUpdateBtn, hasPermission('restore_updated'));
+  }
+
   refreshBulkActionButtonState();
-  monitoringBulkControls?.classList.toggle('has-selection', selectedMonitoringWaybills.size > 0);
   monitoringBulkControls?.classList.toggle('has-selection', count > 0);
 }
 
@@ -1390,7 +1416,7 @@ function renderMonitoringHistory(rows) {
   filtered.forEach((row) => {
     const tr = document.createElement('tr');
     tr.className = 'history-item-row';
-    const statusVal = row.status || 'Open';
+    const statusVal = row.status && String(row.status).toLowerCase() !== 'open' ? row.status : 'Pending';
     const statusClass = String(statusVal).toLowerCase().replace(/\s+/g, '-');
     tr.innerHTML = `
       <td class="history-col-waybill" data-label="Waybill">
@@ -1940,6 +1966,59 @@ async function handleBulkMonitoringUpdate() {
   await fetchAuditLogs();
 }
 
+async function handleBulkRestoreUpdate() {
+  if (!hasPermission('restore_updated')) {
+    alert('Akses ditolak. Anda tidak memiliki izin untuk memulihkan status waybill.');
+    return;
+  }
+
+  const waybills = [...selectedMonitoringWaybills];
+  if (!waybills.length) {
+    alert('Pilih minimal 1 data monitoring terlebih dahulu.');
+    return;
+  }
+
+  const targetWaybills = monitoringData
+    .filter((item) => selectedMonitoringWaybills.has(item.waybill) && isSudahUpdate(item))
+    .map((item) => item.waybill);
+
+  if (!targetWaybills.length) {
+    alert('Tidak ada waybill terpilih yang berstatus "Sudah Diupdate".');
+    return;
+  }
+
+  const confirmed = window.confirm(`Kembalikan ${targetWaybills.length} waybill terpilih ke status Pending?`);
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch('/api/monitoring/restore-update', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ waybills: targetWaybills }),
+    });
+
+    const result = await parseResponseJson(response);
+    if (!response.ok) {
+      alert(result.error || 'Gagal memulihkan data monitoring');
+      return;
+    }
+
+    selectedMonitoringWaybills.clear();
+    alert(result.message || `${targetWaybills.length} data berhasil dikembalikan ke status Pending.`);
+    await fetchMonitoring();
+    if (hasPermission('view_history')) {
+      await fetchAuditLogs();
+    }
+  } catch (err) {
+    console.error('Error bulk restore update:', err);
+    alert('Terjadi kesalahan saat memulihkan data.');
+  }
+}
+
 async function handleTableAction(event) {
   const button = event.target.closest('[data-action]');
   if (!button) return;
@@ -1952,6 +2031,43 @@ async function handleTableAction(event) {
   if (action === 'update' || action === 'edit') {
     const item = monitoringData.find((entry) => entry.waybill === waybill);
     if (item) openModal('edit', item);
+    return;
+  }
+
+  if (action === 'restore-update') {
+    if (!hasPermission('restore_updated')) {
+      alert('Akses ditolak. Anda tidak memiliki izin untuk memulihkan status waybill ini.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Kembalikan waybill ${waybill} ke status Pending?`);
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/monitoring/${encodeURIComponent(waybill)}/restore-update`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      const result = await parseResponseJson(response);
+      if (!response.ok) {
+        alert(result.error || 'Gagal memulihkan status waybill');
+        return;
+      }
+
+      alert(result.message || `Waybill ${waybill} berhasil dikembalikan ke status Pending.`);
+      await fetchMonitoring();
+      if (hasPermission('view_history')) {
+        await fetchAuditLogs();
+      }
+    } catch (err) {
+      console.error('Error restore update:', err);
+      alert('Terjadi kesalahan saat memulihkan waybill.');
+    }
     return;
   }
 
@@ -2005,7 +2121,7 @@ function exportMonitoringCsv() {
     item.outlet || '',
     item.stuck || 0,
     item.tlc || '',
-    item.status || 'Open',
+    item.status && String(item.status).toLowerCase() !== 'open' ? item.status : 'Pending',
     item.aksi || '',
     item.nama_barang || '',
     item.updated_by || '',
@@ -3390,6 +3506,7 @@ if (clearMonitoringSelectionBtn) {
 }
 
 if (bulkUpdateBtn) bulkUpdateBtn.addEventListener('click', handleBulkMonitoringUpdate);
+if (bulkRestoreUpdateBtn) bulkRestoreUpdateBtn.addEventListener('click', handleBulkRestoreUpdate);
 
 if (bulkActionSelect) {
   bulkActionSelect.addEventListener('change', () => {
@@ -4085,7 +4202,7 @@ function renderFoundCard(item, ageDays, badgeClass, borderClass, badgeLabel, upd
         </div>
         <div class="scan-data-item">
           <span class="scan-data-label">Status</span>
-          <span class="scan-data-value">${escapeTlcHtml(item.status || 'Open')}</span>
+          <span class="scan-data-value">${escapeTlcHtml(item.status && String(item.status).toLowerCase() !== 'open' ? item.status : 'Pending')}</span>
         </div>
         <div class="scan-data-item" style="grid-column: 1 / -1;">
           <span class="scan-data-label">Nama Barang</span>
@@ -4291,7 +4408,7 @@ if (scannerQuickAddForm) {
       tlc: quickAddTlc ? quickAddTlc.value.trim() : '-',
       nama_barang: quickAddNamaBarang ? quickAddNamaBarang.value.trim() : '-',
       aksi: quickAddAksi ? quickAddAksi.value.trim() : 'Dalam Gudang',
-      status: 'Open',
+      status: 'Pending',
       stuck: '0',
     };
 

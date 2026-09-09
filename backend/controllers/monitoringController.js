@@ -179,11 +179,38 @@ async function importMonitoringBulk(req, res) {
   }
 }
 
+async function restoreMonitoringUpdate(req, res) {
+  let waybills = [];
+  if (req.params.waybill) {
+    waybills = [req.params.waybill];
+  } else if (Array.isArray(req.body?.waybills)) {
+    waybills = req.body.waybills;
+  } else if (req.body?.waybill) {
+    waybills = [req.body.waybill];
+  }
+
+  if (!waybills.length) {
+    return res.status(400).json({ error: 'Pilih waybill yang ingin dikembalikan ke status Pending' });
+  }
+
+  try {
+    const result = await monitoringService.restoreMonitoringUpdate(waybills, req.user);
+    res.json({
+      message: `${result.restoredCount} waybill berhasil dikembalikan ke status Pending`,
+      restoredCount: result.restoredCount,
+    });
+  } catch (error) {
+    console.error('Controller restoreMonitoringUpdate error:', error);
+    res.status(500).json({ error: 'Gagal memulihkan status waybill' });
+  }
+}
+
 module.exports = {
   getMonitoring,
   createMonitoring,
   updateMonitoring,
   bulkUpdateMonitoring,
+  restoreMonitoringUpdate,
   deleteMonitoring,
   deleteAllMonitoring,
   getMonitoringHistory,

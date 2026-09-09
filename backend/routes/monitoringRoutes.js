@@ -17,6 +17,8 @@ router.post('/monitoring', authMiddleware, requireAnyPermission(PERMISSION_KEYS.
 router.post('/monitoring/import', authMiddleware, requirePermission(PERMISSION_KEYS.IMPORT_BULK), monitoringController.importMonitoringBulk);
 
 router.patch('/monitoring/bulk-update', authMiddleware, requirePermission(PERMISSION_KEYS.EDIT_MONITORING), monitoringController.bulkUpdateMonitoring);
+router.patch('/monitoring/restore-update', authMiddleware, requirePermission(PERMISSION_KEYS.RESTORE_UPDATED), monitoringController.restoreMonitoringUpdate);
+router.patch('/monitoring/:waybill/restore-update', authMiddleware, requirePermission(PERMISSION_KEYS.RESTORE_UPDATED), monitoringController.restoreMonitoringUpdate);
 
 router.patch('/monitoring/archive', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.bulkArchiveMonitoring);
 router.patch('/monitoring/archive/restore', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.bulkRestoreMonitoring);

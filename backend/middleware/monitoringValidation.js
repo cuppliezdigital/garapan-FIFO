@@ -29,7 +29,7 @@ function validateMonitoringPayload(req, res, next) {
     tanggal,
     outlet,
     tlc: tlc || '-',
-    status: status || 'Open',
+    status: status || 'Pending',
     aksi: aksi || '-',
     nama_barang: namaBarang || '-',
     updated_by: updatedBy || 'System',
