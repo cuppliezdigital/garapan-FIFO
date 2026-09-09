@@ -3723,24 +3723,91 @@ tbody tr:has(.archive-select-checkbox:checked) td:first-child::before {
   box-shadow: 0 0 8px #10b981;
 }
 
-tbody tr.is-selected input[type="checkbox"],
-tbody tr:has(input[type="checkbox"]:checked) input[type="checkbox"] {
-  accent-color: #10b981 !important;
-}
-
+/* Custom Cyber Checkbox Styling */
 .col-check {
   width: 40px;
   text-align: center;
+  vertical-align: middle;
 }
 
+/* Global Cyber Checkbox Component */
 .col-check input[type="checkbox"],
-thead th input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: #3b82f6;
-  vertical-align: middle;
-  margin: 0;
+thead th input[type="checkbox"],
+.checkbox-inline input[type="checkbox"],
+.monitoring-select-checkbox,
+.archive-select-checkbox,
+.user-select-checkbox,
+.audit-select-checkbox {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 6px !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+  box-shadow: inset 0 1.5px 3px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+  cursor: pointer !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  outline: none !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Checkbox Hover */
+.col-check input[type="checkbox"]:hover,
+thead th input[type="checkbox"]:hover,
+.checkbox-inline input[type="checkbox"]:hover,
+.monitoring-select-checkbox:hover,
+.archive-select-checkbox:hover,
+.user-select-checkbox:hover,
+.audit-select-checkbox:hover {
+  border-color: #38bdf8 !important;
+  background: rgba(15, 23, 42, 1) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.45), inset 0 1.5px 3px rgba(0, 0, 0, 0.5) !important;
+  transform: scale(1.08) !important;
+}
+
+/* Checkbox Checked: Cyber Emerald Glow with crisp SVG Checkmark */
+.col-check input[type="checkbox"]:checked,
+thead th input[type="checkbox"]:checked,
+.checkbox-inline input[type="checkbox"]:checked,
+.monitoring-select-checkbox:checked,
+.archive-select-checkbox:checked,
+.user-select-checkbox:checked,
+.audit-select-checkbox:checked {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='%23ffffff' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 12px 12px !important;
+  transform: scale(1.05) !important;
+}
+
+/* Checkbox Indeterminate: Cyan Bar */
+.col-check input[type="checkbox"]:indeterminate,
+thead th input[type="checkbox"]:indeterminate {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='%23ffffff' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.5 8a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3.5 8z'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 12px 12px !important;
+}
+
+/* Active / Press */
+.col-check input[type="checkbox"]:active,
+thead th input[type="checkbox"]:active {
+  transform: scale(0.92) !important;
 }
 
 .col-waybill {
@@ -4024,11 +4091,12 @@ thead th input[type="checkbox"] {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.9) !important;
   }
 
-  .monitoring-table tbody tr.is-selected .col-check input[type="checkbox"],
-  .monitoring-table tbody tr:has(.monitoring-select-checkbox:checked) .col-check input[type="checkbox"],
-  .archive-table tbody tr.is-selected .col-check input[type="checkbox"],
-  .archive-table tbody tr:has(.archive-select-checkbox:checked) .col-check input[type="checkbox"] {
-    accent-color: #10b981 !important;
+  .monitoring-table tbody tr.is-selected .col-check input[type="checkbox"]:checked,
+  .monitoring-table tbody tr:has(.monitoring-select-checkbox:checked) .col-check input[type="checkbox"]:checked,
+  .archive-table tbody tr.is-selected .col-check input[type="checkbox"]:checked,
+  .archive-table tbody tr:has(.archive-select-checkbox:checked) .col-check input[type="checkbox"]:checked {
+    box-shadow: 0 0 14px rgba(52, 211, 153, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    border-color: #6ee7b7 !important;
   }
 
   /* BARIS 1: Checkbox + Waybill rapat (kiri) & Badge Stuck (kanan) */
@@ -4047,11 +4115,11 @@ thead th input[type="checkbox"] {
     cursor: pointer;
   }
   .col-check input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+    width: 19px !important;
+    height: 19px !important;
+    border-radius: 6px !important;
     cursor: pointer;
-    accent-color: #3b82f6;
-    margin: 0;
+    margin: 0 !important;
   }
 
   .col-waybill {
