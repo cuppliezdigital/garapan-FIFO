@@ -131,8 +131,13 @@ const cancelRegisterBtn = document.getElementById('cancelRegisterBtn');
 const selectAllMonitoring = document.getElementById('selectAllMonitoring');
 const bulkActionSelect = document.getElementById('bulkActionSelect');
 const bulkActionManual = document.getElementById('bulkActionManual');
+const bulkActionManualWrapper = document.getElementById('bulkActionManualWrapper');
 const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
+const bulkUpdateBtnText = document.getElementById('bulkUpdateBtnText');
 const selectedMonitoringCount = document.getElementById('selectedMonitoringCount');
+const bulkWaybillChipsStrip = document.getElementById('bulkWaybillChipsStrip');
+const bulkQuickChips = document.getElementById('bulkQuickChips');
+const clearMonitoringSelectionBtn = document.getElementById('clearMonitoringSelectionBtn');
 const monitoringPagination = document.getElementById('monitoringPagination');
 const importProgressModal = document.getElementById('importProgressModal');
 const importProgressTitle = document.getElementById('importProgressTitle');
@@ -920,6 +925,42 @@ function highlightSearch(value, searchValue = searchInput?.value) {
   return escaped.replace(new RegExp(`(${pattern})`, 'gi'), '<mark class="search-highlight">$1</mark>');
 }
 
+function renderBulkSelectedWaybills() {
+  if (!bulkWaybillChipsStrip) return;
+  const waybills = [...selectedMonitoringWaybills];
+  if (waybills.length === 0) {
+    bulkWaybillChipsStrip.innerHTML = '';
+    return;
+  }
+
+  const maxVisible = 6;
+  const visible = waybills.slice(0, maxVisible);
+  const remaining = waybills.length - maxVisible;
+
+  let html = visible.map((wb) => `
+    <span class="bulk-waybill-tag">
+      <span>${escapeTlcHtml(wb)}</span>
+      <button type="button" class="wb-remove-btn" data-wb="${escapeTlcHtml(wb)}" title="Hapus waybill ini">✕</button>
+    </span>
+  `).join('');
+
+  if (remaining > 0) {
+    html += `<span class="bulk-waybill-more">+${remaining} lainnya</span>`;
+  }
+
+  bulkWaybillChipsStrip.innerHTML = html;
+}
+
+function updateBulkQuickChipsUI(currentAction = bulkActionSelect?.value || '') {
+  if (!bulkQuickChips) return;
+  const chips = bulkQuickChips.querySelectorAll('.bulk-quick-chip');
+  chips.forEach((chip) => {
+    const chipAction = chip.dataset.action;
+    const isActive = Boolean(currentAction) && ((chipAction === currentAction) || (chipAction === 'manual' && currentAction === 'manual'));
+    chip.classList.toggle('is-active', isActive);
+  });
+}
+
 function updateSelectedMonitoringCount() {
   const count = selectedMonitoringWaybills.size;
   if (selectedMonitoringCount) selectedMonitoringCount.textContent = count;
@@ -936,19 +977,30 @@ function updateSelectedMonitoringCount() {
     toggle(bulkRestoreUpdateBtn, hasPermission('restore_updated'));
   }
 
+  renderBulkSelectedWaybills();
   refreshBulkActionButtonState();
   monitoringBulkControls?.classList.toggle('has-selection', count > 0);
 }
 
 function refreshBulkActionButtonState() {
   if (!bulkUpdateBtn) return;
-  const hasSelection = selectedMonitoringWaybills.size > 0;
+  const count = selectedMonitoringWaybills.size;
+  const hasSelection = count > 0;
   const selectedValue = bulkActionSelect?.value || '';
   const manualValue = (bulkActionManual?.value || '').trim();
+  const effectiveAction = selectedValue === 'manual' ? manualValue : selectedValue;
   const hasAction = (selectedValue === 'manual' ? manualValue : selectedValue).length > 0
     && selectedValue !== ''
     && !(selectedValue === 'manual' && !manualValue);
   bulkUpdateBtn.disabled = !(hasSelection && hasAction);
+
+  if (bulkUpdateBtnText) {
+    if (hasAction && hasSelection) {
+      bulkUpdateBtnText.innerHTML = `Update (${count}) <span class="bulk-btn-arrow">➔</span> <span class="bulk-btn-target">${escapeTlcHtml(effectiveAction)}</span>`;
+    } else {
+      bulkUpdateBtnText.innerHTML = `Update (<span id="selectedMonitoringCount">${count}</span>)`;
+    }
+  }
 }
 
 function renderMonitoringPagination(totalRows, totalPages) {
@@ -2055,6 +2107,9 @@ async function handleBulkMonitoringUpdate() {
     bulkActionManual.value = '';
     bulkActionManual.classList.add('hidden');
   }
+  bulkActionManualWrapper?.classList.add('hidden');
+  updateBulkQuickChipsUI('');
+  updateSelectedMonitoringCount();
   alert(`${result.updatedCount || 0} data berhasil diupdate.`);
   await fetchMonitoring();
   await fetchAuditLogs();
@@ -3648,7 +3703,6 @@ if (selectAllMonitoring) {
   });
 }
 
-const clearMonitoringSelectionBtn = document.getElementById('clearMonitoringSelectionBtn');
 if (clearMonitoringSelectionBtn) {
   clearMonitoringSelectionBtn.addEventListener('click', () => {
     selectedMonitoringWaybills.clear();
@@ -3657,7 +3711,58 @@ if (clearMonitoringSelectionBtn) {
       checkbox.checked = false;
       checkbox.closest('tr')?.classList.remove('is-selected');
     });
+    if (bulkActionSelect) bulkActionSelect.value = '';
+    if (bulkActionManual) bulkActionManual.value = '';
+    bulkActionManualWrapper?.classList.add('hidden');
+    bulkActionManual?.classList.add('hidden');
+    updateBulkQuickChipsUI('');
     updateSelectedMonitoringCount();
+  });
+}
+
+if (bulkQuickChips) {
+  bulkQuickChips.addEventListener('click', (event) => {
+    const chip = event.target.closest('.bulk-quick-chip');
+    if (!chip) return;
+    const action = chip.dataset.action;
+    const isManual = action === 'manual';
+
+    if (bulkActionSelect) {
+      bulkActionSelect.value = action;
+    }
+
+    if (bulkActionManualWrapper) {
+      bulkActionManualWrapper.classList.toggle('hidden', !isManual);
+    }
+    if (bulkActionManual) {
+      bulkActionManual.classList.toggle('hidden', !isManual);
+      if (isManual) {
+        bulkActionManual.focus();
+      }
+    }
+
+    updateBulkQuickChipsUI(action);
+    refreshBulkActionButtonState();
+  });
+}
+
+if (bulkWaybillChipsStrip) {
+  bulkWaybillChipsStrip.addEventListener('click', (event) => {
+    const removeBtn = event.target.closest('.wb-remove-btn');
+    if (!removeBtn) return;
+    const wb = removeBtn.dataset.wb;
+    if (wb && selectedMonitoringWaybills.has(wb)) {
+      selectedMonitoringWaybills.delete(wb);
+      const rowCheckbox = tbody?.querySelector(`.monitoring-select-checkbox[data-waybill="${wb}"]`);
+      if (rowCheckbox) {
+        rowCheckbox.checked = false;
+        rowCheckbox.closest('tr')?.classList.remove('is-selected');
+      }
+      if (selectAllMonitoring && selectedMonitoringWaybills.size === 0) {
+        selectAllMonitoring.checked = false;
+      }
+      updateSelectedMonitoringCount();
+    }
   });
 }
 
@@ -3667,8 +3772,10 @@ if (bulkRestoreUpdateBtn) bulkRestoreUpdateBtn.addEventListener('click', handleB
 if (bulkActionSelect) {
   bulkActionSelect.addEventListener('change', () => {
     const isManual = bulkActionSelect.value === 'manual';
+    bulkActionManualWrapper?.classList.toggle('hidden', !isManual);
     bulkActionManual?.classList.toggle('hidden', !isManual);
     if (isManual) bulkActionManual?.focus();
+    updateBulkQuickChipsUI(bulkActionSelect.value);
     refreshBulkActionButtonState();
   });
 }

@@ -468,73 +468,147 @@
                   <span id="monitoringTotalBadge" class="panel-counter-badge">0 Data</span>
                 </div>
 
-                <div id="monitoringBulkControls" class="monitoring-bulk-controls">
-                  <!-- Glowing top line -->
+                <div id="monitoringBulkControls" class="monitoring-bulk-controls" role="region" aria-label="Executive Bulk Action Dock">
+                  <!-- Glowing top neon line -->
                   <div class="bulk-dock-glow-bar" aria-hidden="true"></div>
 
-                  <!-- Counter Group -->
-                  <div class="bulk-left-group">
-                    <div class="bulk-count-pill">
-                      <span class="bulk-pulse-dot" aria-hidden="true"></span>
-                      <strong id="selectedMonitoringCountBadge">0</strong>
-                      <span class="bulk-label-text">terpilih</span>
+                  <!-- TOP HEADER: Title, Count, & Clear -->
+                  <div class="bulk-header-bar">
+                    <div class="bulk-header-left">
+                      <div class="bulk-title-badge">
+                        <span class="bulk-pulse-dot" aria-hidden="true"></span>
+                        <span class="bulk-title-text">KONTROL AKSI MASSAL</span>
+                      </div>
+                      <div class="bulk-count-chip">
+                        <span id="selectedMonitoringCountBadge">0</span>
+                        <span class="bulk-count-sub">Paket Terpilih</span>
+                      </div>
+                    </div>
+
+                    <div class="bulk-header-right">
+                      <button class="bulk-clear-btn" id="clearMonitoringSelectionBtn" type="button" title="Batalkan semua pilihan (✕)" aria-label="Batalkan semua pilihan">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span class="btn-clear-text">Batal</span>
+                      </button>
                     </div>
                   </div>
 
-                  <!-- Action Selector -->
-                  <div class="bulk-middle-group">
-                    <div class="bulk-select-wrap">
-                      <div class="bulk-select-icon" aria-hidden="true">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                      </div>
-                      <select id="bulkActionSelect" class="filter-select bulk-select" aria-label="Pilih aksi untuk data terpilih">
-                        <option value="">Pilih aksi massal...</option>
-                        <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
-                        <option value="Dalam Gudang">Dalam Gudang</option>
-                        <option value="Miss Route">Miss Route</option>
-                        <option value="Crosslabel">Crosslabel</option>
-                        <option value="Penangguhan">Penangguhan</option>
-                        <option value="manual">Ketik Manual...</option>
-                      </select>
-                      <div class="bulk-select-chevron" aria-hidden="true">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      </div>
-                    </div>
-                    <input id="bulkActionManual" class="bulk-action-manual hidden" type="text" placeholder="Ketik aksi untuk data terpilih..." maxlength="150" />
+                  <!-- WAYBILL SELECTION STRIP (Tags) -->
+                  <div class="bulk-waybill-preview-wrapper" id="bulkWaybillPreviewWrapper">
+                    <div class="bulk-waybill-chips-strip" id="bulkWaybillChipsStrip"></div>
                   </div>
 
-                  <!-- Buttons Group -->
-                  <div class="bulk-right-group">
-                    <button class="bulk-btn-action bulk-btn-update" id="bulkUpdateBtn" type="button" title="Update aksi waybill terpilih">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <!-- QUICK ACTION CHIPS (With Glowing Vector SVG Micro-Badges!) -->
+                  <div class="bulk-quick-chips-section">
+                    <div class="bulk-chips-label">Pilih Tindakan Langsung:</div>
+                    <div class="bulk-quick-chips-grid" id="bulkQuickChips">
+                      <button type="button" class="bulk-quick-chip" data-action="Sudah Scan Kirim">
+                        <span class="chip-icon-box chip-icon-emerald">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"></path>
+                            <path d="M15 18H9"></path>
+                            <path d="M19 18h2a1 1 0 0 0 1-1v-5.5a1.5 1.5 0 0 0-.44-1.06L18.5 7.38A1.5 1.5 0 0 0 17.44 7H14v11h1"></path>
+                            <circle cx="7" cy="18" r="2"></circle>
+                            <circle cx="17" cy="18" r="2"></circle>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Sudah Scan Kirim</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Dalam Gudang">
+                        <span class="chip-icon-box chip-icon-blue">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21h18"></path>
+                            <path d="M5 21V7l7-4 7 4v14"></path>
+                            <path d="M9 10h6"></path>
+                            <path d="M9 14h6"></path>
+                            <path d="M9 18h6"></path>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Dalam Gudang</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Miss Route">
+                        <span class="chip-icon-box chip-icon-rose">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 3 21 3 21 8"></polyline>
+                            <line x1="4" y1="20" x2="21" y2="3"></line>
+                            <polyline points="21 16 21 21 16 21"></polyline>
+                            <line x1="15" y1="15" x2="21" y2="21"></line>
+                            <line x1="4" y1="4" x2="9" y2="9"></line>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Miss Route</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Crosslabel">
+                        <span class="chip-icon-box chip-icon-purple">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                            <circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"></circle>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Crosslabel</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Penangguhan">
+                        <span class="chip-icon-box chip-icon-amber">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Penangguhan</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="manual">
+                        <span class="chip-icon-box chip-icon-cyan">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Ketik Manual...</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- HIDDEN OR OPTIONAL DROPDOWN SELECT & MANUAL INPUT -->
+                  <div class="bulk-input-row">
+                    <select id="bulkActionSelect" class="filter-select bulk-select hidden" aria-label="Pilih aksi untuk data terpilih">
+                      <option value="">Pilih aksi massal...</option>
+                      <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                      <option value="Dalam Gudang">Dalam Gudang</option>
+                      <option value="Miss Route">Miss Route</option>
+                      <option value="Crosslabel">Crosslabel</option>
+                      <option value="Penangguhan">Penangguhan</option>
+                      <option value="manual">Ketik Manual...</option>
+                    </select>
+                    <div id="bulkActionManualWrapper" class="bulk-manual-wrapper hidden">
+                      <input id="bulkActionManual" class="bulk-action-manual" type="text" placeholder="Tuliskan tindakan / catatan khusus data terpilih..." maxlength="150" />
+                    </div>
+                  </div>
+
+                  <!-- FOOTER EXECUTION BUTTONS -->
+                  <div class="bulk-footer-actions">
+                    <button class="bulk-btn-action bulk-btn-update" id="bulkUpdateBtn" type="button" title="Eksekusi update aksi data terpilih">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      <span>Update (<span id="selectedMonitoringCount">0</span>)</span>
+                      <span id="bulkUpdateBtnText">Update (<span id="selectedMonitoringCount">0</span>)</span>
                     </button>
                     <button class="bulk-btn-action bulk-btn-restore hidden" id="bulkRestoreUpdateBtn" type="button" title="Kembalikan waybill terpilih ke status Pending">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                         <path d="M3 3v5h5"/>
                       </svg>
-                      <span>Restore</span>
+                      <span>Restore Pending</span>
                     </button>
-                    <button class="bulk-btn-action bulk-btn-archive" id="bulkArchiveBtn" type="button" title="Arsipkan waybill terpilih">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <button class="bulk-btn-action bulk-btn-archive" id="bulkArchiveBtn" type="button" title="Pindahkan data terpilih ke arsip">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="21 8 21 21 3 21 3 8"></polyline>
                         <rect x="1" y="3" width="22" height="5"></rect>
                         <line x1="10" y1="12" x2="14" y2="12"></line>
                       </svg>
-                      <span>Arsip (<span id="selectedMonitoringArchiveCount">0</span>)</span>
-                    </button>
-                    <button class="bulk-clear-btn" id="clearMonitoringSelectionBtn" type="button" title="Batalkan semua pilihan (✕)" aria-label="Batalkan semua pilihan">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
+                      <span>Arsipkan (<span id="selectedMonitoringArchiveCount">0</span>)</span>
                     </button>
                   </div>
                 </div>
