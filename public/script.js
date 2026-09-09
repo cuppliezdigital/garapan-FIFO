@@ -779,14 +779,25 @@ function renderTable(data) {
         const canRestore = hasPermission('restore_updated');
         actionButtons = `
           <div class="action-group">
-            <button type="button" class="table-btn edit-btn" data-action="edit" data-waybill="${item.waybill || ''}" title="Edit tindakan waybill">EDIT</button>
-            ${canRestore ? `<button type="button" class="table-btn restore-btn" data-action="restore-update" data-waybill="${item.waybill || ''}" title="Kembalikan waybill ke status Pending">RESTORE</button>` : ''}
+            <button type="button" class="table-btn edit-btn" data-action="edit" data-waybill="${item.waybill || ''}" title="Edit tindakan waybill">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: -1px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span>EDIT</span>
+            </button>
+            ${canRestore ? `
+              <button type="button" class="table-btn restore-btn" data-action="restore-update" data-waybill="${item.waybill || ''}" title="Kembalikan waybill ke status Pending">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: -1px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <span>RESTORE</span>
+              </button>
+            ` : ''}
           </div>
         `;
       } else {
         actionButtons = `
           <div class="action-group">
-            <button type="button" class="table-btn update-btn" data-action="update" data-waybill="${item.waybill || ''}">UPDATE</button>
+            <button type="button" class="table-btn update-btn" data-action="update" data-waybill="${item.waybill || ''}" title="Update tindakan waybill">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: -1px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>UPDATE</span>
+            </button>
           </div>
         `;
       }
@@ -3411,12 +3422,18 @@ if (actionManual) {
 
 if (tbody) {
   tbody.addEventListener('click', (event) => {
-    const checkbox = event.target.closest('.monitoring-select-checkbox');
-    if (checkbox) {
-      if (checkbox.checked) selectedMonitoringWaybills.add(checkbox.dataset.waybill);
-      else selectedMonitoringWaybills.delete(checkbox.dataset.waybill);
-      checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
-      updateSelectedMonitoringCount();
+    const colCheck = event.target.closest('.col-check');
+    if (colCheck) {
+      const checkbox = colCheck.querySelector('.monitoring-select-checkbox');
+      if (checkbox) {
+        if (event.target !== checkbox) {
+          checkbox.checked = !checkbox.checked;
+        }
+        if (checkbox.checked) selectedMonitoringWaybills.add(checkbox.dataset.waybill);
+        else selectedMonitoringWaybills.delete(checkbox.dataset.waybill);
+        checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
+        updateSelectedMonitoringCount();
+      }
       return;
     }
     const colBarang = event.target.closest('.col-barang');
@@ -3434,12 +3451,18 @@ if (tbody) {
 
 if (archiveTableBody) {
   archiveTableBody.addEventListener('click', (event) => {
-    const checkbox = event.target.closest('.archive-select-checkbox');
-    if (checkbox) {
-      if (checkbox.checked) selectedArchiveWaybills.add(checkbox.dataset.waybill);
-      else selectedArchiveWaybills.delete(checkbox.dataset.waybill);
-      checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
-      updateArchiveSelectionCount();
+    const colCheck = event.target.closest('.col-check');
+    if (colCheck) {
+      const checkbox = colCheck.querySelector('.archive-select-checkbox');
+      if (checkbox) {
+        if (event.target !== checkbox) {
+          checkbox.checked = !checkbox.checked;
+        }
+        if (checkbox.checked) selectedArchiveWaybills.add(checkbox.dataset.waybill);
+        else selectedArchiveWaybills.delete(checkbox.dataset.waybill);
+        checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
+        updateArchiveSelectionCount();
+      }
       return;
     }
     const colAksiText = event.target.closest('.col-aksi-text');
