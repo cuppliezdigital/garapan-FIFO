@@ -150,18 +150,29 @@ function normalizeMonitoringRow(raw = {}) {
 }
 
 function normalizeMonitoringDate(value) {
-  const toSqlDate = (year, month, day) => {
-    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-    if (date.getUTCFullYear() !== Number(year) || date.getUTCMonth() !== Number(month) - 1 || date.getUTCDate() !== Number(day)) return '';
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  };
+  if (!value) return '';
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   const raw = String(value || '').trim();
   if (!raw) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const toSqlDate = (year, month, day) => {
+    const y = Number(year);
+    const m = String(month).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const datePart = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0];
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(datePart)) {
     const [year, month, day] = datePart.split('-');
@@ -450,13 +461,11 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
     ? 'Sudah Diupdate'
     : (normalized.status || before?.status || 'Pending');
 
-  const preservedTanggal = normalized.tanggal && normalized.tanggal !== ''
-    ? normalized.tanggal
-    : (before?.tanggal
-      ? (before.tanggal instanceof Date
-        ? before.tanggal.toISOString().slice(0, 10)
-        : String(before.tanggal).split('T')[0].split(' ')[0])
-      : null);
+  const preservedTanggal = (before && before.tanggal)
+    ? (before.tanggal instanceof Date
+      ? `${before.tanggal.getFullYear()}-${String(before.tanggal.getMonth() + 1).padStart(2, '0')}-${String(before.tanggal.getDate()).padStart(2, '0')}`
+      : String(before.tanggal).split('T')[0].split(' ')[0])
+    : (normalized.tanggal || null);
 
   const [result] = await db.query(
     `UPDATE monitoring_stuck
@@ -522,7 +531,7 @@ async function bulkUpdateMonitoring(waybills, aksi, actor = null) {
     if (!current) continue;
 
     const preservedTanggal = current.tanggal instanceof Date
-      ? current.tanggal.toISOString().slice(0, 10)
+      ? `${current.tanggal.getFullYear()}-${String(current.tanggal.getMonth() + 1).padStart(2, '0')}-${String(current.tanggal.getDate()).padStart(2, '0')}`
       : String(current.tanggal || '').split('T')[0].split(' ')[0];
 
     const result = await updateMonitoring(waybill, {

@@ -679,6 +679,21 @@ function normalizeDateString(value) {
   }
   const raw = String(value).trim();
   if (!raw) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  if (raw.includes('T') && raw.endsWith('Z')) {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
   const datePart = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0];
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(datePart)) {
     const [year, month, day] = datePart.split('-');
@@ -691,9 +706,9 @@ function normalizeDateString(value) {
   }
   const fallback = new Date(raw);
   if (!Number.isNaN(fallback.getTime())) {
-    const year = fallback.getUTCFullYear();
-    const month = String(fallback.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(fallback.getUTCDate()).padStart(2, '0');
+    const year = fallback.getFullYear();
+    const month = String(fallback.getMonth() + 1).padStart(2, '0');
+    const day = String(fallback.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
   return '';
