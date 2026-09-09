@@ -104,6 +104,7 @@ async function deleteAllAuditLogs() {
 }
 
 module.exports = {
+  ensureAuditTable,
   logAudit,
   getAuditLogs,
   deleteAllAuditLogs,

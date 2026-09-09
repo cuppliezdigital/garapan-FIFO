@@ -126,6 +126,8 @@ async function deleteBackground() {
 }
 
 module.exports = {
+  ensureLogoTable,
+  ensureBackgroundTable,
   getLogo,
   getAllLogos,
   saveLogo,
