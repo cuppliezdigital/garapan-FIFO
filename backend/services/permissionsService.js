@@ -3,6 +3,7 @@ const auditService = require('./auditService');
 
 const PERMISSION_KEYS = Object.freeze({
   FULL_ACCESS: 'full_access',
+  MULTI_SESSION: 'multi_session',
   IMPORT_BULK: 'import_bulk',
   VIEW_HISTORY: 'view_history',
   DELETE_HISTORY: 'delete_history',
@@ -17,6 +18,7 @@ const PERMISSION_KEYS = Object.freeze({
 
 const PERMISSION_CATALOG = Object.freeze([
   { key: PERMISSION_KEYS.FULL_ACCESS, label: 'Full Akses', description: 'Akses penuh ke semua fitur (saklar utama).', category: 'master' },
+  { key: PERMISSION_KEYS.MULTI_SESSION, label: 'Multi-Sesi / Multi-Perangkat', description: 'Mengizinkan akun login di banyak perangkat/browser bersamaan tanpa saling tertendang.', category: 'admin' },
   { key: PERMISSION_KEYS.CREATE_USER, label: 'Buat Akun Baru', description: 'Membuat akun user/admin/client baru dari panel konfigurasi.', category: 'admin' },
   { key: PERMISSION_KEYS.RESTORE_UPDATED, label: 'Restore Status Update', description: 'Membatalkan aksi waybill yang sudah diupdate kembali ke Pending.', category: 'monitoring' },
   { key: PERMISSION_KEYS.IMPORT_BULK, label: 'Import Bulk Data', description: 'Mengimpor data monitoring massal via CSV.', category: 'monitoring' },
@@ -32,6 +34,7 @@ const PERMISSION_CATALOG = Object.freeze([
 const ROLE_DEFAULTS = Object.freeze({
   super_admin: Object.freeze({
     full_access: 1,
+    multi_session: 1,
     create_user: 1,
     restore_updated: 1,
     import_bulk: 1,
@@ -45,6 +48,7 @@ const ROLE_DEFAULTS = Object.freeze({
   }),
   admin: Object.freeze({
     full_access: 0,
+    multi_session: 1,
     create_user: 0,
     restore_updated: 0,
     import_bulk: 0,
@@ -58,6 +62,7 @@ const ROLE_DEFAULTS = Object.freeze({
   }),
   user: Object.freeze({
     full_access: 0,
+    multi_session: 0,
     create_user: 0,
     restore_updated: 0,
     import_bulk: 0,
@@ -71,6 +76,7 @@ const ROLE_DEFAULTS = Object.freeze({
   }),
   client: Object.freeze({
     full_access: 0,
+    multi_session: 0,
     create_user: 0,
     restore_updated: 0,
     import_bulk: 0,

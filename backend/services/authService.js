@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../config/db');
+const permissionsService = require('./permissionsService');
 
 const failedLoginAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
@@ -510,7 +511,16 @@ async function loginUser({ username, password }) {
 
   const sessionId = generateSessionId();
   await registerSession(user.id, sessionId);
-  await revokeOtherSessions(user.id, sessionId);
+
+  const canMultiSession = await permissionsService.userHasPermission(
+    user.id,
+    user.role,
+    permissionsService.PERMISSION_KEYS.MULTI_SESSION
+  );
+
+  if (!canMultiSession) {
+    await revokeOtherSessions(user.id, sessionId);
+  }
 
   const token = jwt.sign(
     {
