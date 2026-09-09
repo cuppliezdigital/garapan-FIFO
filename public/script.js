@@ -16,6 +16,7 @@ const userPill = document.getElementById('userPill');
 const tbody = document.getElementById('tabel-monitoring');
 const searchInput = document.getElementById('searchInput');
 const refreshBtn = document.getElementById('refreshBtn');
+const autoRefreshToggleBtn = document.getElementById('autoRefreshToggleBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const addBtn = document.getElementById('addBtn');
 const statusFilter = document.getElementById('statusFilter');
@@ -515,6 +516,7 @@ function setAuthState() {
 }
 
 function logout() {
+  stopAutoRefresh();
   if (sessionTimer) {
     clearTimeout(sessionTimer);
     sessionTimer = null;
@@ -2490,16 +2492,24 @@ if (registerForm) {
   });
 }
 
+let searchDebounceTimer = null;
 if (searchInput) {
   searchInput.addEventListener('input', () => {
-    monitoringPage = 1;
-    applyFilter();
+    if (clearSearchBtn) {
+      clearSearchBtn.classList.toggle('hidden', !searchInput.value.trim());
+    }
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      monitoringPage = 1;
+      applyFilter();
+    }, 180);
   });
 }
 
 if (clearSearchBtn) {
   clearSearchBtn.addEventListener('click', () => {
     if (searchInput) {
+      clearTimeout(searchDebounceTimer);
       searchInput.value = '';
       clearSearchBtn.classList.add('hidden');
       searchInput.focus();
@@ -2698,6 +2708,85 @@ if (refreshBtn) {
       refreshBtn.disabled = false;
       refreshBtn.classList.remove('is-loading');
       refreshBtn.innerHTML = originalLabel;
+    }
+  });
+}
+
+// AUTO-REFRESH (60s) LOGIC UNTUK LAYAR DISPLAY / MONITORING GUDANG
+let autoRefreshInterval = null;
+let autoRefreshCountdown = 60;
+let autoRefreshCountdownInterval = null;
+
+function stopAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+  if (autoRefreshCountdownInterval) {
+    clearInterval(autoRefreshCountdownInterval);
+    autoRefreshCountdownInterval = null;
+  }
+  if (autoRefreshToggleBtn) {
+    autoRefreshToggleBtn.classList.remove('is-active');
+    autoRefreshToggleBtn.setAttribute('aria-pressed', 'false');
+    const textEl = autoRefreshToggleBtn.querySelector('.auto-refresh-text');
+    if (textEl) textEl.innerHTML = 'Auto 60s: <strong>OFF</strong>';
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  if (!autoRefreshToggleBtn) return;
+
+  autoRefreshToggleBtn.classList.add('is-active');
+  autoRefreshToggleBtn.setAttribute('aria-pressed', 'true');
+  autoRefreshCountdown = 60;
+
+  const updateLabel = () => {
+    const textEl = autoRefreshToggleBtn.querySelector('.auto-refresh-text');
+    if (textEl) textEl.innerHTML = `Auto: <strong>${autoRefreshCountdown}s</strong>`;
+  };
+  updateLabel();
+
+  autoRefreshCountdownInterval = setInterval(() => {
+    autoRefreshCountdown -= 1;
+    if (autoRefreshCountdown <= 0) {
+      autoRefreshCountdown = 60;
+    }
+    updateLabel();
+  }, 1000);
+
+  autoRefreshInterval = setInterval(async () => {
+    // Jangan refresh jika user sedang membuka modal form atau ada waybill terpilih
+    const isModalOpen = monitoringModal && !monitoringModal.classList.contains('hidden');
+    const isRegisterOpen = registerModal && !registerModal.classList.contains('hidden');
+    const isImportOpen = importProgressModal && !importProgressModal.classList.contains('hidden');
+    const hasActiveSelection = selectedMonitoringWaybills && selectedMonitoringWaybills.size > 0;
+
+    if (isModalOpen || isRegisterOpen || isImportOpen || hasActiveSelection) {
+      return;
+    }
+
+    // Jangan refresh jika tab di background browser (hemat resource)
+    if (document.hidden) {
+      return;
+    }
+
+    try {
+      await fetchMonitoring();
+    } catch (err) {
+      console.warn('Auto-refresh silent error:', err.message);
+    }
+  }, 60000);
+}
+
+if (autoRefreshToggleBtn) {
+  autoRefreshToggleBtn.addEventListener('click', () => {
+    const isActive = autoRefreshToggleBtn.classList.contains('is-active');
+    if (isActive) {
+      stopAutoRefresh();
+    } else {
+      startAutoRefresh();
     }
   });
 }
@@ -3669,8 +3758,25 @@ if (archiveTableBody) {
   });
 }
 
-if (archiveSearchInput) archiveSearchInput.addEventListener('input', () => renderMonitoringArchive(monitoringArchiveData));
-if (historySearchInput) historySearchInput.addEventListener('input', () => renderMonitoringHistory(monitoringHistoryData));
+let archiveSearchDebounceTimer = null;
+if (archiveSearchInput) {
+  archiveSearchInput.addEventListener('input', () => {
+    clearTimeout(archiveSearchDebounceTimer);
+    archiveSearchDebounceTimer = setTimeout(() => {
+      renderMonitoringArchive(monitoringArchiveData);
+    }, 180);
+  });
+}
+
+let historySearchDebounceTimer = null;
+if (historySearchInput) {
+  historySearchInput.addEventListener('input', () => {
+    clearTimeout(historySearchDebounceTimer);
+    historySearchDebounceTimer = setTimeout(() => {
+      renderMonitoringHistory(monitoringHistoryData);
+    }, 180);
+  });
+}
 if (bulkArchiveBtn) bulkArchiveBtn.addEventListener('click', moveSelectedToArchive);
 if (restoreArchiveBtn) restoreArchiveBtn.addEventListener('click', restoreSelectedArchive);
 if (selectAllArchive) {

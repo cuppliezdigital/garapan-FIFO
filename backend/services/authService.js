@@ -546,9 +546,25 @@ async function loginUser({ username, password }) {
   };
 }
 
+async function cleanupExpiredSessions() {
+  try {
+    const [result] = await db.query(`
+      DELETE FROM user_sessions
+      WHERE revoked = 1 OR last_seen_at < (NOW() - INTERVAL 2 DAY)
+    `);
+    if (result && result.affectedRows > 0) {
+      console.log(`🧹 [Auto-Cleanup] Berhasil membersihkan ${result.affectedRows} sesi kadaluarsa (> 2 hari / revoked).`);
+    }
+  } catch (error) {
+    console.error('Pembersihan user_sessions gagal:', error.message);
+  }
+}
+
 async function initAuthTables() {
   await ensureUsersTable();
   await ensureDefaultAdmin();
+  await ensureUserSessionsTable();
+  await cleanupExpiredSessions();
 }
 
 module.exports = {

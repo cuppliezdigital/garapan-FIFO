@@ -341,7 +341,10 @@
 
           <div class="topbar-actions">
             <span id="userPill" class="user-pill">User</span>
-            <button class="primary-btn" id="refreshBtn" type="button">Refresh</button>
+            <button class="auto-refresh-toggle-btn" id="autoRefreshToggleBtn" type="button" title="Auto-Refresh tiap 60 detik (cocok untuk layar display gudang)" aria-pressed="false">
+              <span class="auto-refresh-pulse-dot" aria-hidden="true"></span>
+              <span class="auto-refresh-text">Auto 60s: <strong>OFF</strong></span>
+            </button>
             <button class="secondary-btn" id="logoutBtn" type="button">Logout</button>
           </div>
         </header>
@@ -657,6 +660,15 @@
                     </select>
                     <div id="tlcDropdownMenu" class="tlc-dropdown-menu hidden"></div>
                   </div>
+
+                  <button type="button" id="refreshBtn" class="btn-table-refresh" title="Segarkan data tabel">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="23 4 23 10 17 10"></polyline>
+                      <polyline points="1 20 1 14 7 14"></polyline>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
 
                   <button type="button" id="resetFilterBtn" class="btn-reset-filter" title="Reset semua filter">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

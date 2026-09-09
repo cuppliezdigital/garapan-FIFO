@@ -44,6 +44,26 @@ async function ensureMonitoringTable() {
   if (alterations.length) {
     await db.query(`ALTER TABLE monitoring_stuck ${alterations.join(', ')}`);
   }
+
+  // Optimasi index untuk performa tinggi pada puluhan ribu data
+  try {
+    const [indexes] = await db.query(
+      `SELECT DISTINCT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'monitoring_stuck'`
+    );
+    const existingIndexes = new Set(indexes.map((idx) => idx.INDEX_NAME));
+
+    if (!existingIndexes.has('idx_tanggal_created')) {
+      await db.query('ALTER TABLE monitoring_stuck ADD INDEX idx_tanggal_created (tanggal, created_at)');
+    }
+    if (!existingIndexes.has('idx_status')) {
+      await db.query('ALTER TABLE monitoring_stuck ADD INDEX idx_status (status)');
+    }
+    if (!existingIndexes.has('idx_tlc')) {
+      await db.query('ALTER TABLE monitoring_stuck ADD INDEX idx_tlc (tlc)');
+    }
+  } catch (idxErr) {
+    console.error('ensureMonitoringTable index check warning:', idxErr.message);
+  }
 }
 
 async function ensureMonitoringHistoryTable() {
