@@ -1820,13 +1820,23 @@ h1 {
 }
 
 .update-btn {
-  min-width: 74px;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.28), rgba(30, 64, 175, 0.24));
-  border-color: rgba(147, 197, 253, 0.62);
-  color: #eff6ff;
+  min-width: 66px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(37, 99, 235, 0.28));
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  color: #e0f2fe;
   font-size: 0.69rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.16);
+  transition: all 0.2s ease;
+}
+
+.update-btn:hover {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.38), rgba(37, 99, 235, 0.48));
+  border-color: rgba(125, 211, 252, 0.9);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .delete-btn {
@@ -3544,11 +3554,11 @@ thead th input[type="checkbox"] {
     flex-shrink: 0;
   }
 
-  /* BARIS 4: Diupdate Oleh (kiri) & Status Ngunci di Kanan Bawah */
+  /* BARIS 4: Diupdate Oleh (kiri) & Status + Aksi berdampingan (kanan) */
   .col-updated {
-    grid-column: 1 / 4;
+    grid-column: 1 / 3;
     grid-row: 4;
-    font-size: 0.72rem;
+    font-size: 0.71rem;
     color: #94a3b8;
     display: flex;
     align-items: center;
@@ -3557,58 +3567,62 @@ thead th input[type="checkbox"] {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }
   .col-updated::before {
-    content: "👤 Diupdate: ";
-    font-weight: 600;
-    color: #64748b;
+    content: "👤 ";
+    font-size: 0.72rem;
+    opacity: 0.85;
     display: inline-block;
   }
 
   .col-status {
-    grid-column: 4;
+    grid-column: 3;
     grid-row: 4;
     justify-self: end;
     display: flex;
     align-items: center;
-    padding-top: 2px;
+    padding-top: 1px;
+    margin-right: 6px;
   }
   .col-status .status {
+    height: 24px;
+    min-height: 24px;
     font-size: 0.68rem !important;
-    padding: 2px 8px !important;
+    padding: 0 8px !important;
     border-radius: 6px !important;
     font-weight: 700 !important;
     text-transform: capitalize;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
 
-  /* BARIS 5: Tombol Aksi di HP (UPDATE / EDIT / RESTORE) */
   .col-aksi {
-    grid-column: 1 / -1;
-    grid-row: 5;
+    grid-column: 4;
+    grid-row: 4;
+    justify-self: end;
     display: flex !important;
     align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    padding-top: 8px !important;
-    margin-top: 6px;
-    border-top: 1px dashed rgba(148, 163, 184, 0.15) !important;
-    width: 100% !important;
+    gap: 5px;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    width: auto !important;
+    padding-top: 1px !important;
   }
 
   .col-aksi::before {
-    content: "⚡ Tindakan:";
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #64748b;
-    margin-right: auto;
-    display: inline-block;
+    display: none !important;
   }
 
   .col-aksi .action-group {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     margin: 0;
     padding: 0;
     background: transparent;
@@ -3616,24 +3630,34 @@ thead th input[type="checkbox"] {
   }
 
   .col-aksi .table-btn {
-    height: 32px;
-    min-height: 32px;
-    padding: 0 14px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    border-radius: 8px;
+    height: 25px;
+    min-height: 25px;
+    padding: 0 10px;
+    font-size: 0.69rem;
+    font-weight: 700;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    letter-spacing: 0.04em;
+    gap: 4px;
+    letter-spacing: 0.03em;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    white-space: nowrap;
+    min-width: unset;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+    transition: all 0.18s ease;
+  }
+
+  .col-aksi .table-btn svg {
+    width: 11px;
+    height: 11px;
   }
 
   .col-aksi .read-only-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: #64748b;
     font-style: italic;
+    padding: 2px 6px;
   }
 
   .monitoring-bulk-controls {
