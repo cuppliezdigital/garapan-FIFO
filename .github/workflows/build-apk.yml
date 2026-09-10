@@ -1,0 +1,80 @@
+name: Build Monitoring FIFO APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Compile Android APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare APK Asset
+        run: |
+          mkdir -p output-apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output-apk/MonitoringFIFO-v1.0.apk
+          ls -la output-apk/
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MonitoringFIFO-v1.0-APK
+          path: output-apk/MonitoringFIFO-v1.0.apk
+          if-no-files-found: error
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/main')
+        with:
+          tag_name: v1.0.0-apk
+          name: "Monitoring FIFO v1.0.0 (APK J&T Cargo)"
+          body: |
+            ## 📦 Monitoring FIFO Android APK (J&T Cargo)
+            
+            Aplikasi resmi Monitoring FIFO khusus smartphone Android dan Warehouse PDA (Zebra, Honeywell, Point Mobile, Sunmi, Urovo).
+            
+            ### ✨ Fitur Unggulan:
+            - 🟢 **Icon Resmi J&T CARGO** HD.
+            - ⚡ **Auto-Update**: Cukup install 1 kali, semua fitur & perbaikan baru di web otomatis ter-update di PDA tanpa install ulang!
+            - 🛡️ **Full Screen**: Tampilan penuh tanpa bar browser yang mengganggu.
+            - 💡 **Keep Screen On**: Layar PDA tidak mati/sleep sendiri saat operasional gudang.
+            - 🔄 **Pull to Refresh**: Geser/tarik ke bawah untuk refresh data kapan saja.
+            - 🌐 **Server URL Switcher**: Default mengarah ke `https://garapan-fifo-production.up.railway.app` dengan opsi ubah IP server darurat.
+            
+            ### 📲 Cara Install di PDA / HP:
+            1. Download file `MonitoringFIFO-v1.0.apk` di bawah.
+            2. Buka file di PDA dan pilih **Install / Pasang**.
+            3. Jika muncul peringatan sumber tidak dikenal, pilih **Izinkan instalasi dari sumber ini**.
+            4. Buka aplikasi dan login seperti biasa!
+          files: output-apk/MonitoringFIFO-v1.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

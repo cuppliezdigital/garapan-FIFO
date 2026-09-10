@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Monitoring FIFO</string>
+    <string name="change_server_url">Ganti Alamat Server</string>
+    <string name="server_url_hint">Contoh: https://garapan-fifo-production.up.railway.app</string>
+    <string name="save">Simpan &amp; Muat Ulang</string>
+    <string name="cancel">Batal</string>
+    <string name="reset_default">Reset Default</string>
+    <string name="connection_error_title">Koneksi Terputus</string>
+    <string name="connection_error_desc">Gagal menghubungi server. Pastikan PDA terhubung ke Wi-Fi gudang atau internet.</string>
+    <string name="retry">Coba Lagi</string>
+</resources>
