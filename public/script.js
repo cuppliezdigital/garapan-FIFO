@@ -4518,7 +4518,7 @@ function openQuickAddModal(waybill) {
     const dd = String(today.getDate()).padStart(2, '0');
     quickAddTanggal.value = `${yyyy}-${mm}-${dd}`;
   }
-  if (quickAddOutlet) quickAddOutlet.value = 'Gudang Utama';
+  if (quickAddOutlet) quickAddOutlet.value = '';
   if (quickAddTlc) {
     // Gunakan TLC pertama yang tersedia jika ada
     quickAddTlc.value = (currentAvailableTlcs && currentAvailableTlcs.length > 0) ? currentAvailableTlcs[0].code : '-';
@@ -4780,7 +4780,7 @@ function renderFoundCard(item, ageDays, badgeClass, borderClass, badgeLabel, upd
           <span class="scan-data-value">${formatDate(item.tanggal)}</span>
         </div>
         <div class="scan-data-item">
-          <span class="scan-data-label">Outlet Asal</span>
+          <span class="scan-data-label">Outlet Tujuan</span>
           <span class="scan-data-value">${escapeTlcHtml(item.outlet || '-')}</span>
         </div>
         <div class="scan-data-item">
