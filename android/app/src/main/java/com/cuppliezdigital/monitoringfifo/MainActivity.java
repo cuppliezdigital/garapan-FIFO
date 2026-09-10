@@ -2,8 +2,11 @@ package com.cuppliezdigital.monitoringfifo;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -273,6 +276,102 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // ==============================================================
+    // HARDWARE PDA SCANNER BROADCAST RECEIVER (iData K3 Pro, Urovo, Chainway, Zebra, Honeywell)
+    // ==============================================================
+    private final BroadcastReceiver pdaScanReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
+            String barcode = null;
+            if (intent.hasExtra("value")) {
+                barcode = intent.getStringExtra("value");
+            } else if (intent.hasExtra("barcode")) {
+                barcode = intent.getStringExtra("barcode");
+            } else if (intent.hasExtra("data")) {
+                barcode = intent.getStringExtra("data");
+            } else if (intent.hasExtra("scannerdata")) {
+                barcode = intent.getStringExtra("scannerdata");
+            } else if (intent.hasExtra("com.symbol.datawedge.data_string")) {
+                barcode = intent.getStringExtra("com.symbol.datawedge.data_string");
+            } else if (intent.hasExtra("se4500")) {
+                barcode = intent.getStringExtra("se4500");
+            }
+
+            if (barcode != null && !barcode.trim().isEmpty()) {
+                deliverScannedBarcodeToWeb(barcode.trim());
+            }
+        }
+    };
+
+    private void registerPdaReceivers() {
+        IntentFilter filter = new IntentFilter();
+        // iData K3 Pro default broadcast actions
+        filter.addAction("android.intent.action.SCANRESULT");
+        filter.addAction("com.idatachina.SCANKEYEVENT");
+        // Chainway / CILICO / Seuic / K3 broadcast actions
+        filter.addAction("com.android.server.scannerservice.broadcast");
+        filter.addAction("android.intent.action.BARCODE_BROADCAST");
+        // Urovo broadcast actions
+        filter.addAction("urovo.rcv.message");
+        // Zebra DataWedge broadcast action
+        filter.addAction("com.symbol.datawedge.data_string");
+        filter.addAction("com.symbol.datawedge.api.RESULT_ACTION");
+        // Honeywell ScanWedge broadcast action
+        filter.addAction("com.honeywell.decode.intent.action.EDIT_DATA");
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.registerReceiver(this, pdaScanReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
+            } else {
+                registerReceiver(pdaScanReceiver, filter);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void unregisterPdaReceivers() {
+        try {
+            unregisterReceiver(pdaScanReceiver);
+        } catch (Exception ignored) {}
+    }
+
+    private void deliverScannedBarcodeToWeb(String barcode) {
+        if (webView == null || barcode == null) return;
+        final String clean = barcode.replaceAll("[\\r\\n\\t]", "").trim();
+        if (clean.length() < 3) return;
+
+        runOnUiThread(() -> {
+            String script = "(function() {" +
+                    "  var code = '" + clean.replace("'", "\\'") + "';" +
+                    "  if (typeof handleScannedWaybill === 'function') {" +
+                    "    if (typeof scannerModal !== 'undefined' && scannerModal && scannerModal.classList.contains('hidden') && typeof openScannerModal === 'function') {" +
+                    "      openScannerModal();" +
+                    "    }" +
+                    "    handleScannedWaybill(code);" +
+                    "  } else {" +
+                    "    var inp = document.getElementById('scannerBarcodeInput');" +
+                    "    if (inp) {" +
+                    "      inp.value = code;" +
+                    "      inp.dispatchEvent(new Event('input', { bubbles: true }));" +
+                    "    }" +
+                    "  }" +
+                    "})();";
+            webView.evaluateJavascript(script, null);
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerPdaReceivers();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterPdaReceivers();
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         // Pass hardware laser keystrokes directly to webView
@@ -297,3 +396,4 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
+
