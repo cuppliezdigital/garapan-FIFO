@@ -210,20 +210,51 @@ function normalizeMonitoringDate(value) {
   return datePart;
 }
 
+function formatStuckByHours(hours) {
+  const h = Math.round(Number(hours));
+  if (h <= 11) return `${h} Jam (1-12)`;
+  if (h <= 23) return `${h} Jam (12-24)`;
+  if (h <= 35) return `${h} Jam (24-36)`;
+  if (h <= 59) return `${h} Jam (48-60)`;
+  if (h <= 71) return `${h} Jam (60-72)`;
+  return `${h} Jam (72 UP)`;
+}
+
 function normalizeStuckCategory(value) {
-  const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (value === null || value === undefined) return '0 Jam (1-12)';
 
-  if (/^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$/.test(normalized)) {
-    return '4. 48 Jam - 60 Jam';
-  }
-  if (/^(?:5\.\s*)?48\s*jam\s*-\s*72\s*jam$/.test(normalized)) {
-    return '5. 48 Jam - 72 Jam';
-  }
-  if (/^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$/.test(normalized)) {
-    return '6. 72 Jam UP';
+  const rawStr = String(value).trim();
+  if (!rawStr) return '0 Jam (1-12)';
+
+  const normalized = rawStr.toLowerCase().replace(/\s+/g, ' ');
+
+  // 1. Dukungan format teks lama dengan penomoran (1. 12 Jam, 4. 48 Jam - 60 Jam, dsb)
+  if (/^1\.\s*(?:12\s*jam|1-12)/.test(normalized)) return '12 Jam (1-12)';
+  if (/^2\.\s*(?:12\s*jam\s*-\s*24\s*jam|12-24)/.test(normalized)) return '24 Jam (12-24)';
+  if (/^3\.\s*(?:24\s*jam\s*-\s*36\s*jam|24-36)/.test(normalized)) return '36 Jam (24-36)';
+  if (/^4\.\s*(?:48\s*jam\s*-\s*60\s*jam|48-60)/.test(normalized)) return '48 Jam (48-60)';
+  if (/^5\.\s*(?:(?:48|60)\s*jam\s*-\s*72\s*jam|(?:48-72|60-72))/.test(normalized)) return '60 Jam (60-72)';
+  if (/^6\.\s*(?:72(?:\s*jam)?\s*(?:up|\+)|72-up)/.test(normalized)) return '72 Jam (72 UP)';
+
+  // Dukungan teks format lama tanpa penomoran
+  if (/^48\s*jam\s*-\s*60\s*jam$/.test(normalized)) return '48 Jam (48-60)';
+  if (/^(?:48|60)\s*jam\s*-\s*72\s*jam$/.test(normalized)) return '60 Jam (60-72)';
+  if (/^72(?:\s*jam)?\s*(?:up|\+)$/.test(normalized)) return '72 Jam (72 UP)';
+  if (/^12\s*jam\s*-\s*24\s*jam$/.test(normalized)) return '24 Jam (12-24)';
+  if (/^24\s*jam\s*-\s*36\s*jam$/.test(normalized)) return '36 Jam (24-36)';
+  if (/^12\s*jam$/.test(normalized)) return '12 Jam (1-12)';
+
+  // 2. Input jam numerik (e.g. 45, 45 Jam, 45h, 45 Jam (48-60))
+  // Cegah mencocokkan range seperti "48-72" sebagai single number 48
+  if (!/^\d+\s*-\s*\d+/.test(rawStr)) {
+    const numMatch = rawStr.match(/^(\d+(?:\.\d+)?)/);
+    if (numMatch) {
+      const hours = parseFloat(numMatch[1]);
+      return formatStuckByHours(hours);
+    }
   }
 
-  return String(value || '0').trim() || '0';
+  return rawStr;
 }
 
 async function archiveMonitoringRecord(record, source = 'archive', client = null) {
@@ -776,4 +807,6 @@ module.exports = {
   deleteAllMonitoring,
   bulkImportMonitoring,
   initMonitoringTables,
+  normalizeStuckCategory,
+  formatStuckByHours,
 };

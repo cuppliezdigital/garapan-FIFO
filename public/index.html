@@ -355,74 +355,235 @@
         <main class="app-views-container">
           <!-- VIEW 1: MONITORING (DEFAULT) -->
           <div id="viewMonitoring" class="view-page active">
-            <section class="summary-strip">
-              <div class="stat-card stat-feature accent-indigo" id="card-total" style="cursor: pointer;">
+            <!-- 1. BARIS KARTU UTAMA (SELALU MUNCUL DI ATAS) -->
+            <section class="summary-strip-global">
+              <!-- TOTAL DATA -->
+              <div class="stat-card accent-indigo global-card" id="card-total" style="cursor: pointer;">
+                <div class="global-card-info">
+                  <span class="global-card-title">Total Data</span>
+                  <strong class="global-card-number" id="totalData">0</strong>
+                </div>
                 <div class="stat-icon icon-purple">
-                  <span>◫</span>
-                </div>
-                <div class="stat-copy">
-                  <span>Total Keseluruhan</span>
-                  <strong id="totalData">0</strong>
+                  <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                  </svg>
                 </div>
               </div>
 
-              <div class="stat-card stat-mini accent-green" id="card-updated" style="cursor: pointer;">
+              <!-- SUDAH DIUPDATE -->
+              <div class="stat-card accent-green global-card" id="card-updated" style="cursor: pointer;">
+                <div class="global-card-info">
+                  <span class="global-card-title">Sudah Diupdate</span>
+                  <strong class="global-card-number" id="updatedCardCount">0</strong>
+                </div>
                 <div class="stat-icon icon-green">
-                  <span>✓</span>
-                </div>
-                <div class="stat-copy">
-                  <span>Sudah Diupdate</span>
-                  <strong id="updatedCardCount">0</strong>
-                </div>
-              </div>
-
-              <div class="stat-card stat-mini accent-amber" id="card-48-60" style="cursor: pointer;">
-                <div class="stat-icon icon-amber">
-                  <span>◔</span>
-                </div>
-                <div class="stat-copy">
-                  <span>4. 48 Jam - 60 Jam</span>
-                  <strong id="count-48-60">0</strong>
+                  <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
                 </div>
               </div>
 
-              <div class="stat-card stat-mini accent-orange" id="card-48-72" style="cursor: pointer;">
-                <div class="stat-icon icon-orange">
-                  <span>△</span>
+              <!-- ARSIP WAYBILL -->
+              <div class="stat-card accent-cyan global-card" id="card-archive" style="cursor: pointer;">
+                <div class="global-card-info">
+                  <span class="global-card-title">Arsip Waybill</span>
+                  <strong class="global-card-number" id="archiveCardCount">0</strong>
                 </div>
-                <div class="stat-copy">
-                  <span>5. 48 Jam - 72 Jam</span>
-                  <strong id="count-48-72">0</strong>
-                </div>
-              </div>
-
-              <div class="stat-card stat-mini accent-red" id="card-72-up" style="cursor: pointer;">
-                <div class="stat-icon icon-red">
-                  <span>◷</span>
-                </div>
-                <div class="stat-copy">
-                  <span>6. 72 Jam UP</span>
-                  <strong id="count-72-up">0</strong>
-                </div>
-              </div>
-
-              <div class="stat-card stat-mini accent-cyan" id="card-archive" style="cursor: pointer;">
                 <div class="stat-icon icon-cyan">
-                  <span>◫</span>
-                </div>
-                <div class="stat-copy">
-                  <span>Arsip Waybill</span>
-                  <strong id="archiveCardCount">0</strong>
+                  <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="5" rx="1"></rect>
+                    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                    <path d="M10 12h4"></path>
+                  </svg>
                 </div>
               </div>
             </section>
 
-            <div class="monitoring-quick-bar">
-              <div class="quick-bar-meta">
-                <span class="quick-bar-dot"></span>
-                <span class="quick-bar-label">Operasional Data:</span>
+            <!-- 2. TOMBOL DRAWER KARTU JAM NGUMPET (EXPANDABLE TRIGGER BAR) -->
+            <div class="stuck-drawer-wrap">
+              <button type="button" id="btnToggleStuckDrawer" class="stuck-drawer-toggle">
+                <div class="drawer-toggle-left">
+                  <div class="drawer-icon-box">
+                    <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <span class="drawer-toggle-title">Kategori Jam Stuck (Aging)</span>
+                  <span class="drawer-summary-badge" id="drawerSummaryBadge">36h+: 0 Data</span>
+                </div>
+                <div class="drawer-toggle-right">
+                  <span id="drawerToggleText" class="drawer-toggle-label">Buka Kartu</span>
+                  <svg id="chevronStuckDrawer" class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </button>
+
+              <!-- 3. KONTEN DRAWER (COLLAPSIBLE, DEFAULT: NGUMPET) -->
+              <div id="stuckDrawerContainer" class="stuck-drawer-content is-collapsed">
+                <div class="stuck-drawer-inner">
+                  <!-- MODERN SEGMENTED TAB SWITCHER (CENTERED) -->
+                  <div class="stuck-tab-bar-wrap">
+                    <div class="stuck-tab-switcher">
+                      <button type="button" id="tabStuckPriority" class="stuck-tab-pill active">
+                        <svg class="tab-pill-icon text-amber" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        <span>Prioritas Kritis</span>
+                        <span class="tab-pill-tag tag-amber">36h+</span>
+                      </button>
+                      <button type="button" id="tabStuckAll" class="stuck-tab-pill">
+                        <svg class="tab-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                        </svg>
+                        <span>Semua Level</span>
+                        <span class="tab-pill-tag tag-slate">1-72h</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- UNIFIED 6 STUCK CARDS GRID (NO DUPLICATES, NO DOUBLE TITLES) -->
+                  <div id="stuckCardsGrid" class="stuck-cards-grid mode-priority">
+                    <!-- 1. 1-12 Jam -->
+                    <div class="stat-card stuck-card accent-teal" id="card-1-12" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">1. 1-12 Jam</span>
+                          <span class="stuck-range-badge">1 - 11h</span>
+                        </div>
+                        <div class="stat-icon icon-teal">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 14 14"></polyline>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-1-12">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 2. 12-24 Jam -->
+                    <div class="stat-card stuck-card accent-blue" id="card-12-24" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">2. 12-24 Jam</span>
+                          <span class="stuck-range-badge">12 - 23h</span>
+                        </div>
+                        <div class="stat-icon icon-blue">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 15 13"></polyline>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-12-24">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 3. 24-36 Jam -->
+                    <div class="stat-card stuck-card accent-violet" id="card-24-36" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">3. 24-36 Jam</span>
+                          <span class="stuck-range-badge">24 - 35h</span>
+                        </div>
+                        <div class="stat-icon icon-violet">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-24-36">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 4. 48-60 Jam -->
+                    <div class="stat-card stuck-card accent-amber" id="card-48-60" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">4. 48-60 Jam</span>
+                          <span class="stuck-range-badge">36 - 59h</span>
+                        </div>
+                        <div class="stat-icon icon-amber">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-48-60">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 5. 60-72 Jam -->
+                    <div class="stat-card stuck-card accent-orange" id="card-48-72" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">5. 60-72 Jam</span>
+                          <span class="stuck-range-badge">60 - 71h</span>
+                        </div>
+                        <div class="stat-icon icon-orange">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-48-72">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 6. 72 Jam UP -->
+                    <div class="stat-card stuck-card accent-red" id="card-72-up" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">6. 72 Jam UP</span>
+                          <span class="stuck-range-badge">≥ 72 Jam</span>
+                        </div>
+                        <div class="stat-icon icon-red">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-72-up">0</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="quick-bar-actions">
+            </div>
+
+            <div class="monitoring-quick-bar is-open" id="monitoringQuickBar">
+              <div class="quick-bar-header" id="quickBarHeader">
+                <div class="quick-bar-meta">
+                  <span class="quick-bar-dot"></span>
+                  <span class="quick-bar-label">Operasional Data</span>
+                </div>
+                <button type="button" class="quick-bar-toggle-btn" id="btnToggleQuickBar" title="Buka / Tutup Tombol Operasional">
+                  <span class="quick-bar-toggle-text" id="quickBarToggleText">Sembunyikan</span>
+                  <svg class="quick-bar-chevron is-open" id="chevronQuickBar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              </div>
+              <div class="quick-bar-actions" id="quickBarActions">
                 <button type="button" class="btn-executive btn-executive-primary" id="importBulkBtn">
                   <span class="btn-icon-circle">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">

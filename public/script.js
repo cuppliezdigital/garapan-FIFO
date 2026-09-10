@@ -1044,31 +1044,112 @@ function isSudahUpdate(item) {
   return (aksi && aksi !== '-') || status === 'sudah diupdate' || status === 'sudah scan kirim';
 }
 
+function getStuckNumericHours(stuckVal) {
+  const raw = String(stuckVal || '').trim();
+  if (/^[1-6]\.\s+/.test(raw) || /^\d+\s*-\s*\d+/.test(raw)) return null;
+  const match = raw.match(/^(\d+(?:\.\d+)?)/);
+  if (match) return parseFloat(match[1]);
+  return null;
+}
+
+function formatStuckByHours(hours) {
+  const h = Math.round(Number(hours));
+  if (h <= 11) return `${h} Jam (1-12)`;
+  if (h <= 23) return `${h} Jam (12-24)`;
+  if (h <= 35) return `${h} Jam (24-36)`;
+  if (h <= 59) return `${h} Jam (48-60)`;
+  if (h <= 71) return `${h} Jam (60-72)`;
+  return `${h} Jam (72 UP)`;
+}
+
+function normalizeStuckCategory(value) {
+  if (value === null || value === undefined) return '0 Jam (1-12)';
+
+  const rawStr = String(value).trim();
+  if (!rawStr) return '0 Jam (1-12)';
+
+  const normalized = rawStr.toLowerCase().replace(/\s+/g, ' ');
+
+  // 1. Dukungan format teks lama dengan penomoran (1. 12 Jam, 4. 48 Jam - 60 Jam, dsb)
+  if (/^1\.\s*(?:12\s*jam|1-12)/.test(normalized)) return '12 Jam (1-12)';
+  if (/^2\.\s*(?:12\s*jam\s*-\s*24\s*jam|12-24)/.test(normalized)) return '24 Jam (12-24)';
+  if (/^3\.\s*(?:24\s*jam\s*-\s*36\s*jam|24-36)/.test(normalized)) return '36 Jam (24-36)';
+  if (/^4\.\s*(?:48\s*jam\s*-\s*60\s*jam|48-60)/.test(normalized)) return '48 Jam (48-60)';
+  if (/^5\.\s*(?:(?:48|60)\s*jam\s*-\s*72\s*jam|(?:48-72|60-72))/.test(normalized)) return '60 Jam (60-72)';
+  if (/^6\.\s*(?:72(?:\s*jam)?\s*(?:up|\+)|72-up)/.test(normalized)) return '72 Jam (72 UP)';
+
+  // Dukungan teks format lama tanpa penomoran
+  if (/^48\s*jam\s*-\s*60\s*jam$/.test(normalized)) return '48 Jam (48-60)';
+  if (/^(?:48|60)\s*jam\s*-\s*72\s*jam$/.test(normalized)) return '60 Jam (60-72)';
+  if (/^72(?:\s*jam)?\s*(?:up|\+)$/.test(normalized)) return '72 Jam (72 UP)';
+  if (/^12\s*jam\s*-\s*24\s*jam$/.test(normalized)) return '24 Jam (12-24)';
+  if (/^24\s*jam\s*-\s*36\s*jam$/.test(normalized)) return '36 Jam (24-36)';
+  if (/^12\s*jam$/.test(normalized)) return '12 Jam (1-12)';
+
+  // 2. Input jam numerik (e.g. 45, 45 Jam, 45h, 45 Jam (48-60))
+  // Cegah mencocokkan range seperti "48-72" sebagai single number 48
+  if (!/^\d+\s*-\s*\d+/.test(rawStr)) {
+    const numMatch = rawStr.match(/^(\d+(?:\.\d+)?)/);
+    if (numMatch) {
+      const hours = parseFloat(numMatch[1]);
+      return formatStuckByHours(hours);
+    }
+  }
+
+  return rawStr;
+}
+
 function matchesStuckFilter(item, filter) {
   if (filter === 'updated') return isSudahUpdate(item);
-
   if (isSudahUpdate(item)) return false;
-  const stuck = String(item.stuck || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  if (filter === '48-60') return /^(?:4\.\s*)?48 jam - 60 jam$/.test(stuck);
-  if (filter === '48-72') return /^(?:5\.\s*)?48 jam - 72 jam$/.test(stuck);
-  if (filter === '72-up') return /^(?:6\.\s*)?72(?: jam)? up$/.test(stuck);
+
+  const rawStuck = String(item.stuck || '').trim();
+  const hours = getStuckNumericHours(rawStuck);
+  const normalized = rawStuck.toLowerCase().replace(/\s+/g, ' ');
+
+  if (hours !== null) {
+    if (filter === '1-12') return hours <= 11;
+    if (filter === '12-24') return hours >= 12 && hours <= 23;
+    if (filter === '24-36') return hours >= 24 && hours <= 35;
+    if (filter === '48-60') return hours >= 36 && hours <= 59;
+    if (filter === '48-72' || filter === '60-72') return hours >= 60 && hours <= 71;
+    if (filter === '72-up') return hours >= 72;
+  }
+
+  // Fallback string matching untuk data lama tanpa angka jam terdepan
+  if (filter === '1-12') return /^(?:1\.\s*)?12\s*jam$|^1-12/.test(normalized);
+  if (filter === '12-24') return /^(?:2\.\s*)?12\s*jam\s*-\s*24\s*jam$|^12-24/.test(normalized);
+  if (filter === '24-36') return /^(?:3\.\s*)?24\s*jam\s*-\s*36\s*jam$|^24-36/.test(normalized);
+  if (filter === '48-60') return /^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$|^48-60/.test(normalized);
+  if (filter === '48-72' || filter === '60-72') return /^(?:5\.\s*)?(?:48|60)\s*jam\s*-\s*72\s*jam$|^(?:48-72|60-72)/.test(normalized);
+  if (filter === '72-up') return /^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$|^72-up/.test(normalized);
+
   return true;
 }
 
 function getUrgencyClass(stuckValue) {
+  const hours = getStuckNumericHours(stuckValue);
+  if (hours !== null) {
+    if (hours <= 11) return 'urgency-1-12';
+    if (hours <= 23) return 'urgency-12-24';
+    if (hours <= 35) return 'urgency-24-36';
+    if (hours <= 59) return 'urgency-48-60';
+    if (hours <= 71) return 'urgency-60-72';
+    return 'urgency-72-up';
+  }
+
   const stuck = String(stuckValue || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  if (/^(?:4\.\s*)?48 jam - 60 jam$/.test(stuck)) return 'urgency-48-60';
-  if (/^(?:5\.\s*)?48 jam - 72 jam$/.test(stuck)) return 'urgency-48-72';
-  if (/^(?:6\.\s*)?72(?: jam)? up$/.test(stuck)) return 'urgency-72-up';
+  if (/^(?:1\.\s*)?12\s*jam$|^1-12/.test(stuck)) return 'urgency-1-12';
+  if (/^(?:2\.\s*)?12\s*jam\s*-\s*24\s*jam$|^12-24/.test(stuck)) return 'urgency-12-24';
+  if (/^(?:3\.\s*)?24\s*jam\s*-\s*36\s*jam$|^24-36/.test(stuck)) return 'urgency-24-36';
+  if (/^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$|^48-60/.test(stuck)) return 'urgency-48-60';
+  if (/^(?:5\.\s*)?(?:48|60)\s*jam\s*-\s*72\s*jam$|^(?:48-72|60-72)/.test(stuck)) return 'urgency-60-72';
+  if (/^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$|^72-up/.test(stuck)) return 'urgency-72-up';
   return 'urgency-normal';
 }
 
 function updateStats(data) {
   const totalDataEl = document.getElementById('totalData');
-  const count48_60 = document.getElementById('count-48-60');
-  const count48_72 = document.getElementById('count-48-72');
-  const count72_up = document.getElementById('count-72-up');
-
   if (!totalDataEl) return;
 
   totalDataEl.textContent = data.length;
@@ -1078,22 +1159,32 @@ function updateStats(data) {
     updatedCardCount.textContent = updatedCount;
   }
 
-  if (count48_60) {
-    count48_60.textContent = data.filter(item => {
-      return matchesStuckFilter(item, '48-60');
-    }).length;
-  }
+  const c1_12 = data.filter(item => matchesStuckFilter(item, '1-12')).length;
+  const c12_24 = data.filter(item => matchesStuckFilter(item, '12-24')).length;
+  const c24_36 = data.filter(item => matchesStuckFilter(item, '24-36')).length;
+  const c48_60 = data.filter(item => matchesStuckFilter(item, '48-60')).length;
+  const c60_72 = data.filter(item => matchesStuckFilter(item, '60-72')).length;
+  const c72_up = data.filter(item => matchesStuckFilter(item, '72-up')).length;
 
-  if (count48_72) {
-    count48_72.textContent = data.filter(item => {
-      return matchesStuckFilter(item, '48-72');
-    }).length;
-  }
+  const count1_12 = document.getElementById('count-1-12');
+  const count12_24 = document.getElementById('count-12-24');
+  const count24_36 = document.getElementById('count-24-36');
+  const count48_60 = document.getElementById('count-48-60');
+  const count48_72 = document.getElementById('count-48-72');
+  const count72_up = document.getElementById('count-72-up');
 
-  if (count72_up) {
-    count72_up.textContent = data.filter(item => {
-      return matchesStuckFilter(item, '72-up');
-    }).length;
+  if (count1_12) count1_12.textContent = c1_12;
+  if (count12_24) count12_24.textContent = c12_24;
+  if (count24_36) count24_36.textContent = c24_36;
+  if (count48_60) count48_60.textContent = c48_60;
+  if (count48_72) count48_72.textContent = c60_72;
+  if (count72_up) count72_up.textContent = c72_up;
+
+  // Update ringkasan pada tombol drawer
+  const drawerSummaryBadge = document.getElementById('drawerSummaryBadge');
+  if (drawerSummaryBadge) {
+    const totalCritical = c48_60 + c60_72 + c72_up;
+    drawerSummaryBadge.textContent = `36h+: ${totalCritical} Data`;
   }
 }
 
@@ -1322,9 +1413,13 @@ function resetAllMonitoringFilters() {
   currentStuckFilter = null;
   activeSummaryCardId = null;
 
-  document.querySelectorAll('.summary-strip .stat-card').forEach((card) => {
+  document.querySelectorAll('.stat-card').forEach((card) => {
     card.classList.remove('is-active');
   });
+
+  if (monitoringPanel) {
+    monitoringPanel.removeAttribute('data-active-card');
+  }
 
   if (tlcChipsContainer) {
     tlcChipsContainer.querySelectorAll('.tlc-chip').forEach((c) => {
@@ -1336,36 +1431,114 @@ function resetAllMonitoringFilters() {
   applyFilter();
 }
 
-// Tambahkan event listeners untuk card di akhir file atau setelah DOM load
+// Tambahkan event listeners untuk card, drawer, dan tab switcher
 function initCardFilters() {
   const cards = [
     { id: 'card-total', filter: null },
     { id: 'card-updated', filter: 'updated' },
+    { id: 'card-archive', filter: null },
+    { id: 'card-1-12', filter: '1-12' },
+    { id: 'card-12-24', filter: '12-24' },
+    { id: 'card-24-36', filter: '24-36' },
     { id: 'card-48-60', filter: '48-60' },
-    { id: 'card-48-72', filter: '48-72' },
+    { id: 'card-48-72', filter: '60-72' },
     { id: 'card-72-up', filter: '72-up' }
   ];
 
+  // 1. Event Drawer Buka-Tutup (Ngumpet)
+  const btnToggleStuckDrawer = document.getElementById('btnToggleStuckDrawer');
+  const stuckDrawerContainer = document.getElementById('stuckDrawerContainer');
+  const chevronStuckDrawer = document.getElementById('chevronStuckDrawer');
+  const drawerToggleText = document.getElementById('drawerToggleText');
+
+  if (btnToggleStuckDrawer && stuckDrawerContainer) {
+    btnToggleStuckDrawer.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isOpen = stuckDrawerContainer.classList.contains('is-open');
+      if (isOpen) {
+        stuckDrawerContainer.classList.remove('is-open');
+        stuckDrawerContainer.classList.add('is-collapsed');
+        chevronStuckDrawer?.classList.remove('is-open');
+        if (drawerToggleText) drawerToggleText.textContent = 'Buka Kartu';
+      } else {
+        stuckDrawerContainer.classList.add('is-open');
+        stuckDrawerContainer.classList.remove('is-collapsed');
+        chevronStuckDrawer?.classList.add('is-open');
+        if (drawerToggleText) drawerToggleText.textContent = 'Tutup Kartu';
+      }
+    });
+  }
+
+  // 2. Event Saklar Tab (Prioritas Kritis vs Semua Level)
+  const tabStuckPriority = document.getElementById('tabStuckPriority');
+  const tabStuckAll = document.getElementById('tabStuckAll');
+  const stuckCardsGrid = document.getElementById('stuckCardsGrid');
+
+  if (tabStuckPriority && tabStuckAll) {
+    tabStuckPriority.addEventListener('click', (e) => {
+      e.preventDefault();
+      tabStuckPriority.classList.add('active');
+      tabStuckAll.classList.remove('active');
+      if (stuckCardsGrid) {
+        stuckCardsGrid.classList.add('mode-priority');
+        stuckCardsGrid.classList.remove('mode-all');
+      }
+    });
+
+    tabStuckAll.addEventListener('click', (e) => {
+      e.preventDefault();
+      tabStuckAll.classList.add('active');
+      tabStuckPriority.classList.remove('active');
+      if (stuckCardsGrid) {
+        stuckCardsGrid.classList.remove('mode-priority');
+        stuckCardsGrid.classList.add('mode-all');
+      }
+    });
+  }
+
+  // 3. Event Listener Klik Kartu Filter
   cards.forEach((card) => document.getElementById(card.id)?.classList.remove('is-active'));
 
   cards.forEach(c => {
     const el = document.getElementById(c.id);
     if (el) {
       el.addEventListener('click', () => {
+        if (c.id === 'card-archive') {
+          // Buka panel arsip jika card arsip diklik
+          monitoringPanel?.classList.add('hidden');
+          historyPanel?.classList.add('hidden');
+          archivePanel?.classList.remove('hidden');
+          cardArchive?.classList.add('is-active');
+          document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('is-active'));
+          el.classList.add('is-active');
+          return;
+        }
+
         monitoringPanel?.classList.remove('hidden');
         historyPanel?.classList.add('hidden');
         archivePanel?.classList.add('hidden');
         cardArchive?.classList.remove('is-active');
+
         // Toggle filter jika card yang sama diklik ulang.
         const isSameCard = activeSummaryCardId === c.id;
         currentStuckFilter = isSameCard ? null : c.filter;
         activeSummaryCardId = isSameCard ? null : c.id;
-        
-        // Kasih efek visual dikit biar ketauan mana yang aktif
+
+        // Beri highlight aktif pada kartu terpilih
         cards.forEach(card => {
           const cardEl = document.getElementById(card.id);
-          if (cardEl) cardEl.classList.toggle('is-active', activeSummaryCardId === card.id);
+          if (cardEl) {
+            cardEl.classList.toggle('is-active', activeSummaryCardId === card.id);
+          }
         });
+
+        if (monitoringPanel) {
+          if (activeSummaryCardId) {
+            monitoringPanel.setAttribute('data-active-card', activeSummaryCardId);
+          } else {
+            monitoringPanel.removeAttribute('data-active-card');
+          }
+        }
 
         monitoringPage = 1;
         applyFilter();
@@ -1376,13 +1549,48 @@ function initCardFilters() {
 
 initCardFilters();
 
-  const card48_60 = document.getElementById('card-48-60');
-  const card48_72 = document.getElementById('card-48-72');
-  const card72_up = document.getElementById('card-72-up');
+function initQuickBarToggle() {
+  const btnToggleQuickBar = document.getElementById('btnToggleQuickBar');
+  const monitoringQuickBar = document.getElementById('monitoringQuickBar');
+  const quickBarToggleText = document.getElementById('quickBarToggleText');
+  const chevronQuickBar = document.getElementById('chevronQuickBar');
 
-  if (card48_60) card48_60.style.cursor = 'pointer';
-  if (card48_72) card48_72.style.cursor = 'pointer';
-  if (card72_up) card72_up.style.cursor = 'pointer';
+  if (!btnToggleQuickBar || !monitoringQuickBar) return;
+
+  const isMobile = window.innerWidth <= 680;
+
+  // Default di HP/PDA: otomatis tertutup (ngumpet) agar layar luas dan tidak makan tempat.
+  // Default di Desktop: terbuka.
+  if (isMobile) {
+    monitoringQuickBar.classList.add('is-collapsed');
+    monitoringQuickBar.classList.remove('is-open');
+    if (quickBarToggleText) quickBarToggleText.textContent = 'Buka Tools';
+    chevronQuickBar?.classList.remove('is-open');
+  } else {
+    monitoringQuickBar.classList.add('is-open');
+    monitoringQuickBar.classList.remove('is-collapsed');
+    if (quickBarToggleText) quickBarToggleText.textContent = 'Sembunyikan';
+    chevronQuickBar?.classList.add('is-open');
+  }
+
+  btnToggleQuickBar.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isOpen = monitoringQuickBar.classList.contains('is-open');
+    if (isOpen) {
+      monitoringQuickBar.classList.remove('is-open');
+      monitoringQuickBar.classList.add('is-collapsed');
+      if (quickBarToggleText) quickBarToggleText.textContent = 'Buka Tools';
+      chevronQuickBar?.classList.remove('is-open');
+    } else {
+      monitoringQuickBar.classList.add('is-open');
+      monitoringQuickBar.classList.remove('is-collapsed');
+      if (quickBarToggleText) quickBarToggleText.textContent = 'Sembunyikan';
+      chevronQuickBar?.classList.add('is-open');
+    }
+  });
+}
+
+initQuickBarToggle();
 
 
 async function fetchMonitoring() {
@@ -1874,9 +2082,12 @@ function hideImportProgress() {
 function uploadImportWithProgress(rows, token) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
+    request.withCredentials = true;
     request.open('POST', '/api/monitoring/import');
     request.setRequestHeader('Content-Type', 'application/json');
-    request.setRequestHeader('Authorization', `Bearer ${token}`);
+    if (token) {
+      request.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
     request.upload.addEventListener('progress', (event) => {
       if (!event.lengthComputable) return;
       const percent = 8 + (event.loaded / event.total) * 72;
@@ -1928,7 +2139,7 @@ function parseMonitoringCsv(content) {
     return cells;
   };
 
-  const parseStuckValue = (value) => String(value ?? '').trim() || '0';
+  const parseStuckValue = (value) => normalizeStuckCategory(value);
 
   const rows = [];
   const headers = parseLine(lines[0]).map((header) => header.toLowerCase().replace(/[\s_]+/g, '').replace(/\uFEFF/g, ''));
