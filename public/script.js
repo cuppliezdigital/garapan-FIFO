@@ -1410,10 +1410,9 @@ async function fetchMonitoring() {
   const data = await response.json();
   monitoringData = data;
   populateTlcFilters(data);
-  renderTable(data);
   renderStatusOverview(data);
   updateStats(data);
-  if (monitoringTotalBadge) monitoringTotalBadge.textContent = `${data.length} Data`;
+  applyFilter();
 }
 
 function renderUserTable(users) {
