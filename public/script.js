@@ -4784,7 +4784,7 @@ function renderFoundCard(item, ageDays, badgeClass, borderClass, badgeLabel, upd
           <span class="scan-data-value">${escapeTlcHtml(item.outlet || '-')}</span>
         </div>
         <div class="scan-data-item">
-          <span class="scan-data-label">TLC / Hub</span>
+          <span class="scan-data-label">TLC / GW</span>
           <span class="scan-data-value">${escapeTlcHtml(item.tlc || '-')}</span>
         </div>
         <div class="scan-data-item">
