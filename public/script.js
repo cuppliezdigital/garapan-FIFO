@@ -49,9 +49,11 @@ const archiveCardCount = document.getElementById('archiveCardCount');
 const selectAllArchive = document.getElementById('selectAllArchive');
 const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
 const bulkRestoreUpdateBtn = document.getElementById('bulkRestoreUpdateBtn');
+const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
 const restoreArchiveBtn = document.getElementById('restoreArchiveBtn');
 const selectedArchiveCount = document.getElementById('selectedArchiveCount');
 const selectedMonitoringArchiveCount = document.getElementById('selectedMonitoringArchiveCount');
+const selectedMonitoringDeleteCount = document.getElementById('selectedMonitoringDeleteCount');
 const monitoringBulkControls = document.getElementById('monitoringBulkControls');
 const selectedArchiveRestoreCount = document.getElementById('selectedArchiveRestoreCount');
 const userTableBody = document.getElementById('userTableBody');
@@ -372,13 +374,14 @@ function applyUIPermissions() {
   const createAccountCard = document.getElementById('createAccountCard');
   toggle(createAccountCard, hasPermission('create_user'));
   toggle(bulkRestoreUpdateBtn, hasPermission('restore_updated'));
+  toggle(bulkDeleteBtn, hasPermission('delete_selected'));
 
   // Sidebar navigation visibility
   const canManageUsers = hasPermission('manage_users');
   const canViewHistory = hasPermission('view_history');
   const canAccessConfig = hasPermission('access_config');
   const canCreateUser = hasPermission('create_user');
-  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user', 'restore_updated'];
+  const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user', 'restore_updated', 'delete_selected'];
   const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
 
   toggle(navLinks.users, canManageUsers);
@@ -405,6 +408,7 @@ function applyUIPermissions() {
   if (role === 'client') {
     toggle(monitoringBulkControls, hasPermission('edit_monitoring'));
     toggle(bulkArchiveBtn, false);
+    toggle(bulkDeleteBtn, false);
     toggle(restoreArchiveBtn, false);
   }
 }
@@ -972,8 +976,14 @@ function updateSelectedMonitoringCount() {
   const count = selectedMonitoringWaybills.size;
   if (selectedMonitoringCount) selectedMonitoringCount.textContent = count;
   if (selectedMonitoringArchiveCount) selectedMonitoringArchiveCount.textContent = count;
+  if (selectedMonitoringDeleteCount) selectedMonitoringDeleteCount.textContent = count;
   if (selectedMonitoringCountBadge) selectedMonitoringCountBadge.textContent = count;
   if (bulkArchiveBtn) bulkArchiveBtn.disabled = count === 0;
+
+  if (bulkDeleteBtn) {
+    bulkDeleteBtn.disabled = count === 0;
+    toggle(bulkDeleteBtn, hasPermission('delete_selected'));
+  }
 
   if (bulkRestoreUpdateBtn) {
     const hasUpdatedSelected = [...selectedMonitoringWaybills].some((wb) => {
@@ -1871,6 +1881,57 @@ async function restoreSelectedArchive() {
   await fetchMonitoring();
   await fetchMonitoringArchive();
   alert(`${result.restoredCount || 0} waybill berhasil dipulihkan.`);
+}
+
+async function deleteSelectedMonitoring() {
+  const waybills = [...selectedMonitoringWaybills];
+  if (!waybills.length) {
+    alert('Pilih minimal satu nomor resi (AWB) yang ingin dihapus.');
+    return;
+  }
+
+  if (!hasPermission('delete_selected')) {
+    alert('Akses ditolak. Anda tidak memiliki izin untuk menghapus data AWB terpilih.');
+    return;
+  }
+
+  const confirmed = confirm(`⚠️ PERINGATAN HAPUS PERMANEN!\n\nApakah Anda yakin ingin menghapus ${waybills.length} nomor resi terpilih secara permanen?\n\nData yang dihapus TIDAK DAPAT dikembalikan.`);
+  if (!confirmed) return;
+
+  try {
+    if (bulkDeleteBtn) bulkDeleteBtn.disabled = true;
+
+    const response = await fetch('/api/monitoring/bulk', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ waybills }),
+    });
+
+    const result = await parseResponseJson(response);
+    if (!response.ok) {
+      alert(result.error || 'Gagal menghapus data monitoring terpilih.');
+      return;
+    }
+
+    selectedMonitoringWaybills.clear();
+    if (selectAllMonitoring) selectAllMonitoring.checked = false;
+    updateSelectedMonitoringCount();
+
+    await fetchMonitoring();
+    if (hasPermission('view_history')) {
+      await fetchAuditLogs();
+    }
+
+    alert(`${result.deletedCount || waybills.length} waybill terpilih berhasil dihapus permanen.`);
+  } catch (err) {
+    console.error('deleteSelectedMonitoring error:', err);
+    alert('Terjadi kesalahan sistem saat menghapus data terpilih.');
+  } finally {
+    if (bulkDeleteBtn) bulkDeleteBtn.disabled = false;
+  }
 }
 
 function applyAuditFilter() {
@@ -3995,6 +4056,7 @@ if (historySearchInput) {
   });
 }
 if (bulkArchiveBtn) bulkArchiveBtn.addEventListener('click', moveSelectedToArchive);
+if (bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', deleteSelectedMonitoring);
 if (restoreArchiveBtn) restoreArchiveBtn.addEventListener('click', restoreSelectedArchive);
 if (selectAllArchive) {
   selectAllArchive.addEventListener('change', () => {

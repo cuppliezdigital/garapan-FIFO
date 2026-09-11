@@ -25,6 +25,7 @@ router.patch('/monitoring/archive/restore', authMiddleware, requirePermission(PE
 router.put('/monitoring/archive/:waybill', authMiddleware, requirePermission(PERMISSION_KEYS.VIEW_HISTORY), validateMonitoringPayload, monitoringController.updateMonitoringArchive);
 
 router.delete('/monitoring/all', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.deleteAllMonitoring);
+router.delete('/monitoring/bulk', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_SELECTED), monitoringController.bulkDeleteMonitoring);
 
 router.put('/monitoring/:waybill', authMiddleware, requirePermission(PERMISSION_KEYS.EDIT_MONITORING), validateMonitoringPayload, monitoringController.updateMonitoring);
 router.delete('/monitoring/:waybill', authMiddleware, requirePermission(PERMISSION_KEYS.DELETE_GLOBAL), monitoringController.deleteMonitoring);

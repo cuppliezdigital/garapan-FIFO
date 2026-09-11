@@ -83,6 +83,26 @@ async function deleteMonitoring(req, res) {
   }
 }
 
+async function bulkDeleteMonitoring(req, res) {
+  const waybills = Array.isArray(req.body?.waybills) ? req.body.waybills : [];
+
+  if (!waybills.length) {
+    return res.status(400).json({ error: 'Pilih minimal satu waybill yang ingin dihapus' });
+  }
+
+  try {
+    const result = await monitoringService.bulkDeleteMonitoring(waybills, req.user);
+    res.json({
+      message: `${result.deletedCount} waybill berhasil dihapus secara permanen`,
+      deletedCount: result.deletedCount,
+      waybills: result.waybills,
+    });
+  } catch (error) {
+    console.error('Controller bulkDeleteMonitoring error:', error);
+    res.status(500).json({ error: 'Gagal menghapus data monitoring terpilih' });
+  }
+}
+
 async function deleteAllMonitoring(req, res) {
   try {
     const result = await monitoringService.deleteAllMonitoring(req.user);
@@ -212,6 +232,7 @@ module.exports = {
   bulkUpdateMonitoring,
   restoreMonitoringUpdate,
   deleteMonitoring,
+  bulkDeleteMonitoring,
   deleteAllMonitoring,
   getMonitoringHistory,
   getMonitoringArchive,

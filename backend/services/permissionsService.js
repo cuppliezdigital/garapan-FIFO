@@ -14,6 +14,7 @@ const PERMISSION_KEYS = Object.freeze({
   EDIT_MONITORING: 'edit_monitoring',
   CREATE_USER: 'create_user',
   RESTORE_UPDATED: 'restore_updated',
+  DELETE_SELECTED: 'delete_selected',
 });
 
 const PERMISSION_CATALOG = Object.freeze([
@@ -21,6 +22,7 @@ const PERMISSION_CATALOG = Object.freeze([
   { key: PERMISSION_KEYS.MULTI_SESSION, label: 'Multi-Sesi / Multi-Perangkat', description: 'Mengizinkan akun login di banyak perangkat/browser bersamaan tanpa saling tertendang.', category: 'admin' },
   { key: PERMISSION_KEYS.CREATE_USER, label: 'Buat Akun Baru', description: 'Membuat akun user/admin/client baru dari panel konfigurasi.', category: 'admin' },
   { key: PERMISSION_KEYS.RESTORE_UPDATED, label: 'Restore Status Update', description: 'Membatalkan aksi waybill yang sudah diupdate kembali ke Pending.', category: 'monitoring' },
+  { key: PERMISSION_KEYS.DELETE_SELECTED, label: 'Hapus AWB Terpilih (Checkbox)', description: 'Menghapus nomor resi tertentu yang dicentang secara permanen.', category: 'monitoring' },
   { key: PERMISSION_KEYS.IMPORT_BULK, label: 'Import Bulk Data', description: 'Mengimpor data monitoring massal via CSV.', category: 'monitoring' },
   { key: PERMISSION_KEYS.VIEW_HISTORY, label: 'Lihat History Arsip', description: 'Melihat tabel history update.', category: 'monitoring' },
   { key: PERMISSION_KEYS.DELETE_HISTORY, label: 'Hapus Semua History', description: 'Menghapus seluruh data history arsip.', category: 'monitoring' },
@@ -37,6 +39,7 @@ const ROLE_DEFAULTS = Object.freeze({
     multi_session: 1,
     create_user: 1,
     restore_updated: 1,
+    delete_selected: 1,
     import_bulk: 1,
     view_history: 1,
     delete_history: 1,
@@ -51,6 +54,7 @@ const ROLE_DEFAULTS = Object.freeze({
     multi_session: 1,
     create_user: 0,
     restore_updated: 0,
+    delete_selected: 0,
     import_bulk: 0,
     view_history: 1,
     delete_history: 0,
@@ -65,6 +69,7 @@ const ROLE_DEFAULTS = Object.freeze({
     multi_session: 0,
     create_user: 0,
     restore_updated: 0,
+    delete_selected: 0,
     import_bulk: 0,
     view_history: 0,
     delete_history: 0,
@@ -79,6 +84,7 @@ const ROLE_DEFAULTS = Object.freeze({
     multi_session: 0,
     create_user: 0,
     restore_updated: 0,
+    delete_selected: 0,
     import_bulk: 0,
     view_history: 0,
     delete_history: 0,

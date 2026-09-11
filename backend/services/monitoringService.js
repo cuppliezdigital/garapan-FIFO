@@ -634,6 +634,62 @@ async function deleteMonitoring(waybillParam, actor = null) {
   return { success: result.affectedRows > 0 };
 }
 
+async function bulkDeleteMonitoring(waybills, actor = null) {
+  const list = Array.isArray(waybills)
+    ? Array.from(new Set(waybills.map((w) => String(w || '').trim()).filter(Boolean)))
+    : [];
+
+  if (!list.length) {
+    return { deletedCount: 0, waybills: [] };
+  }
+
+  const connection = await db.getConnection();
+  let deletedCount = 0;
+
+  try {
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query(
+      'SELECT * FROM monitoring_stuck WHERE waybill IN (?)',
+      [list]
+    );
+
+    for (const record of existingRows) {
+      await archiveMonitoringRecord(record, 'deleted_selected', connection);
+    }
+
+    const [result] = await connection.query(
+      'DELETE FROM monitoring_stuck WHERE waybill IN (?)',
+      [list]
+    );
+    deletedCount = result.affectedRows || 0;
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  if (actor && deletedCount > 0) {
+    await auditService.logAudit({
+      userId: actor.id,
+      username: actor.username,
+      action: 'bulk_delete_selected',
+      entityType: 'monitoring',
+      entityId: list.length === 1 ? String(list[0]) : 'BULK_DELETE_SELECTED',
+      details: {
+        deletedCount,
+        waybills: list.slice(0, 100),
+        actorRole: actor.role,
+      },
+    });
+  }
+
+  return { deletedCount, waybills: list };
+}
+
 async function deleteAllMonitoring(actor = null) {
   const connection = await db.getConnection();
   let deletedCount = 0;
@@ -804,6 +860,7 @@ module.exports = {
   updateMonitoring,
   bulkUpdateMonitoring,
   deleteMonitoring,
+  bulkDeleteMonitoring,
   deleteAllMonitoring,
   bulkImportMonitoring,
   initMonitoringTables,
