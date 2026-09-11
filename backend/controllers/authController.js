@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
 const permissionsService = require('../services/permissionsService');
 
@@ -27,8 +28,32 @@ async function login(req, res) {
 
 async function logout(req, res) {
   try {
-    if (req.user && req.user.id && req.user.sid) {
-      await authService.revokeSession(req.user.id, req.user.sid);
+    let userId = req.user?.id;
+    let sessionId = req.user?.sid;
+
+    if (!userId) {
+      const authHeader = req.headers.authorization || '';
+      const cookies = String(req.headers.cookie || '').split(';').reduce((result, part) => {
+        const separator = part.indexOf('=');
+        if (separator > 0) result[part.slice(0, separator).trim()] = decodeURIComponent(part.slice(separator + 1).trim());
+        return result;
+      }, {});
+      const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const token = bearerToken && bearerToken !== 'cookie-session' && bearerToken !== 'null' && bearerToken !== ''
+        ? bearerToken
+        : cookies.monitoring_session;
+
+      if (token && process.env.JWT_SECRET) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          userId = decoded.id;
+          sessionId = decoded.sid;
+        } catch (_) {}
+      }
+    }
+
+    if (userId && sessionId) {
+      await authService.revokeSession(userId, sessionId);
     }
   } catch (error) {
     console.error('Logout revoke error:', error.message);

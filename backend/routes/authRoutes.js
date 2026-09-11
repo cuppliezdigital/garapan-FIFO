@@ -17,7 +17,7 @@ const loginLimiter = rateLimit({
 
 router.post('/register', authMiddleware, requirePermission(PERMISSION_KEYS.CREATE_USER), authController.register);
 router.post('/login', loginLimiter, authController.login);
-router.post('/logout', authMiddleware, authController.logout);
+router.post('/logout', authController.logout);
 
 router.get('/users', authMiddleware, requirePermission(PERMISSION_KEYS.MANAGE_USERS), authController.getUsers);
 router.post('/users', authMiddleware, requirePermission(PERMISSION_KEYS.CREATE_USER), authController.createUser);

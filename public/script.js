@@ -236,7 +236,12 @@ function handleHashRoute() {
     link.classList.toggle('active', key === target);
   });
 
-  // Fetch data sesuai view yang aktif
+  // Fetch data sesuai view yang aktif hanya jika user sudah login
+  if (!authUser) {
+    closeMobileSidebar();
+    return;
+  }
+
   if (target === 'monitoring') {
     if (!monitoringData.length) fetchMonitoring();
   } else if (target === 'archive') {
@@ -528,7 +533,6 @@ function logout() {
   fetch('/api/auth/logout', {
     method: 'POST',
     credentials: 'include',
-    headers: { Authorization: `Bearer ${getToken() || ''}` },
   }).catch(() => {});
   selectedUserIds = new Set();
   showLoginView();
@@ -551,10 +555,12 @@ function resetSessionTimer() {
 
 // Background Heartbeat: perpanjang sesi secara otomatis setiap 10 menit
 setInterval(async () => {
-  const token = getToken();
-  if (!token) return;
+  if (!authUser) return;
   try {
-    await fetch('/api/auth/me', { credentials: 'include' });
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (res.status === 401) {
+      logout();
+    }
   } catch (_) {}
 }, 10 * 60 * 1000);
 
@@ -603,16 +609,24 @@ async function loginUser(username, password) {
 }
 
 async function bootstrapAuth() {
-  const response = await fetch('/api/auth/me', { credentials: 'include' });
-  if (!response.ok) {
+  try {
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!response.ok) {
+      authUser = null;
+      sessionStorage.removeItem('monitoring_user');
+      showLoginView();
+      return;
+    }
+    const data = await response.json();
+    authUser = data.user;
+    sessionStorage.setItem('monitoring_user', JSON.stringify(authUser));
+    setCurrentPermissions(data.permissions || []);
+    setAuthState();
+  } catch (err) {
+    authUser = null;
+    sessionStorage.removeItem('monitoring_user');
     showLoginView();
-    return;
   }
-  const data = await response.json();
-  authUser = data.user;
-  sessionStorage.setItem('monitoring_user', JSON.stringify(authUser));
-  setCurrentPermissions(data.permissions || []);
-  setAuthState();
 }
 
 function updateQuickChipsUI(selectedVal) {
@@ -2978,6 +2992,8 @@ function startAutoRefresh() {
   }, 1000);
 
   autoRefreshInterval = setInterval(async () => {
+    if (!authUser) return;
+
     // Jangan refresh jika user sedang membuka modal form atau ada waybill terpilih
     const isModalOpen = monitoringModal && !monitoringModal.classList.contains('hidden');
     const isRegisterOpen = registerModal && !registerModal.classList.contains('hidden');
