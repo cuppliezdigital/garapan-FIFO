@@ -49,6 +49,11 @@ router.delete('/background', authMiddleware, requireRole('super_admin'), authCon
 router.get('/debug/users', authMiddleware, requireRole('super_admin'), authController.debugUsers);
 
 router.get('/me', authMiddleware, (req, res) => {
+  if (req.token) {
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
+    const secure = isHttps ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `monitoring_session=${encodeURIComponent(req.token)}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax${secure}`);
+  }
   res.json({ user: req.user, permissions: req.permissions || [] });
 });
 

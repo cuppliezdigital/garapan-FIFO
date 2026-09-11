@@ -7,7 +7,7 @@ const permissionsService = require('./permissionsService');
 const failedLoginAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_WINDOW_MS = 1 * 60 * 1000;
-const SESSION_TTL_MS = 30 * 60 * 1000;
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 hari operasional
 
 function getAttemptKey(username) {
   return String(username || '').trim().toLowerCase();
@@ -531,7 +531,7 @@ async function loginUser({ username, password }) {
       sid: sessionId,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '30m' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
   );
 
   return {

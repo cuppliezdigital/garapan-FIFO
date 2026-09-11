@@ -41,6 +41,7 @@ function authMiddleware(req, res, next) {
         if (res.writableEnded) return;
         try {
           req.user = decoded;
+          req.token = token;
           try {
             req.permissions = await permissionsService.getEffectivePermissions(decoded.id, decoded.role);
           } catch (permError) {

@@ -4,6 +4,5 @@ node_modules/
 !.env.example
 server.log
 server_err.log
-git init
-git add .
-git commit -m "first commit"
+.gradle/
+android/.gradle/

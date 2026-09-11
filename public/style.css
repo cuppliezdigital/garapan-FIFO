@@ -1836,22 +1836,28 @@ h1, h2, h3, h4, h5, h6 {
 .quick-bar-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: rgba(30, 41, 59, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 8px;
-  padding: 4px 10px;
+  border-radius: 9999px;
+  padding: 5px 8px;
   color: #38bdf8;
-  font-size: 0.74rem;
-  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
 }
 
+.quick-bar-toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+}
+
 .quick-bar-toggle-btn:hover {
-  background: rgba(56, 189, 248, 0.16);
-  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.55);
+  transform: scale(1.04);
 }
 
 .quick-bar-chevron {
@@ -3667,44 +3673,49 @@ button:disabled {
   }
 
   .global-card {
-    min-height: 62px !important;
-    padding: 8px 8px !important;
+    min-height: 58px !important;
+    padding: 7px 7px !important;
     border-radius: 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    gap: 4px !important;
   }
 
   .global-card-info {
     min-width: 0 !important;
     flex: 1 1 auto !important;
     overflow: hidden !important;
-    gap: 2px !important;
+    gap: 1px !important;
   }
 
   .global-card-title {
-    font-size: 0.58rem !important;
-    letter-spacing: 0.02em !important;
+    font-size: 0.62rem !important;
+    letter-spacing: 0.01em !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
 
   .global-card-number {
-    font-size: 1.18rem !important;
-    line-height: 1.1 !important;
+    font-size: clamp(0.92rem, 3.8vw, 1.12rem) !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.025em !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
   }
 
   .summary-strip-global .stat-icon {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    border-radius: 8px !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    border-radius: 7px !important;
+    flex-shrink: 0 !important;
   }
 
   .summary-strip-global .stat-icon svg {
-    width: 14px !important;
-    height: 14px !important;
+    width: 13px !important;
+    height: 13px !important;
   }
 
   /* DRAWER TOGGLE ON MOBILE (ZERO OVERLAP / ZERO COLLISION) */
@@ -6591,18 +6602,17 @@ thead th input[type="checkbox"]:active {
 .btn-table-refresh {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 38px;
   height: 38px;
-  padding: 0 13px;
+  min-width: 38px;
+  padding: 0;
   border-radius: 10px;
   background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(2, 132, 199, 0.2));
   border: 1px solid rgba(56, 189, 248, 0.32);
   color: #38bdf8;
-  font-size: 0.82rem;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
   box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
 }
 
@@ -7041,7 +7051,14 @@ thead th input[type="checkbox"]:active {
     width: 100% !important;
     max-width: 100% !important;
   }
-  .btn-table-refresh,
+  .btn-table-refresh {
+    height: 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    padding: 0 !important;
+    border-radius: 9px !important;
+    justify-content: center !important;
+  }
   .btn-reset-filter {
     height: 36px !important;
     padding: 0 11px !important;
@@ -7453,6 +7470,24 @@ thead th input[type="checkbox"]:active {
 .scanner-dropdown-select:focus {
   border-color: #38bdf8;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+.scanner-manual-action-input {
+  width: 100%;
+  margin-top: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1.5px solid rgba(56, 189, 248, 0.5);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.scanner-manual-action-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
 }
 .config-counter-pill {
   display: flex;

@@ -18,7 +18,7 @@ async function login(req, res) {
     const result = await authService.loginUser(req.body);
     const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
     const secure = isHttps ? '; Secure' : '';
-    res.setHeader('Set-Cookie', `monitoring_session=${encodeURIComponent(result.token)}; HttpOnly; Path=/; Max-Age=1800; SameSite=Lax${secure}`);
+    res.setHeader('Set-Cookie', `monitoring_session=${encodeURIComponent(result.token)}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax${secure}`);
     res.json({ user: result.user });
   } catch (error) {
     res.status(401).json({ error: error.message || 'Login gagal' });

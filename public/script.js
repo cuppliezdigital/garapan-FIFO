@@ -266,7 +266,7 @@ let monitoringHistoryData = [];
 let selectedUserIds = new Set();
 let editingWaybill = null;
 const isFileProtocol = window.location.protocol === 'file:';
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; // 30 hari operasional
 let sessionTimer = null;
 let selectedMonitoringWaybills = new Set();
 let monitoringPage = 1;
@@ -542,12 +542,21 @@ function resetSessionTimer() {
   sessionTimer = setTimeout(() => {
     logout();
     if (loginMessage) {
-      loginMessage.textContent = 'Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit.';
+      loginMessage.textContent = 'Sesi Anda telah berakhir. Silakan login kembali.';
       loginMessage.classList.add('error');
     }
-    alert('Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit.');
+    alert('Sesi Anda telah berakhir. Silakan login kembali.');
   }, SESSION_TIMEOUT_MS);
 }
+
+// Background Heartbeat: perpanjang sesi secara otomatis setiap 10 menit
+setInterval(async () => {
+  const token = getToken();
+  if (!token) return;
+  try {
+    await fetch('/api/auth/me', { credentials: 'include' });
+  } catch (_) {}
+}, 10 * 60 * 1000);
 
 async function parseResponseJson(response) {
   const text = await response.text();
@@ -893,6 +902,8 @@ function renderTable(data) {
     }
 
     const currentStatus = item.status && String(item.status).toLowerCase() !== 'open' ? item.status : 'Pending';
+    const isUpdated = currentStatus === 'Sudah Diupdate';
+    const statusDisplay = isUpdated && item.aksi && item.aksi !== '-' ? item.aksi : currentStatus;
     const statusClass = currentStatus.toLowerCase().replace(/\s+/g, '-');
 
     tr.innerHTML = `
@@ -902,7 +913,7 @@ function renderTable(data) {
       <td class="col-outlet" data-label="Outlet"><span class="cell-value">${highlightSearch(item.outlet || '-')}</span></td>
       <td class="col-stuck" data-label="Stuck"><span class="cell-value"><span class="badge badge-stuck">${highlightSearch(item.stuck || 0)}</span></span></td>
       <td class="col-tlc" data-label="TLC"><span class="cell-value">${highlightSearch(item.tlc || '-')}</span></td>
-      <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${statusClass}">${highlightSearch(currentStatus)}</span></span></td>
+      <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${statusClass}" title="Status: ${escapeTlcHtml(currentStatus)}${item.aksi && item.aksi !== '-' ? ' (' + escapeTlcHtml(item.aksi) + ')' : ''}">${highlightSearch(statusDisplay)}</span></span></td>
       <td class="col-aksi" data-label="Aksi">${actionButtons}</td>
       <td class="col-barang" data-label="Nama Barang" title="${escapeTlcHtml(item.nama_barang || '')}"><span class="cell-value">${highlightSearch(item.nama_barang || '-')}</span></td>
       <td class="col-updated" data-label="Updated By"><span class="cell-value">${highlightSearch(item.updated_by || '-')}</span></td>
@@ -1184,7 +1195,7 @@ function updateStats(data) {
   const drawerSummaryBadge = document.getElementById('drawerSummaryBadge');
   if (drawerSummaryBadge) {
     const totalCritical = c48_60 + c60_72 + c72_up;
-    drawerSummaryBadge.textContent = `36h+: ${totalCritical} Data`;
+    drawerSummaryBadge.textContent = `> 36 Jam: ${totalCritical} Data`;
   }
 }
 
@@ -1552,7 +1563,6 @@ initCardFilters();
 function initQuickBarToggle() {
   const btnToggleQuickBar = document.getElementById('btnToggleQuickBar');
   const monitoringQuickBar = document.getElementById('monitoringQuickBar');
-  const quickBarToggleText = document.getElementById('quickBarToggleText');
   const chevronQuickBar = document.getElementById('chevronQuickBar');
 
   if (!btnToggleQuickBar || !monitoringQuickBar) return;
@@ -1564,12 +1574,10 @@ function initQuickBarToggle() {
   if (isMobile) {
     monitoringQuickBar.classList.add('is-collapsed');
     monitoringQuickBar.classList.remove('is-open');
-    if (quickBarToggleText) quickBarToggleText.textContent = 'Buka Tools';
     chevronQuickBar?.classList.remove('is-open');
   } else {
     monitoringQuickBar.classList.add('is-open');
     monitoringQuickBar.classList.remove('is-collapsed');
-    if (quickBarToggleText) quickBarToggleText.textContent = 'Sembunyikan';
     chevronQuickBar?.classList.add('is-open');
   }
 
@@ -1579,12 +1587,10 @@ function initQuickBarToggle() {
     if (isOpen) {
       monitoringQuickBar.classList.remove('is-open');
       monitoringQuickBar.classList.add('is-collapsed');
-      if (quickBarToggleText) quickBarToggleText.textContent = 'Buka Tools';
       chevronQuickBar?.classList.remove('is-open');
     } else {
       monitoringQuickBar.classList.add('is-open');
       monitoringQuickBar.classList.remove('is-collapsed');
-      if (quickBarToggleText) quickBarToggleText.textContent = 'Sembunyikan';
       chevronQuickBar?.classList.add('is-open');
     }
   });
@@ -2252,6 +2258,11 @@ async function saveMonitoring(event) {
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401) {
+      logout();
+      alert('Sesi Anda telah berakhir. Silakan login kembali.');
+      return;
+    }
     alert(result.error || 'Gagal menyimpan data monitoring');
     return;
   }
@@ -4445,6 +4456,7 @@ const modeCheckBtn = document.getElementById('modeCheckBtn');
 const modeUpdateBtn = document.getElementById('modeUpdateBtn');
 const scannerUpdateConfigBar = document.getElementById('scannerUpdateConfigBar');
 const scannerActionSelect = document.getElementById('scannerActionSelect');
+const scannerManualActionInput = document.getElementById('scannerManualActionInput');
 const scannerBatchCount = document.getElementById('scannerBatchCount');
 const scannerBarcodeForm = document.getElementById('scannerBarcodeForm');
 const scannerBarcodeInput = document.getElementById('scannerBarcodeInput');
@@ -4674,7 +4686,17 @@ async function handleScannedWaybill(rawCode) {
     }
     // --- MODE 2: SCAN & UPDATE AKSI OTOMATIS ---
     else if (scannerCurrentMode === 'update') {
-      const targetAksi = scannerActionSelect ? scannerActionSelect.value : 'Sudah Scan Kirim';
+      let targetAksi = scannerActionSelect ? scannerActionSelect.value : 'Sudah Scan Kirim';
+      if (targetAksi === 'manual') {
+        targetAksi = scannerManualActionInput ? scannerManualActionInput.value.trim() : '';
+        if (!targetAksi) {
+          if (scannerManualActionInput) scannerManualActionInput.focus();
+          playScannerSound('error');
+          triggerHaptic('error');
+          alert('Ketik aksi manual terlebih dahulu pada Mode 2!');
+          return;
+        }
+      }
 
       try {
         const response = await fetch('/api/monitoring/bulk-update', {
@@ -4706,6 +4728,11 @@ async function handleScannedWaybill(rawCode) {
           else if (typeof renderTable === 'function') renderTable(monitoringData);
           if (typeof updateStats === 'function') updateStats(monitoringData);
         } else {
+          if (response.status === 401) {
+            logout();
+            alert('Sesi Anda telah berakhir. Silakan login kembali.');
+            return;
+          }
           const errData = await response.json().catch(() => ({}));
           playScannerSound('error');
           triggerHaptic('error');
@@ -4824,14 +4851,14 @@ function renderNotFoundCard(waybill, timeString) {
       </div>
 
       <div class="not-found-actions">
-        <button type="button" class="btn-quick-register" onclick="openQuickAddModal('${escapeTlcHtml(waybill)}')">
+        <button type="button" class="btn-quick-register" data-action="quick-register" data-waybill="${escapeTlcHtml(waybill)}">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/>
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
           <span>+ Daftarkan Paket Ini Sekarang</span>
         </button>
-        <button type="button" class="btn-note-unregistered" onclick="document.getElementById('unknownScansDrawer')?.classList.remove('hidden')">
+        <button type="button" class="btn-note-unregistered" data-action="open-unknown-drawer">
           Lihat Riwayat Resi Nyasar (${scannerUnregisteredScans.length})
         </button>
       </div>
@@ -4850,7 +4877,7 @@ function addRecentScan(waybill, dotClass, label, age, time) {
   let html = '';
   scannerRecentScans.forEach((scan) => {
     html += `
-      <div class="recent-scan-chip" onclick="handleScannedWaybill('${escapeTlcHtml(scan.waybill)}')">
+      <div class="recent-scan-chip" data-action="scan-recent" data-waybill="${escapeTlcHtml(scan.waybill)}">
         <span class="chip-dot ${scan.dotClass}"></span>
         <span>${escapeTlcHtml(scan.waybill)}</span>
       </div>
@@ -4876,12 +4903,50 @@ function updateUnknownScansDrawer() {
         <span class="unknown-item-wb">${escapeTlcHtml(u.waybill)}</span>
         <div style="display:flex; align-items:center; gap:8px;">
           <span class="unknown-item-time">${u.time}</span>
-          <button type="button" class="small-btn primary-btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="openQuickAddModal('${escapeTlcHtml(u.waybill)}')">+ Input</button>
+          <button type="button" class="small-btn primary-btn btn-quick-input-trigger" style="padding: 2px 8px; font-size: 0.7rem;" data-action="quick-register" data-waybill="${escapeTlcHtml(u.waybill)}">+ Input</button>
         </div>
       </div>
     `;
   });
   unknownScansList.innerHTML = html;
+}
+
+// Event Delegation untuk Tombol Dinamis Scanner (Bebas Pelanggaran CSP)
+if (scannerDynamicCard) {
+  scannerDynamicCard.addEventListener('click', (e) => {
+    const regBtn = e.target.closest('[data-action="quick-register"]');
+    if (regBtn && regBtn.dataset.waybill) {
+      e.preventDefault();
+      openQuickAddModal(regBtn.dataset.waybill);
+      return;
+    }
+    const noteBtn = e.target.closest('[data-action="open-unknown-drawer"]');
+    if (noteBtn) {
+      e.preventDefault();
+      if (unknownScansDrawer) unknownScansDrawer.classList.remove('hidden');
+      return;
+    }
+  });
+}
+
+if (scannerRecentList) {
+  scannerRecentList.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-action="scan-recent"]');
+    if (chip && chip.dataset.waybill) {
+      e.preventDefault();
+      handleScannedWaybill(chip.dataset.waybill);
+    }
+  });
+}
+
+if (unknownScansList) {
+  unknownScansList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="quick-register"]');
+    if (btn && btn.dataset.waybill) {
+      e.preventDefault();
+      openQuickAddModal(btn.dataset.waybill);
+    }
+  });
 }
 
 // ==============================================================
@@ -5144,6 +5209,10 @@ if (scannerQuickAddForm) {
       const resData = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        if (response.status === 401) {
+          logout();
+          return alert('Sesi Anda telah berakhir. Silakan login kembali.');
+        }
         return alert(resData.error || 'Gagal mendaftarkan data monitoring.');
       }
 
@@ -5189,7 +5258,17 @@ if (scannerModal) {
 
 if (scannerActionSelect) {
   scannerActionSelect.addEventListener('change', () => {
-    setTimeout(focusScannerInput, 60);
+    if (scannerActionSelect.value === 'manual') {
+      if (scannerManualActionInput) {
+        scannerManualActionInput.classList.remove('hidden');
+        scannerManualActionInput.focus();
+      }
+    } else {
+      if (scannerManualActionInput) {
+        scannerManualActionInput.classList.add('hidden');
+      }
+      setTimeout(focusScannerInput, 60);
+    }
   });
 }
 if (scannerQuickAddModal) {
