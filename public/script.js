@@ -4450,6 +4450,8 @@ const modeCheckBtn = document.getElementById('modeCheckBtn');
 const modeUpdateBtn = document.getElementById('modeUpdateBtn');
 const scannerUpdateConfigBar = document.getElementById('scannerUpdateConfigBar');
 const scannerActionSelect = document.getElementById('scannerActionSelect');
+const scannerActionChipsBar = document.getElementById('scannerActionChipsBar');
+const scannerManualActionWrap = document.getElementById('scannerManualActionWrap');
 const scannerManualActionInput = document.getElementById('scannerManualActionInput');
 const scannerBatchCount = document.getElementById('scannerBatchCount');
 const scannerBarcodeForm = document.getElementById('scannerBarcodeForm');
@@ -4583,6 +4585,51 @@ function setScannerMode(mode) {
 
 if (modeCheckBtn) modeCheckBtn.addEventListener('click', () => setScannerMode('check'));
 if (modeUpdateBtn) modeUpdateBtn.addEventListener('click', () => setScannerMode('update'));
+
+// Ganti Aksi Mode 2 via Chips Touch
+function setScannerMode2Action(actionVal) {
+  if (scannerActionSelect) {
+    scannerActionSelect.value = actionVal;
+  }
+  const chips = document.querySelectorAll('#scannerActionChipsBar .action-chip-pill');
+  chips.forEach((chip) => {
+    const isTarget = chip.dataset.actionVal === actionVal;
+    chip.classList.toggle('active', isTarget);
+    chip.setAttribute('aria-checked', isTarget ? 'true' : 'false');
+  });
+
+  if (actionVal === 'manual') {
+    if (scannerManualActionWrap) scannerManualActionWrap.classList.remove('hidden');
+    if (scannerManualActionInput) {
+      scannerManualActionInput.classList.remove('hidden');
+      scannerManualActionInput.focus();
+    }
+  } else {
+    if (scannerManualActionWrap) scannerManualActionWrap.classList.add('hidden');
+    if (scannerManualActionInput) scannerManualActionInput.classList.add('hidden');
+    setTimeout(focusScannerInput, 60);
+  }
+}
+
+if (scannerActionChipsBar) {
+  scannerActionChipsBar.addEventListener('click', (e) => {
+    const chip = e.target.closest('.action-chip-pill');
+    if (chip && chip.dataset.actionVal) {
+      e.preventDefault();
+      setScannerMode2Action(chip.dataset.actionVal);
+      triggerHaptic('light');
+    }
+  });
+}
+
+if (scannerManualActionInput) {
+  scannerManualActionInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setTimeout(focusScannerInput, 50);
+    }
+  });
+}
 
 // Handler Pemrosesan Barcode / Waybill
 async function handleScannedWaybill(rawCode) {
@@ -4781,6 +4828,41 @@ function renderFoundCard(item, ageDays, badgeClass, borderClass, badgeLabel, upd
        </div>`
     : '';
 
+  // Fitur Koreksi Aksi Cepat (PDA Optimized)
+  let correctiveHtml = '';
+  if (scannerCurrentMode === 'update' || updateMessage) {
+    const currentAksi = String(item.aksi || '').trim();
+    const correctiveOptions = [
+      { key: 'Sudah Scan Kirim', label: '✓ Kirim' },
+      { key: 'Penangguhan', label: '⏸ Penangguhan' },
+      { key: 'Miss Route', label: '⚠️ Miss Route' },
+      { key: 'Crosslabel', label: '🏷️ Crosslabel' }
+    ];
+
+    const buttonsHtml = correctiveOptions.map((opt) => {
+      const isCurrent = currentAksi.toLowerCase() === opt.key.toLowerCase();
+      if (isCurrent) {
+        return `<span class="btn-correct-chip is-current">${opt.label} (Aktif)</span>`;
+      }
+      return `<button type="button" class="btn-correct-chip" data-action="correct-aksi" data-waybill="${escapeTlcHtml(item.waybill || '')}" data-target-aksi="${opt.key}">${opt.label}</button>`;
+    }).join('');
+
+    correctiveHtml = `
+      <div class="scan-card-corrective-box">
+        <div class="corrective-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          <span>Salah aksi? Ubah resi ini langsung:</span>
+        </div>
+        <div class="corrective-chips-grid">
+          ${buttonsHtml}
+        </div>
+      </div>
+    `;
+  }
+
   scannerDynamicCard.innerHTML = `
     <div class="scan-card-found ${borderClass}">
       ${updateBannerHtml}
@@ -4823,6 +4905,7 @@ function renderFoundCard(item, ageDays, badgeClass, borderClass, badgeLabel, upd
           <span class="scan-data-value">${escapeTlcHtml(item.nama_barang || '-')}</span>
         </div>
       </div>
+      ${correctiveHtml}
     </div>
   `;
 }
@@ -4907,9 +4990,85 @@ function updateUnknownScansDrawer() {
   unknownScansList.innerHTML = html;
 }
 
+// Koreksi Cepat Aksi Waybill Terakhir Langsung dari Kartu Scan PDA
+async function correctWaybillAksi(waybill, newAksi) {
+  if (!waybill || !newAksi) return;
+
+  const upperCode = String(waybill).trim().toUpperCase();
+  const item = (monitoringData || []).find((entry) => String(entry.waybill || '').trim().toUpperCase() === upperCode);
+  if (!item) return;
+
+  try {
+    const response = await fetch('/api/monitoring/bulk-update', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ waybills: [item.waybill], aksi: newAksi }),
+    });
+
+    if (response.ok) {
+      item.aksi = newAksi;
+      item.status = 'Sudah Diupdate';
+
+      playScannerSound('success');
+      triggerHaptic('success');
+
+      // Hitung ulang umur hari untuk kartu
+      let ageDays = 0;
+      if (item.tanggal) {
+        const itemDate = new Date(item.tanggal);
+        if (!isNaN(itemDate.getTime())) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          itemDate.setHours(0, 0, 0, 0);
+          ageDays = Math.max(0, Math.round((today - itemDate) / (1000 * 60 * 60 * 24)));
+        }
+      }
+
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const correctMsg = `✓ Aksi resi ${item.waybill} dikoreksi ke "${newAksi}"`;
+
+      renderFoundCard(item, ageDays, 'fifo-badge-updated', 'border-updated', 'Sudah Diupdate', correctMsg);
+      addRecentScan(item.waybill, 'dot-updated', `Koreksi: ${newAksi}`, `${ageDays} Hari`, timeString);
+
+      // Refresh tabel utama dan kartu statistik di latar belakang
+      if (typeof applyFilter === 'function') applyFilter();
+      else if (typeof renderTable === 'function') renderTable(monitoringData);
+      if (typeof updateStats === 'function') updateStats(monitoringData);
+
+      // Kembalikan fokus ke scanner barcode input
+      setTimeout(focusScannerInput, 100);
+    } else {
+      if (response.status === 401) {
+        logout();
+        alert('Sesi Anda telah berakhir. Silakan login kembali.');
+        return;
+      }
+      const errData = await response.json().catch(() => ({}));
+      playScannerSound('error');
+      triggerHaptic('error');
+      alert('Gagal koreksi aksi: ' + (errData.error || 'Terjadi kesalahan server'));
+    }
+  } catch (err) {
+    console.error('Koreksi aksi error:', err);
+    playScannerSound('error');
+    triggerHaptic('error');
+  }
+}
+
 // Event Delegation untuk Tombol Dinamis Scanner (Bebas Pelanggaran CSP)
 if (scannerDynamicCard) {
   scannerDynamicCard.addEventListener('click', (e) => {
+    const correctBtn = e.target.closest('[data-action="correct-aksi"]');
+    if (correctBtn && correctBtn.dataset.waybill && correctBtn.dataset.targetAksi) {
+      e.preventDefault();
+      correctWaybillAksi(correctBtn.dataset.waybill, correctBtn.dataset.targetAksi);
+      return;
+    }
     const regBtn = e.target.closest('[data-action="quick-register"]');
     if (regBtn && regBtn.dataset.waybill) {
       e.preventDefault();
@@ -4945,8 +5104,14 @@ if (unknownScansList) {
   });
 }
 
-// Delegasi klik global pengaman agar tombol daftarkan paket selalu merespon dari elemen mana pun
+// Delegasi klik global pengaman agar tombol daftarkan paket & koreksi aksi selalu merespon dari elemen mana pun
 document.addEventListener('click', (e) => {
+  const correctBtn = e.target.closest('[data-action="correct-aksi"]');
+  if (correctBtn && correctBtn.dataset.waybill && correctBtn.dataset.targetAksi) {
+    e.preventDefault();
+    correctWaybillAksi(correctBtn.dataset.waybill, correctBtn.dataset.targetAksi);
+    return;
+  }
   const regBtn = e.target.closest('[data-action="quick-register"]');
   if (regBtn && regBtn.dataset.waybill) {
     e.preventDefault();

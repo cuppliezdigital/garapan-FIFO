@@ -413,7 +413,7 @@
                     </svg>
                   </div>
                   <span class="drawer-toggle-title">Kategori Jam Stuck (Aging)</span>
-                  <span class="drawer-summary-badge" id="drawerSummaryBadge">> 36 Jam: 0 Data</span>
+                  <span class="drawer-summary-badge" id="drawerSummaryBadge">36h+: 0 Data</span>
                 </div>
                 <div class="drawer-toggle-right">
                   <span id="drawerToggleText" class="drawer-toggle-label">Buka Kartu</span>
@@ -434,7 +434,7 @@
                           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                         </svg>
                         <span>Prioritas Kritis</span>
-                        <span class="tab-pill-tag tag-amber">> 36 Jam</span>
+                        <span class="tab-pill-tag tag-amber">36h+</span>
                       </button>
                       <button type="button" id="tabStuckAll" class="stuck-tab-pill">
                         <svg class="tab-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -444,7 +444,7 @@
                           <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
                         </svg>
                         <span>Semua Level</span>
-                        <span class="tab-pill-tag tag-slate">1-72 Jam</span>
+                        <span class="tab-pill-tag tag-slate">1-72h</span>
                       </button>
                     </div>
                   </div>
@@ -576,12 +576,8 @@
                   <span class="quick-bar-dot"></span>
                   <span class="quick-bar-label">Operasional Data</span>
                 </div>
-                <button type="button" class="quick-bar-toggle-btn" id="btnToggleQuickBar" title="Buka / Tutup Tombol Operasional" aria-label="Buka / Tutup Tombol Operasional">
-                  <span class="quick-bar-toggle-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                    </svg>
-                  </span>
+                <button type="button" class="quick-bar-toggle-btn" id="btnToggleQuickBar" title="Buka / Tutup Tombol Operasional">
+                  <span class="quick-bar-toggle-text" id="quickBarToggleText">Sembunyikan</span>
                   <svg class="quick-bar-chevron is-open" id="chevronQuickBar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
@@ -799,6 +795,7 @@
 
                 <div class="filter-controls-cluster">
                   <div class="filter-select-item tlc-combobox-wrap" id="tlcComboboxWrap">
+                    <span class="filter-icon-prefix" title="Filter TLC Hub">
                     <span class="filter-icon-prefix" title="Filter TLC / GW">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -828,12 +825,13 @@
                     <div id="tlcDropdownMenu" class="tlc-dropdown-menu hidden"></div>
                   </div>
 
-                  <button type="button" id="refreshBtn" class="btn-table-refresh" title="Segarkan data tabel" aria-label="Segarkan data tabel">
+                  <button type="button" id="refreshBtn" class="btn-table-refresh" title="Segarkan data tabel">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="23 4 23 10 17 10"></polyline>
                       <polyline points="1 20 1 14 7 14"></polyline>
                       <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                     </svg>
+                    <span>Refresh</span>
                   </button>
 
                   <button type="button" id="resetFilterBtn" class="btn-reset-filter" title="Reset semua filter">
@@ -1744,9 +1742,8 @@
                 <option value="Miss Route">Miss Route</option>
                 <option value="Crosslabel">Crosslabel</option>
                 <option value="Penangguhan">Penangguhan</option>
-                <option value="manual">✍️ Ketik Manual...</option>
+                <option value="Investigasi">Investigasi</option>
               </select>
-              <input type="text" id="scannerManualActionInput" class="scanner-manual-action-input hidden" placeholder="Ketik aksi kustom disini..." maxlength="100" autocomplete="off" />
             </div>
             <div class="config-counter-pill">
               <span class="counter-label">Berhasil Diupdate:</span>
@@ -1945,6 +1942,8 @@
             </label>
 
             <label>
+              <span>TLC / Hub</span>
+              <input type="text" id="quickAddTlc" name="tlc" placeholder="Contoh: BDJ99A / TLC Transit" />
               <span>TLC / GW</span>
               <input type="text" id="quickAddTlc" name="tlc" placeholder="Contoh: BDJ99A / TLC GW" />
             </label>
@@ -1962,6 +1961,7 @@
                 <option value="Miss Route">Miss Route</option>
                 <option value="Crosslabel">Crosslabel</option>
                 <option value="Penangguhan">Penangguhan</option>
+                <option value="Investigasi">Investigasi</option>
               </select>
             </label>
           </div>
