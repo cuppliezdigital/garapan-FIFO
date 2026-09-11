@@ -795,7 +795,6 @@
 
                 <div class="filter-controls-cluster">
                   <div class="filter-select-item tlc-combobox-wrap" id="tlcComboboxWrap">
-                    <span class="filter-icon-prefix" title="Filter TLC Hub">
                     <span class="filter-icon-prefix" title="Filter TLC / GW">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -1732,23 +1731,52 @@
         <!-- MODE 2 CONFIGURATION BAR (VISIBLE WHEN IN UPDATE MODE) -->
         <div id="scannerUpdateConfigBar" class="scanner-update-config-bar hidden">
           <div class="config-bar-inner">
-            <div class="config-action-choice">
-              <label for="scannerActionSelect" class="config-label">
-                <span class="label-badge">PILIH AKSI TARGET:</span>
-              </label>
-              <select id="scannerActionSelect" class="scanner-dropdown-select">
-                <option value="Sudah Scan Kirim" selected>Sudah Scan Kirim</option>
-                <option value="Dalam Gudang">Dalam Gudang</option>
-                <option value="Miss Route">Miss Route</option>
-                <option value="Crosslabel">Crosslabel</option>
-                <option value="Penangguhan">Penangguhan</option>
-                <option value="Investigasi">Investigasi</option>
-              </select>
+            <div class="config-header-row">
+              <div class="config-label-wrap">
+                <span class="label-badge">⚡ PILIH AKSI TARGET CEPAT:</span>
+              </div>
+              <div class="config-counter-pill">
+                <span class="counter-label">Diupdate:</span>
+                <strong id="scannerBatchCount" class="counter-value">0</strong>
+              </div>
             </div>
-            <div class="config-counter-pill">
-              <span class="counter-label">Berhasil Diupdate:</span>
-              <strong id="scannerBatchCount" class="counter-value">0</strong>
+
+            <!-- QUICK ACTION CHIPS KHUSUS PDA / TOUCH JEMPOL -->
+            <div id="scannerActionChipsBar" class="scanner-action-chips-bar" role="radiogroup" aria-label="Aksi Target Scanner">
+              <button type="button" class="action-chip-pill active chip-kirim" data-action-val="Sudah Scan Kirim" role="radio" aria-checked="true">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">✓ Scan Kirim</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-tangguh" data-action-val="Penangguhan" role="radio" aria-checked="false">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">⏸ Penangguhan</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-missroute" data-action-val="Miss Route" role="radio" aria-checked="false">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">⚠️ Miss Route</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-crosslabel" data-action-val="Crosslabel" role="radio" aria-checked="false">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">🏷️ Crosslabel</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-manual" data-action-val="manual" role="radio" aria-checked="false">
+                <span class="chip-text">✍️ Ketik Manual...</span>
+              </button>
             </div>
+
+            <!-- INPUT MANUAL JIKA DIPILIH -->
+            <div id="scannerManualActionWrap" class="scanner-manual-action-wrap hidden">
+              <input type="text" id="scannerManualActionInput" class="scanner-manual-action-input" placeholder="Ketik aksi kustom (misal: Rusak Kemasan, Tertahan)..." maxlength="100" autocomplete="off" />
+            </div>
+
+            <!-- FALLBACK SELECT UNTUK SINKRONISASI DATA -->
+            <select id="scannerActionSelect" class="scanner-dropdown-select hidden">
+              <option value="Sudah Scan Kirim" selected>Sudah Scan Kirim</option>
+              <option value="Penangguhan">Penangguhan</option>
+              <option value="Miss Route">Miss Route</option>
+              <option value="Crosslabel">Crosslabel</option>
+              <option value="manual">✍️ Ketik Manual...</option>
+            </select>
           </div>
         </div>
 
@@ -1942,8 +1970,6 @@
             </label>
 
             <label>
-              <span>TLC / Hub</span>
-              <input type="text" id="quickAddTlc" name="tlc" placeholder="Contoh: BDJ99A / TLC Transit" />
               <span>TLC / GW</span>
               <input type="text" id="quickAddTlc" name="tlc" placeholder="Contoh: BDJ99A / TLC GW" />
             </label>
