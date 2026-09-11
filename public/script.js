@@ -2961,10 +2961,8 @@ if (refreshBtn) {
   refreshBtn.addEventListener('click', async () => {
     if (refreshBtn.disabled) return;
 
-    const originalLabel = refreshBtn.innerHTML;
     refreshBtn.disabled = true;
     refreshBtn.classList.add('is-loading');
-    refreshBtn.innerHTML = '<span class="refresh-spinner" aria-hidden="true"></span> Memuat...';
 
     try {
       await fetchMonitoring();
@@ -2983,7 +2981,6 @@ if (refreshBtn) {
     } finally {
       refreshBtn.disabled = false;
       refreshBtn.classList.remove('is-loading');
-      refreshBtn.innerHTML = originalLabel;
     }
   });
 }
