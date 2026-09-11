@@ -4526,8 +4526,10 @@ function openQuickAddModal(waybill) {
   }
   if (quickAddOutlet) quickAddOutlet.value = '';
   if (quickAddTlc) {
-    // Gunakan TLC pertama yang tersedia jika ada
-    quickAddTlc.value = (currentAvailableTlcs && currentAvailableTlcs.length > 0) ? currentAvailableTlcs[0].code : '-';
+    const firstTlc = (currentAvailableTlcs && currentAvailableTlcs.length > 0)
+      ? (currentAvailableTlcs[0].code || currentAvailableTlcs[0])
+      : '-';
+    quickAddTlc.value = firstTlc || '-';
   }
   if (quickAddNamaBarang) quickAddNamaBarang.value = '-';
   if (quickAddAksi) quickAddAksi.value = 'Dalam Gudang';
@@ -4942,6 +4944,15 @@ if (unknownScansList) {
     }
   });
 }
+
+// Delegasi klik global pengaman agar tombol daftarkan paket selalu merespon dari elemen mana pun
+document.addEventListener('click', (e) => {
+  const regBtn = e.target.closest('[data-action="quick-register"]');
+  if (regBtn && regBtn.dataset.waybill) {
+    e.preventDefault();
+    openQuickAddModal(regBtn.dataset.waybill);
+  }
+});
 
 // ==============================================================
 // HARDWARE PDA SCANNER WEDGE & AUTO-BURST DETECTION ENGINE
