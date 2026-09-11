@@ -271,7 +271,6 @@ let monitoringHistoryData = [];
 let selectedUserIds = new Set();
 let editingWaybill = null;
 const isFileProtocol = window.location.protocol === 'file:';
-const SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; // 30 hari operasional
 let sessionTimer = null;
 let selectedMonitoringWaybills = new Set();
 let monitoringPage = 1;
@@ -506,21 +505,9 @@ function setAuthState() {
 
   applyUIPermissions();
   handleHashRoute();
-
-  fetchMonitoring();
-  if (hasPermission('manage_users') || hasPermission('view_history')) {
-    fetchUsers();
-    fetchAuditLogs();
-    fetchMonitoringHistory();
-    fetchMonitoringArchive();
-    fetchConfigUsers();
-  } else if (!isClient) {
-    fetchMonitoringArchive();
-    if (hasPermission('access_config')) fetchConfigUsers();
-  }
 }
 
-function logout() {
+function logout(message = null) {
   stopAutoRefresh();
   if (sessionTimer) {
     clearTimeout(sessionTimer);
@@ -536,21 +523,14 @@ function logout() {
   }).catch(() => {});
   selectedUserIds = new Set();
   showLoginView();
+  if (message && loginMessage) {
+    loginMessage.textContent = message;
+    loginMessage.classList.add('error');
+  }
 }
 
 function resetSessionTimer() {
-  const token = getToken();
-  if (!token) return;
-
-  if (sessionTimer) clearTimeout(sessionTimer);
-  sessionTimer = setTimeout(() => {
-    logout();
-    if (loginMessage) {
-      loginMessage.textContent = 'Sesi Anda telah berakhir. Silakan login kembali.';
-      loginMessage.classList.add('error');
-    }
-    alert('Sesi Anda telah berakhir. Silakan login kembali.');
-  }, SESSION_TIMEOUT_MS);
+  // Sesi 30 hari dikelola via server cookie & heartbeat otomatis tiap 10 menit
 }
 
 // Background Heartbeat: perpanjang sesi secara otomatis setiap 10 menit
@@ -4283,9 +4263,7 @@ if (auditTableBody) {
   });
 }
 
-['mousemove', 'keydown', 'click', 'scroll'].forEach((eventName) => {
-  document.addEventListener(eventName, resetSessionTimer);
-});
+
 
 // Sidebar Logo Controls
 if (uploadSidebarLogoBtn) {
