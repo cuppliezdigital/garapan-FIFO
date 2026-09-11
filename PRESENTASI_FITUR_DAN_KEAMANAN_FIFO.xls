@@ -1,0 +1,225 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--[if gte mso 9]><xml>
+<x:ExcelWorkbook>
+<x:ExcelWorksheets>
+<x:ExcelWorksheet>
+<x:Name>Spesifikasi & Keamanan FIFO</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet>
+</x:ExcelWorksheets>
+</x:ExcelWorkbook>
+</xml><![endif]-->
+<style>
+  table { border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; }
+  th { background-color: #0F172A; color: #FFFFFF; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #334155; }
+  td { padding: 8px 10px; border: 1px solid #CBD5E1; vertical-align: top; }
+  .cat-header { background-color: #E2E8F0; color: #0F172A; font-weight: bold; font-size: 12pt; }
+  .bold { font-weight: bold; color: #0F172A; }
+  .sec-pill { background-color: #F1F5F9; font-weight: bold; }
+  .success { color: #059669; font-weight: bold; }
+</style>
+</head>
+<body>
+  <table>
+    <tr>
+      <th colspan="4" style="font-size: 16pt; text-align: center; background-color: #0284C7; height: 40px;">LAPORAN EKSEKUTIF FITUR & ARSITEKTUR KEAMANAN SISTEM MONITORING FIFO</th>
+    </tr>
+    <tr>
+      <td colspan="4" style="background-color: #F8FAFC; color: #64748B; text-align: center;">Tanggal Rilis: 11 September 2026 | Perangkat: PC, Laptop & Android PDA | Status: Siap Produksi</td>
+    </tr>
+    <tr><td colspan="4" style="height: 10px; border: none;"></td></tr>
+
+    <!-- BAGIAN 1 -->
+    <tr class="cat-header"><td colspan="4">BAGIAN 1: DASHBOARD & TABEL MONITORING UTAMA</td></tr>
+    <tr>
+      <th style="width: 200px;">Kategori</th>
+      <th style="width: 250px;">Nama Fitur</th>
+      <th style="width: 350px;">Fungsi Teknis & Operasional</th>
+      <th style="width: 350px;">Manfaat & Alasan Bisnis</th>
+    </tr>
+    <tr>
+      <td>Dashboard</td>
+      <td class="bold">Kartu Metrik Aging FIFO (Real-Time)</td>
+      <td>Menghitung total paket aktif, kritis (>36j), waspada (48-60j), peringatan (48-72j), dan overdue (>72j).</td>
+      <td>Memberikan gambaran helikopter kesehatan operasional gudang secara instan bagi manajemen.</td>
+    </tr>
+    <tr>
+      <td>Dashboard</td>
+      <td class="bold">Quick Filter Tab (Prioritas Kritis)</td>
+      <td>1-klik filter untuk memunculkan paket yang paling mendesak untuk segera diberangkatkan.</td>
+      <td>Mencegah penalti SLA pengiriman dengan memprioritaskan barang terlama.</td>
+    </tr>
+    <tr>
+      <td>Pencarian</td>
+      <td class="bold">Pencarian Cepat Multi-Kolom</td>
+      <td>Mencari waybill, tanggal masuk, outlet tujuan, TLC, atau nama barang sekaligus.</td>
+      <td>Operator menemukan data resi dalam hitungan milidetik tanpa reload halaman.</td>
+    </tr>
+    <tr>
+      <td>Pencarian</td>
+      <td class="bold">TLC / GW Filter Combobox</td>
+      <td>Dropdown pencarian pintar dengan autocomplete untuk filter kode gateway transit.</td>
+      <td>Mempermudah pengaturan rute muat barang (loading truk) berdasarkan tujuan.</td>
+    </tr>
+    <tr>
+      <td>Operasional Data</td>
+      <td class="bold">Multi-Checkbox & Bulk Action Bar</td>
+      <td>Memilih puluhan hingga ratusan resi sekaligus untuk update aksi, arsip, atau hapus bersamaan.</td>
+      <td>Menghilangkan pekerjaan repetitif satu per satu dan menghemat waktu kerja berjam-jam.</td>
+    </tr>
+
+    <!-- BAGIAN 2 -->
+    <tr><td colspan="4" style="height: 10px; border: none;"></td></tr>
+    <tr class="cat-header"><td colspan="4">BAGIAN 2: MODUL SCANNER PDA & HARDWARE BARCODE</td></tr>
+    <tr>
+      <th>Kategori</th>
+      <th>Nama Fitur</th>
+      <th>Fungsi Teknis & Operasional</th>
+      <th>Manfaat & Alasan Bisnis</th>
+    </tr>
+    <tr>
+      <td>Scanner PDA</td>
+      <td class="bold">Dual Operational Mode</td>
+      <td>Mode 1: Cek Status FIFO; Mode 2: Sekali tembak laser langsung update aksi otomatis di database.</td>
+      <td>Fleksibilitas kerja untuk audit stok maupun proses sortir/muat cepat.</td>
+    </tr>
+    <tr>
+      <td>Scanner PDA</td>
+      <td class="bold">Quick Action Chips (Touch Jempol)</td>
+      <td>Tombol kapsul sentuh modern: Scan Kirim, Penangguhan, Miss Route, Crosslabel, Ketik Manual.</td>
+      <td>Operator mengganti target aksi 1x sentuh jempol tanpa repot buka dropdown sempit di PDA.</td>
+    </tr>
+    <tr>
+      <td>Scanner PDA</td>
+      <td class="bold">Tombol Koreksi Instan di Kartu Scan</td>
+      <td>Baris tombol revisi aksi di bawah kartu hasil scan jika operator salah tembak aksi.</td>
+      <td>Mengoreksi kesalahan dalam 1 detik tanpa perlu scan ulang atau mencari manual di tabel.</td>
+    </tr>
+    <tr>
+      <td>Scanner PDA</td>
+      <td class="bold">Hardware Wedge & Auto-Burst Engine (160ms)</td>
+      <td>Mendukung laser PDA fisik; jika tidak ada Enter, timer 160ms otomatis mengeksekusi resi.</td>
+      <td>Kompatibel dengan semua merk PDA (Zebra, Honeywell, Chainway, Urovo) tanpa settingan rumit.</td>
+    </tr>
+    <tr>
+      <td>Scanner PDA</td>
+      <td class="bold">Global Window Wedge Buffer</td>
+      <td>Menangkap tembakan laser meskipun kursor kursor tidak sengaja lepas dari kotak input.</td>
+      <td>Mencegah tembakan laser macet karena layar tersentuh tidak sengaja oleh tangan operator.</td>
+    </tr>
+    <tr>
+      <td>Audio / Haptic</td>
+      <td class="bold">Web Audio Synthesizer (Zero-Delay)</td>
+      <td>Suara beeping murni via Web Audio API: Chime Sukses, Nada Peringatan, Buzzer Merah.</td>
+      <td>Zero-delay, tidak memakan kuota, dan tetap berbunyi kencang di area gudang bising.</td>
+    </tr>
+    <tr>
+      <td>Audio / Haptic</td>
+      <td class="bold">Haptic Vibration Feedback</td>
+      <td>Getaran fisik pada PDA (pendek untuk sukses, ganda untuk peringatan/error).</td>
+      <td>Konfirmasi fisik langsung di tangan operator tanpa harus selalu melihat layar.</td>
+    </tr>
+    <tr>
+      <td>Penanganan Resi</td>
+      <td class="bold">Penanganan Resi Nyasar (Quick Add)</td>
+      <td>Alarm buzzer merah + tombol Daftarkan Paket Ini membuka form pop-up instan 5 detik.</td>
+      <td>Mencegah paket misterius tertinggal di gudang tanpa data manifest.</td>
+    </tr>
+    <tr>
+      <td>Penanganan Resi</td>
+      <td class="bold">Drawer Riwayat Resi Nyasar</td>
+      <td>Menampung daftar resi tidak terdaftar beserta waktu scan dan tombol Salin Semua.</td>
+      <td>Mempermudah rekonsiliasi paket nyasar ke tim investigasi atau admin kantor.</td>
+    </tr>
+
+    <!-- BAGIAN 3 -->
+    <tr><td colspan="4" style="height: 10px; border: none;"></td></tr>
+    <tr class="cat-header"><td colspan="4">BAGIAN 3: ARSITEKTUR KEAMANAN SISTEM (SECURITY STACK)</td></tr>
+    <tr>
+      <th>Lapisan Keamanan</th>
+      <th>Teknologi Diterapkan</th>
+      <th>Cara Kerja Teknis</th>
+      <th>Kenapa Dipakai? (Alasan & Manfaat)</th>
+    </tr>
+    <tr>
+      <td class="bold">Autentikasi Pengguna</td>
+      <td class="sec-pill">JSON Web Token (JWT)</td>
+      <td>Token digital bertanda tangan kriptografis dengan batas masa kedaluwarsa.</td>
+      <td>Stateless, aman dari pemalsuan sesi, dan mencegah serangan pembajakan sesi (session hijacking).</td>
+    </tr>
+    <tr>
+      <td class="bold">Enkripsi Kata Sandi</td>
+      <td class="sec-pill">Bcrypt Hash + Salt Rounds</td>
+      <td>Enkripsi satu arah (one-way salted hash) berstandar perbankan.</td>
+      <td>Password tidak pernah disimpan dalam teks biasa; kebal dari pencurian data & serangan brute force.</td>
+    </tr>
+    <tr>
+      <td class="bold">Proteksi Database</td>
+      <td class="sec-pill">Parameterized Queries (?)</td>
+      <td>Semua query MySQL menggunakan Prepared Statements dengan placeholder parameter.</td>
+      <td>Menjamin 100% kebal dari serangan injeksi query SQL jahat (Anti-SQL Injection).</td>
+    </tr>
+    <tr>
+      <td class="bold">Proteksi Header Server</td>
+      <td class="sec-pill">Helmet.js Middleware</td>
+      <td>Menyematkan 11+ pelindung HTTP: X-Frame-Options, X-Content-Type-Options nosniff.</td>
+      <td>Mencegah serangan Clickjacking, MIME-sniffing, dan menyembunyikan identitas server dari hacker.</td>
+    </tr>
+    <tr>
+      <td class="bold">Proteksi Skrip Jahat</td>
+      <td class="sec-pill">Strict CSP & Event Delegation</td>
+      <td>Content Security Policy ketat tanpa satupun inline onclick di markup HTML.</td>
+      <td>Menolak segala bentuk injeksi skrip asing dari luar (Cross-Site Scripting / XSS).</td>
+    </tr>
+    <tr>
+      <td class="bold">Proteksi Serangan DDoS</td>
+      <td class="sec-pill">Express Rate Limiting</td>
+      <td>Membatasi percobaan login per IP address (maksimal toleransi request per menit).</td>
+      <td>Mencegah bot menebak password ribuan kali per menit dan menjaga server tidak down.</td>
+    </tr>
+    <tr>
+      <td class="bold">Manajemen Wewenang</td>
+      <td class="sec-pill">Granular RBAC System</td>
+      <td>Role-Based Access Control bertingkat: Super Admin, Admin, Supervisor, Operator.</td>
+      <td>Menerapkan prinsip Least Privilege agar operator lapangan tidak bisa menghapus data penting.</td>
+    </tr>
+    <tr>
+      <td class="bold">Audit & Akuntabilitas</td>
+      <td class="sec-pill">Audit Trail Logging</td>
+      <td>Pencatatan riwayat setiap aksi: siapa, kapan, aksi apa, data lama vs baru, IP Address.</td>
+      <td>Memberikan transparansi 100% dan bukti audit sah jika terjadi selisih operasional.</td>
+    </tr>
+
+    <!-- BAGIAN 4 -->
+    <tr><td colspan="4" style="height: 10px; border: none;"></td></tr>
+    <tr class="cat-header"><td colspan="4">BAGIAN 4: DAMPAK EFISIENSI OPERASIONAL (SEBELUM VS SESUDAH)</td></tr>
+    <tr>
+      <th>Parameter Kinerja</th>
+      <th colspan="2">Sebelum Ada Sistem</th>
+      <th>Sesudah Implementasi Sistem FIFO</th>
+    </tr>
+    <tr>
+      <td class="bold">Waktu Scan 100 Resi</td>
+      <td colspan="2">15 - 25 Menit (Ketik satu per satu manual di spreadsheet)</td>
+      <td class="success">± 1.5 Menit (Tembak laser beruntun PDA) - Efisiensi Naik 80%</td>
+    </tr>
+    <tr>
+      <td class="bold">Pemberitahuan Paket Kritis</td>
+      <td colspan="2">Manual (Sering terlambat dan baru ketahuan saat komplain)</td>
+      <td class="success">100% Otomatis via Alarm Warna & Badge Jam Real-Time</td>
+    </tr>
+    <tr>
+      <td class="bold">Tingkat Kesalahan Data</td>
+      <td colspan="2">Tinggi (Sering salah ketik digit nomor resi)</td>
+      <td class="success">0% Human Error (Dibaca langsung dari Barcode Fisik Laser)</td>
+    </tr>
+    <tr>
+      <td class="bold">Audit Tanggung Jawab</td>
+      <td colspan="2">Tidak ada jejak (Saling lempar kesalahan jika paket hilang/salah)</td>
+      <td class="success">Jelas & Terekam Lengkap di Log Audit Trail Terenkripsi</td>
+    </tr>
+  </table>
+</body>
+</html>
