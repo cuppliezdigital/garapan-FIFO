@@ -767,22 +767,27 @@ async function bulkImportMonitoring(rows, actor = null) {
       const oldStatus = String(existing.status || 'Pending').trim().toLowerCase();
       const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
 
-      if (historyWaybills.has(String(existing.waybill)) && isUpdated) {
-        await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
-        continue;
-      }
-
-      if (!incomingWaybills.has(existing.waybill) && !historyWaybills.has(String(existing.waybill))) {
-        await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
-        deletedCount += 1;
-        continue;
-      }
-
-      if (isUpdated && incomingWaybills.has(existing.waybill)) {
-        await archiveMonitoringRecord(existing, 'import_replace', connection);
+      if (isUpdated) {
+        // SEMUA data yang berstatus 'Sudah Diupdate' / sudah ada aksi WAJIB masuk ke History!
+        const source = incomingWaybills.has(existing.waybill) ? 'import_replace' : 'import_resolved';
+        await archiveMonitoringRecord(existing, source, connection);
         historyCount += 1;
-      } else if (incomingWaybills.has(existing.waybill)) {
-        overwrittenCount += 1;
+
+        // Jika resi ini sudah TIDAK ADA di file CSV baru (paket sudah beres/selesai keluar dari stuck),
+        // hapus dari tabel monitoring aktif
+        if (!incomingWaybills.has(existing.waybill)) {
+          await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
+        }
+      } else {
+        // Data yang BELUM diupdate (masih Pending dan aksi '-'):
+        if (!incomingWaybills.has(existing.waybill)) {
+          // Data lama yang belum pernah diupdate dan hilang dari laporan baru dihapus permanen
+          await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
+          deletedCount += 1;
+        } else {
+          // Masih ada di file baru -> ditimpa
+          overwrittenCount += 1;
+        }
       }
     }
 

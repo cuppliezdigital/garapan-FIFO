@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laporan Presentasi Eksekutif - Sistem Monitoring FIFO & Scanner PDA</title>
+  <title>Laporan Presentasi Eksekutif - Sistem Monitoring FIFO</title>
   <style>
     @page {
       size: A4 portrait;
-      margin: 12mm 14mm 14mm 14mm;
+      margin: 15mm 15mm 15mm 15mm;
     }
     * {
       box-sizing: border-box;
@@ -15,177 +15,152 @@
       padding: 0;
     }
     body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
-      color: #0f172a;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
       background-color: #f8fafc;
       line-height: 1.5;
-      font-size: 9.2pt;
+      font-size: 10pt;
     }
-    .print-bar {
+    .print-actions {
       position: sticky;
       top: 0;
       background: #0f172a;
-      color: #ffffff;
+      color: #fff;
       padding: 12px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
     }
-    .print-bar-btn {
+    .print-btn {
       background: #10b981;
       color: #ffffff;
       border: none;
-      padding: 9px 18px;
-      font-size: 10pt;
+      padding: 10px 20px;
+      font-size: 11pt;
       font-weight: 700;
-      border-radius: 7px;
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
       transition: background 0.2s;
     }
-    .print-bar-btn:hover {
+    .print-btn:hover {
       background: #059669;
     }
-    .sheet {
+    .container {
       max-width: 210mm;
-      margin: 18px auto;
+      margin: 20px auto;
       background: #ffffff;
-      padding: 16mm 16mm;
+      padding: 25mm 20mm;
       box-shadow: 0 4px 25px rgba(0,0,0,0.06);
       border-radius: 4px;
     }
 
     /* HEADER */
-    .header-block {
+    .header-table {
+      width: 100%;
       border-bottom: 2.5px solid #0f172a;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
     }
-    .main-title {
-      font-size: 17pt;
-      font-weight: 900;
+    .company-title {
+      font-size: 18pt;
+      font-weight: 800;
       color: #0f172a;
       letter-spacing: -0.02em;
       text-transform: uppercase;
-      line-height: 1.2;
     }
-    .doc-subtitle {
-      font-size: 9pt;
-      font-weight: 700;
-      color: #0284c7;
+    .doc-badge {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 3px 8px;
+      font-size: 8pt;
+      font-weight: 800;
+      border-radius: 4px;
+      margin-top: 4px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-top: 4px;
     }
-    .meta-box {
+    .meta-info {
       text-align: right;
-      font-size: 8.5pt;
+      font-size: 9pt;
       color: #64748b;
-      line-height: 1.4;
-    }
-    .meta-box strong {
-      color: #0f172a;
     }
 
-    /* HEADINGS */
+    /* SECTION TITLES */
     h2 {
-      font-size: 11pt;
+      font-size: 12pt;
       font-weight: 800;
       color: #0f172a;
-      margin-top: 18px;
-      margin-bottom: 8px;
+      margin-top: 22px;
+      margin-bottom: 10px;
       border-left: 4px solid #0284c7;
       padding-left: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.02em;
-      page-break-after: avoid;
-    }
-    h3 {
-      font-size: 9.5pt;
-      font-weight: 800;
-      color: #334155;
-      margin-top: 12px;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
-      page-break-after: avoid;
+      letter-spacing: 0.03em;
     }
     p {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       color: #334155;
       text-align: justify;
     }
 
-    /* SUMMARY CARDS */
+    /* EXECUTIVE SUMMARY CARDS */
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin: 10px 0 14px;
-      page-break-inside: avoid;
+      gap: 10px;
+      margin: 14px 0 20px;
     }
     .summary-card {
-      background: #f8fafc;
+      background: #f1f5f9;
       border: 1px solid #cbd5e1;
-      border-left: 4px solid #0284c7;
       border-radius: 6px;
-      padding: 8px 12px;
+      padding: 10px 14px;
     }
-    .summary-card.green-card {
-      border-left-color: #10b981;
-    }
-    .summary-card.amber-card {
-      border-left-color: #f59e0b;
-    }
-    .summary-card .card-label {
-      font-size: 7.5pt;
-      font-weight: 800;
+    .summary-card .card-title {
+      font-size: 8pt;
+      font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
     }
-    .summary-card .card-main {
-      font-size: 13pt;
-      font-weight: 900;
+    .summary-card .card-value {
+      font-size: 14pt;
+      font-weight: 800;
       color: #0f172a;
       margin-top: 2px;
     }
-    .summary-card .card-desc {
+    .summary-card .card-sub {
       font-size: 7.5pt;
       color: #059669;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     /* TABLES */
     table.data-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 6px;
-      margin-bottom: 14px;
-      font-size: 8.2pt;
-    }
-    table.data-table tr {
-      page-break-inside: avoid;
+      margin-top: 8px;
+      margin-bottom: 18px;
+      font-size: 8.5pt;
     }
     table.data-table th, 
     table.data-table td {
       border: 1px solid #cbd5e1;
-      padding: 6px 8px;
+      padding: 7px 10px;
       text-align: left;
       vertical-align: top;
     }
     table.data-table th {
       background-color: #0f172a;
       color: #ffffff;
-      font-weight: 800;
+      font-weight: 700;
       text-transform: uppercase;
-      font-size: 7.8pt;
+      font-size: 8pt;
       letter-spacing: 0.04em;
     }
     table.data-table tr:nth-child(even) {
@@ -195,91 +170,58 @@
       color: #0f172a;
     }
 
-    .badge-pill {
+    .badge-sec {
       display: inline-block;
-      background: #e0f2fe;
-      color: #0369a1;
+      background: #e2e8f0;
+      color: #1e293b;
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 7.5pt;
-      font-weight: 800;
-      border: 1px solid #bae6fd;
-    }
-
-    /* PRESENTATION SCRIPT BOX */
-    .script-box {
-      background: #f0fdf4;
-      border: 1px solid #86efac;
-      border-left: 4px solid #10b981;
-      border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 8px;
-      page-break-inside: avoid;
-    }
-    .script-num {
-      font-size: 8pt;
-      font-weight: 800;
-      color: #15803d;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-    .script-text {
-      font-size: 8.2pt;
-      font-style: italic;
-      color: #166534;
-      line-height: 1.4;
+      font-weight: 700;
     }
 
     /* SIGNATURE BLOCK */
     .sign-table {
       width: 100%;
-      margin-top: 25px;
+      margin-top: 35px;
       border: none;
-      page-break-inside: avoid;
     }
     .sign-table td {
       width: 50%;
       border: none;
       text-align: center;
-      padding: 8px;
+      padding: 10px;
     }
     .sign-space {
-      height: 55px;
+      height: 65px;
     }
     .sign-line {
-      width: 65%;
+      width: 60%;
       margin: 0 auto;
-      border-bottom: 1.5px solid #334155;
-      font-weight: 800;
-      color: #0f172a;
-      padding-bottom: 3px;
-      font-size: 8.5pt;
-    }
-
-    .page-break {
-      page-break-before: always;
+      border-bottom: 1px solid #334155;
+      font-weight: 700;
+      padding-bottom: 4px;
     }
 
     @media print {
       body {
-        background: #ffffff;
+        background: #fff;
       }
-      .print-bar {
+      .print-actions {
         display: none !important;
       }
-      .sheet {
+      .container {
         box-shadow: none;
         padding: 0;
         margin: 0;
         max-width: 100%;
       }
+      .page-break {
+        page-break-before: always;
+      }
       table.data-table th {
         background-color: #0f172a !important;
-        color: #ffffff !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      .summary-card, .script-box, .badge-pill {
+        color: #fff !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
@@ -288,13 +230,12 @@
 </head>
 <body>
 
-  <!-- PRINT TOOLBAR (HIDDEN WHEN PRINTED) -->
-  <div class="print-bar">
+  <div class="print-actions">
     <div>
-      <div style="font-weight: 800; font-size: 11pt;">DOKUMEN PRESENTASI EKSEKUTIF - MONITORING FIFO</div>
-      <div style="font-size: 8pt; color: #94a3b8;">Siap dicetak ke Printer A4 atau disimpan ke file PDF</div>
+      <strong>Laporan Presentasi Resmi Sistem Monitoring FIFO</strong>
+      <div style="font-size: 8.5pt; color: #94a3b8;">Siap dicetak langsung ke Printer atau disimpan sebagai file PDF</div>
     </div>
-    <button type="button" class="print-bar-btn" onclick="window.print()">
+    <button type="button" class="print-btn" onclick="window.print()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 6 2 18 2 18 9"></polyline>
         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -304,382 +245,213 @@
     </button>
   </div>
 
-  <div class="sheet">
+  <div class="container">
     <!-- HEADER -->
-    <div class="header-block">
-      <div>
-        <div class="main-title">Sistem Monitoring FIFO & Scanner PDA</div>
-        <div class="doc-subtitle">Executive Presentation & System Architecture Document</div>
-      </div>
-      <div class="meta-box">
-        <div>Tanggal: <strong>11 September 2026</strong></div>
-        <div>Target Device: <strong>PC, Laptop & Android PDA</strong></div>
-        <div>Status: <strong style="color: #059669;">Ready for Production</strong></div>
-      </div>
-    </div>
+    <table class="header-table">
+      <tr>
+        <td>
+          <div class="company-title">SISTEM MONITORING FIFO & SCANNER PDA</div>
+          <div class="doc-badge">DOKUMEN SPESIFIKASI FITUR & KEAMANAN SISTEM</div>
+        </td>
+        <td class="meta-info">
+          <div>Tanggal Rilis: <strong>11 September 2026</strong></div>
+          <div>Target Perangkat: <strong>Laptop, PC & Android PDA</strong></div>
+          <div>Status Implementasi: <strong style="color: #059669;">Siap Operasional</strong></div>
+        </td>
+      </tr>
+    </table>
 
-    <!-- 1. LATAR BELAKANG & TUJUAN -->
-    <h2>🎯 1. Latar Belakang & Tujuan Sistem</h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
-      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
-        <strong style="color: #991b1b; font-size: 8pt; text-transform: uppercase;">Masalah di Lapangan Sebelum Ada Sistem:</strong>
-        <ol style="margin-left: 16px; margin-top: 4px; font-size: 8pt; color: #7f1d1d;">
-          <li><strong>Risiko Aging / Overdue Paket</strong>: Paket mengendap lama tertimbun paket baru karena tidak ada kontrol FIFO ketat.</li>
-          <li><strong>Keterlambatan Penanganan Komplain</strong>: Masalah tertahan baru disadari setelah ada eskalasi komplain dari pelanggan.</li>
-          <li><strong>Pencatatan Manual Lambat & Human-Error</strong>: Update resi satu per satu butuh waktu lama dan rawan salah input digit.</li>
-          <li><strong>Tidak Ada Jejak Audit (Audit Trail)</strong>: Sulit menelusuri penanggung jawab jika terjadi selisih data atau kehilangan fisik.</li>
-        </ol>
-      </div>
-
-      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 10px;">
-        <strong style="color: #166534; font-size: 8pt; text-transform: uppercase;">Solusi & Dampak yang Dihasilkan:</strong>
-        <ul style="margin-left: 16px; margin-top: 4px; font-size: 8pt; color: #14532d;">
-          <li><strong>Deteksi Dini Paket Kritis</strong>: Sistem otomatis menghitung jam/hari mengendap dan memprioritaskan paket (>36j, >48j, >72j).</li>
-          <li><strong>Efisiensi Kerja hingga 80%</strong>: Proses cek & update aksi paket selesai dalam hitungan detik via laser PDA Android.</li>
-          <li><strong>Akuntabilitas Penuh</strong>: Setiap klik, scan, dan perubahan data tercatat dengan detail waktu, username, dan IP Address.</li>
-        </ul>
-      </div>
-    </div>
+    <!-- RINGKASAN EKSEKUTIF -->
+    <h2>1. Ringkasan Eksekutif & Latar Belakang</h2>
+    <p>
+      Sistem <strong>Monitoring FIFO Terintegrasi</strong> dibangun untuk menyelesaikan tantangan utama di operasional gudang logistik, yaitu penumpukan paket mengendap (<em>stuck/aging</em>), keterlambatan penanganan paket komplain, serta pencatatan manual yang rentan kesalahan manusia. Melalui kombinasi dashboard web real-time dan modul pemindai barcode laser pada perangkat Android PDA, sistem ini memastikan seluruh paket diproses dengan prinsip ketat <strong>First In, First Out (FIFO)</strong>.
+    </p>
 
     <div class="summary-grid">
       <div class="summary-card">
-        <div class="card-label">Kecepatan Scan</div>
-        <div class="card-main">± 1.5 Menit</div>
-        <div class="card-desc">Per 100 Waybill (Hemat 80%)</div>
+        <div class="card-title">Efisiensi Scanning</div>
+        <div class="card-value">± 1.5 Menit</div>
+        <div class="card-sub">Per 100 Waybill (Turun 80%)</div>
       </div>
-      <div class="summary-card green-card">
-        <div class="card-label">Akurasi Aging</div>
-        <div class="card-main">100% Otomatis</div>
-        <div class="card-desc">Kalkulasi Jam Real-Time</div>
+      <div class="summary-card">
+        <div class="card-title">Akurasi Status FIFO</div>
+        <div class="card-value">100% Otomatis</div>
+        <div class="card-sub">Kalkulasi Jam Real-Time</div>
       </div>
-      <div class="summary-card amber-card">
-        <div class="card-label">Audit & Keamanan</div>
-        <div class="card-main">Total Tracking</div>
-        <div class="card-desc">Bcrypt + JWT + Audit Trail</div>
+      <div class="summary-card">
+        <div class="card-title">Audit & Akuntabilitas</div>
+        <div class="card-value">Total Tracking</div>
+        <div class="card-sub">Jejak Siapa, Kapan & Dari Mana</div>
       </div>
     </div>
 
-    <!-- 2. DAFTAR FITUR LENGKAP -->
-    <h2>🚀 2. Daftar Fitur Lengkap & Fungsinya</h2>
-    
-    <h3>A. Dashboard & Tabel Monitoring Utama</h3>
+    <!-- FITUR OPERASIONAL -->
+    <h2>2. Katalog Fitur Operasional & Modul Scanner PDA</h2>
     <table class="data-table">
       <thead>
         <tr>
-          <th style="width: 26%;">Fitur</th>
-          <th style="width: 44%;">Fungsi Teknis & Operasional</th>
-          <th style="width: 30%;">Manfaat Bisnis</th>
+          <th style="width: 25%;">Nama Fitur</th>
+          <th style="width: 45%;">Fungsi Teknis & Operasional</th>
+          <th style="width: 30%;">Dampak & Manfaat Bisnis</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>Kartu Metrik Aging FIFO (Real-Time)</strong></td>
-          <td>Menghitung total paket aktif, prioritas kritis (>36 Jam), waspada (48-60 Jam), peringatan (48-72 Jam), dan overdue (>72 Jam).</td>
-          <td>Memberikan *helicopter view* instan bagi supervisor untuk memantau kesehatan operasional gudang.</td>
-        </tr>
-        <tr>
-          <td><strong>Quick Filter Tab (Prioritas Kritis vs Semua)</strong></td>
-          <td>1-klik filter untuk memunculkan paket yang paling mendesak untuk segera diberangkatkan.</td>
-          <td>Mencegah penalti SLA pengiriman dengan memprioritaskan barang terlama terlebih dahulu.</td>
-        </tr>
-        <tr>
-          <td><strong>Pencarian Cepat Multi-Kolom</strong></td>
-          <td>Kolom pencarian responsif untuk mencari waybill, tanggal masuk, outlet tujuan, TLC, atau nama barang sekaligus.</td>
-          <td>Operator menemukan data resi dalam hitungan milidetik tanpa perlu memuat ulang halaman.</td>
-        </tr>
-        <tr>
-          <td><strong>TLC / GW Filter Combobox</strong></td>
-          <td>Dropdown pencarian pintar dengan autocomplete untuk menyaring paket berdasarkan kode gateway transit tertentu.</td>
-          <td>Mempermudah penataan rute muat barang (*loading truck*) berdasarkan tujuan wilayah.</td>
-        </tr>
-        <tr>
-          <td><strong>Sistem Multi-Checkbox & Bulk Action Bar</strong></td>
-          <td>Memilih puluhan hingga ratusan resi sekaligus untuk dieksekusi bersamaan (Update Aksi, Arsipkan, atau Hapus).</td>
-          <td>Menghilangkan pekerjaan repetitif satu per satu sehingga menghemat waktu kerja berjam-jam.</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h3>B. Modul Barcode Scanner & Integrasi Hardware PDA</h3>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th style="width: 26%;">Fitur</th>
-          <th style="width: 44%;">Fungsi Teknis & Operasional</th>
-          <th style="width: 30%;">Manfaat Bisnis</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Dual Operational Mode (Mode 1 vs Mode 2)</strong></td>
-          <td><strong>Mode 1 (Cek FIFO)</strong>: Cek umur paket, status, dan riwayat.<br><strong>Mode 2 (Scan & Update Aksi)</strong>: Sekali tembak laser, resi otomatis diupdate ke aksi yang dipilih.</td>
-          <td>Fleksibilitas kerja untuk audit stok berkala maupun proses muat/sortir cepat.</td>
+          <td><strong>Dual Mode Scanner (Cek FIFO & Update Aksi)</strong></td>
+          <td><strong>Mode 1 (Cek)</strong>: Memeriksa umur paket, gateway TLC, dan status tanpa merubah data.<br><strong>Mode 2 (Update)</strong>: Sekali tembak laser, resi otomatis diperbarui ke aksi target di database.</td>
+          <td>Pekerjaan sortir dan pengelompokan muatan menjadi jauh lebih cepat dan teratur.</td>
         </tr>
         <tr>
           <td><strong>Quick Action Chips (PDA Touch Jempol)</strong></td>
-          <td>Deretan tombol kapsul sentuh modern: <em>✓ Scan Kirim, ⏸ Penangguhan, ⚠️ Miss Route, 🏷️ Crosslabel, ✍️ Ketik Manual</em>.</td>
-          <td>Operator bisa mengganti target aksi hanya dengan 1 ketukan jempol tanpa membuka dropdown sempit di layar PDA.</td>
+          <td>Deretan tombol kapsul sentuh modern: <em>Scan Kirim, Penangguhan, Miss Route, Crosslabel, Ketik Manual</em>. Cukup 1 sentuhan jempol untuk mengganti mode aksi.</td>
+          <td>Operator tidak perlu repot membuka dropdown sempit di layar PDA Android.</td>
         </tr>
         <tr>
           <td><strong>Tombol Koreksi Instan ("Salah Aksi? Ubah Langsung")</strong></td>
-          <td>Baris tombol darurat di bawah kartu hasil scan: jika operator salah tembak aksi, cukup tap tombol aksi yang benar langsung di kartu.</td>
-          <td>Mengoreksi kesalahan dalam 1 detik tanpa perlu scan ulang atau mencari resi manual di tabel.</td>
+          <td>Tombol revisi cepat di bawah kartu hasil scan. Jika salah tembak aksi, operator langsung klik tombol tujuan di kartu tanpa perlu scan ulang.</td>
+          <td>Mencegah human error tanpa membuang waktu membatalkan proses scan dari awal.</td>
         </tr>
         <tr>
           <td><strong>Hardware Wedge & Auto-Burst Engine (160ms)</strong></td>
-          <td>Algoritma penangkap tembakan cepat laser PDA. Jika scanner tidak mengirim karakter <em>Enter</em>, timer 160ms otomatis mengeksekusi resi.</td>
-          <td>Kompatibel dengan segala jenis merk PDA (Zebra, Honeywell, Chainway, Urovo) tanpa settingan rumit.</td>
+          <td>Mendukung tembakan cepat laser hardware PDA fisik. Jika scanner tidak mengirim karakter <em>Enter</em>, timer otomatis memproses resi begitu laser selesai nembak.</td>
+          <td>Kompatibel dengan segala merk PDA (Zebra, Honeywell, Chainway, Urovo, dll).</td>
         </tr>
         <tr>
-          <td><strong>Global Window Wedge Buffer</strong></td>
-          <td>Sistem pendeteksi laser di level jendela browser. Jika kursor tidak sengaja lepas dari input, scanner tetap menangkap resi otomatis.</td>
-          <td>Operator tidak frustrasi karena tembakan laser macet akibat layar tersentuh tidak sengaja.</td>
+          <td><strong>Audio Synthesizer & Haptic Vibration</strong></td>
+          <td>Suara beeping zero-delay via <em>Web Audio API</em> (chime sukses, nada peringatan, buzzer merah) + getar fisik langsung di tangan operator.</td>
+          <td>Operator mendapat konfirmasi seketika tanpa harus menatap layar terus menerus.</td>
         </tr>
         <tr>
-          <td><strong>Zero-Latency Web Audio Synthesizer</strong></td>
-          <td>Suara beeping murni Web Audio API Oscillator (Chime Sukses, Nada Peringatan 2 Tingkat, Buzzer Rendah Error).</td>
-          <td>Zero-delay, hemat kuota, dan tetap berbunyi kencang di area gudang yang bising.</td>
-        </tr>
-        <tr>
-          <td><strong>Haptic Vibration Feedback</strong></td>
-          <td>Menggetarkan bodi PDA Android saat laser menembak (getar pendek untuk sukses, getar ganda untuk peringatan/error).</td>
-          <td>Operator mendapat konfirmasi fisik langsung di tangan tanpa harus selalu menatap layar.</td>
-        </tr>
-        <tr>
-          <td><strong>Penanganan Resi Nyasar & Quick Add Modal</strong></td>
-          <td>Jika resi belum terdaftar, alarm buzzer berbunyi + tombol <em>+ Daftarkan Paket Ini Sekarang</em> membuka pop-up input instan 5 detik.</td>
+          <td><strong>Penanganan Resi Nyasar (Quick Add Modal)</strong></td>
+          <td>Mendeteksi resi yang belum tercatat di database dengan alarm buzzer merah. Tombol <em>+ Daftarkan Paket Ini</em> membuka pop-up input instan 5 detik.</td>
           <td>Mencegah paket misterius tertinggal di gudang tanpa data manifest yang jelas.</td>
         </tr>
         <tr>
-          <td><strong>Drawer Riwayat Resi Nyasar</strong></td>
-          <td>Menyimpan daftar resi tidak terdaftar beserta waktu scan dan tombol <em>Salin Semua ke Clipboard</em>.</td>
-          <td>Mempermudah rekonsiliasi paket nyasar ke tim investigasi atau admin kantor.</td>
+          <td><strong>Import & Export Massal Excel / CSV</strong></td>
+          <td>Upload ribuan data resi baru dari file Excel/CSV pusat sekaligus men-download data terfilter untuk laporan harian.</td>
+          <td>Integrasi manifest data harian dari pusat hanya butuh hitungan detik.</td>
         </tr>
         <tr>
-          <td><strong>Kamera Scanner Fallback</strong></td>
-          <td>Menggunakan BarcodeDetector API kamera perangkat untuk membaca barcode jika operator tidak membawa mesin PDA fisik.</td>
-          <td>Sistem tetap bisa digunakan di HP Android biasa jika perangkat PDA sedang di-charge atau terbatas.</td>
+          <td><strong>Sistem Arsip Mandiri (Archive & Restore)</strong></td>
+          <td>Memindahkan data paket lama/selesai ke tabel arsip terpisah agar database tetap cepat dan enteng.</td>
+          <td>Performa aplikasi selalu responsif tanpa kehilangan riwayat lama.</td>
         </tr>
       </tbody>
     </table>
 
     <div class="page-break"></div>
 
-    <h3>C. Manajemen Data, Import, Export, & Arsip</h3>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th style="width: 26%;">Fitur</th>
-          <th style="width: 44%;">Fungsi Teknis & Operasional</th>
-          <th style="width: 30%;">Manfaat Bisnis</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Import Massal Excel / CSV</strong></td>
-          <td>Upload file data monitoring harian dengan validasi otomatis per baris data via Multer.</td>
-          <td>Memasukkan ribuan data resi baru dari sistem manifest pusat hanya dalam waktu beberapa detik.</td>
-        </tr>
-        <tr>
-          <td><strong>Export Data ke Excel / CSV</strong></td>
-          <td>Download data monitoring aktif, riwayat, atau data terfilter ke file spreadsheet spreadsheet.</td>
-          <td>Mempermudah pembuatan laporan berkala untuk dikirimkan ke manajemen pusat atau klien.</td>
-        </tr>
-        <tr>
-          <td><strong>Sistem Arsip Mandiri (Archive & Restore)</strong></td>
-          <td>Memindahkan data paket yang sudah selesai/terkirim ke tabel arsip terpisah, dengan opsi mengembalikan jika diperlukan.</td>
-          <td>Menjaga database tetap ringan dan cepat tanpa menghapus rekaman riwayat masa lalu.</td>
-        </tr>
-        <tr>
-          <td><strong>Restore Status Update</strong></td>
-          <td>Fitur pembatalan status update resi untuk mengembalikan paket ke status awal (*Pending*).</td>
-          <td>Menangani kasus pembatalan kirim secara aman tanpa merusak integritas data.</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h3>D. Keamanan, Pengguna, & Audit Trail</h3>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th style="width: 26%;">Fitur</th>
-          <th style="width: 44%;">Fungsi Teknis & Operasional</th>
-          <th style="width: 30%;">Manfaat Bisnis</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Role-Based Access Control (RBAC)</strong></td>
-          <td>Pembagian peran terstruktur: <em>Super Admin, Admin, Supervisor, Operator</em>.</td>
-          <td>Membatasi wewenang agar operator lapangan tidak bisa menghapus data atau mengotak-atik akun user.</td>
-        </tr>
-        <tr>
-          <td><strong>Matrix Hak Akses Granular</strong></td>
-          <td>Pengaturan izin per fitur (Buka Scanner, Import Bulk, Edit Data, Hapus Data, Lihat Riwayat, Kelola User).</td>
-          <td>Fleksibilitas konfigurasi izin sesuai SOP masing-masing cabang atau shift kerja.</td>
-        </tr>
-        <tr>
-          <td><strong>Audit Trail Lengkap (Aktivitas User)</strong></td>
-          <td>Mencatat setiap aktivitas: waktu kejadian, nama user, role, aksi yang dilakukan, data lama vs data baru, IP Address, dan perangkat.</td>
-          <td>Menjamin 100% transparansi. Jika ada data hilang atau salah ubah, penanggung jawabnya terlacak seketika.</td>
-        </tr>
-        <tr>
-          <td><strong>Inactivity Session Auto-Logout</strong></td>
-          <td>Sesi login otomatis terkunci jika perangkat ditinggalkan tanpa aktivitas selama periode waktu tertentu.</td>
-          <td>Mengamankan sistem dari penyalahgunaan saat PDA atau laptop ditinggal di meja gudang.</td>
-        </tr>
-        <tr>
-          <td><strong>Kustomisasi Identitas Perusahaan</strong></td>
-          <td>Upload logo instansi (versi terang/gelap) dan kustomisasi background wallpaper secara dinamis.</td>
-          <td>Memberikan sentuhan branding profesional resmi milik perusahaan.</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- 3. ARSITEKTUR KEAMANAN -->
-    <h2>🛡️ 3. Arsitektur Keamanan Sistem (Security Stack)</h2>
+    <!-- KEAMANAN SISTEM -->
+    <h2>3. Arsitektur Keamanan Sistem (Enterprise Security Stack)</h2>
     <p>
-      Sistem Monitoring FIFO dirancang dengan 7 lapisan keamanan standar perbankan dan industri enterprise:
+      Sistem Monitoring FIFO dibangun dengan prinsip <strong>Pertahanan Berlapis (Defense in Depth)</strong> untuk melindungi integritas data operasional dan mencegah sabotase data:
     </p>
 
     <table class="data-table">
       <thead>
         <tr>
-          <th style="width: 22%;">Lapisan Keamanan</th>
-          <th style="width: 38%;">Apa Itu? (Penjelasan Teknis)</th>
-          <th style="width: 40%;">Kenapa Kita Pakai? (Alasan & Manfaat)</th>
+          <th style="width: 25%;">Lapisan Keamanan</th>
+          <th style="width: 35%;">Teknologi yang Diterapkan</th>
+          <th style="width: 40%;">Kenapa Dipakai? (Alasan & Manfaat)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>1. JWT Authentication</strong></td>
-          <td>Token digital bertanda tangan kriptografis dengan batas masa berlaku (*expiration time*).</td>
-          <td>Bersifat *stateless* (tidak membebani database) dan kebal dari pemalsuan token atau pembajakan sesi login (*session hijacking*).</td>
+          <td><strong>Autentikasi Pengguna</strong></td>
+          <td><span class="badge-sec">JSON Web Token (JWT)</span></td>
+          <td>Token digital bertanda tangan kriptografis. Mencegah pemalsuan sesi login dan aman dari pembajakan akun (<em>session hijacking</em>).</td>
         </tr>
         <tr>
-          <td><strong>2. Bcrypt Password Hashing</strong></td>
-          <td>Enkripsi satu arah (*one-way salted hash*) berstandar perbankan internasional.</td>
-          <td>Password tidak pernah disimpan dalam teks biasa. Dilengkapi salt acak unik per user sehingga kebal dari pencurian data & serangan *Rainbow Table*.</td>
+          <td><strong>Enkripsi Kata Sandi</strong></td>
+          <td><span class="badge-sec">Bcrypt Hash + Salt Rounds</span></td>
+          <td>Standar keamanan perbankan. Password tidak pernah disimpan dalam bentuk teks biasa. Kebal terhadap serangan pencurian data maupun <em>Rainbow Table</em>.</td>
         </tr>
         <tr>
-          <td><strong>3. Parameterized Queries</strong></td>
-          <td>Semua query MySQL menggunakan <em>Prepared Statements</em> dengan placeholder tanda tanya (<code>?</code>).</td>
-          <td>Perintah SQL dan data input dipisahkan secara tegas. Menjamin 100% kebal terhadap serangan berbahaya <strong>SQL Injection</strong>.</td>
+          <td><strong>Proteksi Database</strong></td>
+          <td><span class="badge-sec">Parameterized Queries (?)</span></td>
+          <td>Semua query MySQL menggunakan <em>Prepared Statements</em>. Menjamin 100% kebal dari serangan <strong>SQL Injection</strong> (pencurian/penghapusan database melalui form input).</td>
         </tr>
         <tr>
-          <td><strong>4. Helmet.js Headers</strong></td>
-          <td>Middleware keamanan yang menyematkan 11+ lapisan pelindung header HTTP pada Express.</td>
-          <td>Mencegah serangan *Clickjacking* (<code>X-Frame-Options</code>), *MIME-sniffing*, dan menyembunyikan identitas mesin server dari peretas.</td>
+          <td><strong>Proteksi Header Server</strong></td>
+          <td><span class="badge-sec">Helmet.js Middleware</span></td>
+          <td>Menyematkan 11+ pelindung HTTP: Anti-Clickjacking (<em>X-Frame-Options</em>), Anti-MIME Sniffing, dan menyembunyikan identitas software server dari hacker.</td>
         </tr>
         <tr>
-          <td><strong>5. Strict CSP & No Inline Script</strong></td>
-          <td>Content Security Policy ketat; seluruh logika JS menggunakan <em>Event Delegation</em> tanpa inline <code>onclick="..."</code>.</td>
-          <td>Menolak segala bentuk eksekusi skrip jahat asing yang disuntikkan dari luar (<strong>Cross-Site Scripting / XSS</strong>).</td>
+          <td><strong>Proteksi Skrip Jahat</strong></td>
+          <td><span class="badge-sec">Strict CSP & Event Delegation</span></td>
+          <td>Menghilangkan semua inline <code>onclick="..."</code>. Menolak segala jenis injeksi skrip asing dari luar (<strong>Cross-Site Scripting / XSS</strong>).</td>
         </tr>
         <tr>
-          <td><strong>6. Express Rate Limiting</strong></td>
-          <td>Pembatas frekuensi permintaan (*rate limiter*) pada endpoint login dan API sensitif.</td>
-          <td>Memblokir bot yang mencoba menebak password ribuan kali per menit (*anti brute-force*) dan menjaga server tetap stabil dari serangan DDoS.</td>
+          <td><strong>Proteksi Serangan DDoS</strong></td>
+          <td><span class="badge-sec">Express Rate Limiting</span></td>
+          <td>Membatasi percobaan login per IP address. Menghentikan bot yang mencoba menebak password dengan metode <em>brute-force</em>.</td>
         </tr>
         <tr>
-          <td><strong>7. Granular RBAC System</strong></td>
-          <td>Validasi hak akses bertingkat di setiap pintu gerbang API backend (<code>requirePermission</code> & <code>requireRole</code>).</td>
-          <td>Menerapkan prinsip militer *Least Privilege*. Divalidasi ganda di server sehingga tidak bisa dibobol lewat Postman (HTTP 403 Forbidden).</td>
+          <td><strong>Manajemen Wewenang</strong></td>
+          <td><span class="badge-sec">Granular RBAC System</span></td>
+          <td>Pemisahan hak akses: <em>Super Admin, Admin, Supervisor, Operator</em>. Operator tidak memiliki akses untuk menghapus data atau menambah akun user lain.</td>
+        </tr>
+        <tr>
+          <td><strong>Audit & Akuntabilitas</strong></td>
+          <td><span class="badge-sec">Audit Trail Logging System</span></td>
+          <td>Setiap perubahan data dicatat otomatis: nama user, waktu, IP address, nilai sebelum vs sesudah. Tidak ada perubahan yang bisa disembunyikan.</td>
         </tr>
       </tbody>
     </table>
 
-    <div class="page-break"></div>
-
-    <!-- 4. PERBANDINGAN SEBELUM VS SESUDAH -->
-    <h2>📈 4. Perbandingan Efisiensi Operasional (Sebelum vs Sesudah)</h2>
+    <!-- PERBANDINGAN SEBELUM VS SESUDAH -->
+    <h2>4. Dampak Efisiensi Operasional (Sebelum vs Sesudah)</h2>
     <table class="data-table">
       <thead>
         <tr>
-          <th style="width: 25%;">Indikator Kinerja</th>
-          <th style="width: 37%;">Sebelum Ada Sistem</th>
-          <th style="width: 38%;">Sesudah Ada Sistem Monitoring FIFO</th>
+          <th style="width: 28%;">Parameter Kinerja</th>
+          <th style="width: 36%;">Sebelum Ada Sistem</th>
+          <th style="width: 36%;">Sesudah Implementasi Sistem FIFO</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>Waktu Pengecekan 100 Resi</strong></td>
-          <td>15 - 25 Menit (Cek file excel / fisik satu per satu)</td>
-          <td><strong style="color: #059669;">± 1.5 Menit (Tembak beruntun pakai laser PDA)</strong></td>
+          <td><strong>Waktu Scan 100 Resi</strong></td>
+          <td>15 - 25 Menit (Cari file & ketik satu per satu)</td>
+          <td><strong style="color: #059669;">± 1.5 Menit (Tembak laser beruntun)</strong></td>
         </tr>
         <tr>
-          <td><strong>Ketepatan Identifikasi Aging</strong></td>
-          <td>Sering terlewat (Manual kalkulasi kalender)</td>
-          <td><strong style="color: #059669;">100% Akurat (Dihitung otomatis per jam real-time)</strong></td>
+          <td><strong>Pemberitahuan Paket Kritis</strong></td>
+          <td>Manual (Sering terlambat diketahui)</td>
+          <td><strong style="color: #059669;">Otomatis via Alarm Warna & Badge Jam</strong></td>
         </tr>
         <tr>
-          <td><strong>Tingkat Human Error Update Data</strong></td>
-          <td>Tinggi (Sering salah ketik digit nomor resi)</td>
-          <td><strong style="color: #059669;">Hampir 0% (Barcode dibaca langsung oleh optik laser)</strong></td>
+          <td><strong>Tingkat Kesalahan Data</strong></td>
+          <td>Tinggi (Salah ketik digit nomor resi)</td>
+          <td><strong style="color: #059669;">0% (Dibaca langsung dari Barcode Fisik)</strong></td>
         </tr>
         <tr>
-          <td><strong>Kecepatan Respon Paket Nyasar</strong></td>
-          <td>Berhari-hari baru ketahuan</td>
-          <td><strong style="color: #059669;">Seketika (Alarm buzzer error langsung berbunyi)</strong></td>
-        </tr>
-        <tr>
-          <td><strong>Pelacakan Tanggung Jawab</strong></td>
-          <td>Saling lempar kesalahan jika data hilang/selisih</td>
-          <td><strong style="color: #059669;">Jelas & Pasti (Tercatat rapi di Audit Trail terenkripsi)</strong></td>
+          <td><strong>Audit Tanggung Jawab</strong></td>
+          <td>Tidak ada bukti siapa yang mengubah data</td>
+          <td><strong style="color: #059669;">Jelas & Terekam Lengkap di Log Audit</strong></td>
         </tr>
       </tbody>
     </table>
-
-    <!-- 5. PANDUAN CARA PRESENTASI KE ATASAN -->
-    <h2>🎤 5. Panduan Alur Presentasi ke Atasan (Tips Sukses)</h2>
-    
-    <div class="script-box">
-      <div class="script-num">Langkah 1: Buka dengan Masalah Operasional Gudang</div>
-      <div class="script-text">
-        "Selamat pagi/siang Pak/Bu, hari ini saya ingin mempresentasikan sistem <strong>Monitoring FIFO Terintegrasi</strong> yang kami bangun untuk menyelesaikan masalah penumpukan paket mengendap (stuck) di gudang serta memangkas waktu pemilahan barang hingga 80%."
-      </div>
-    </div>
-
-    <div class="script-box">
-      <div class="script-num">Langkah 2: Tunjukkan Demo PDA Scanner (Showstopper)</div>
-      <div class="script-text">
-        "Keunggulan utama sistem ini ada pada modul Scanner PDA-nya. Operator di gudang tidak perlu lagi mengetik manual di komputer. Cukup bawa mesin PDA, pilih aksi seperti 'Scan Kirim' atau 'Penangguhan' lewat tombol kapsul sekali sentuh jempol, lalu tembak beruntun. Sistem langsung bersuara, bergetar, dan mengupdate database secara live."
-      </div>
-    </div>
-
-    <div class="script-box">
-      <div class="script-num">Langkah 3: Soroti Fitur Keselamatan Kerja (Safety Net)</div>
-      <div class="script-text">
-        "Bagaimana kalau operator salah tembak? Kami sudah siapkan tombol koreksi cepat tepat di bawah kartu hasil scan. Cukup 1 klik, status resi langsung teralihkan ke aksi yang benar tanpa perlu membatalkan atau mencari resi tersebut di tabel."
-      </div>
-    </div>
-
-    <div class="script-box">
-      <div class="script-num">Langkah 4: Tutup dengan Standar Keamanan Data</div>
-      <div class="script-text">
-        "Dari sisi keamanan, sistem ini sudah mengikuti standar keamanan enterprise: password terenkripsi Bcrypt, komunikasi menggunakan token JWT, database terlindungi dari SQL Injection, dan setiap aktivitas tercatat di Audit Log sehingga operasional kita aman, transparan, dan akuntabel."
-      </div>
-    </div>
 
     <!-- LEMBAR PENGESAHAN -->
     <table class="sign-table">
       <tr>
         <td>
-          <div style="font-size: 8.5pt; color: #64748b;">Diajukan Oleh:</div>
+          <div>Diajukan Oleh:</div>
           <div class="sign-space"></div>
           <div class="sign-line">Tim Operasional / Pengembang</div>
-          <div style="font-size: 7.5pt; color: #64748b; margin-top: 3px;">Tanggal: 11 September 2026</div>
+          <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">Tanggal: 11 September 2026</div>
         </td>
         <td>
-          <div style="font-size: 8.5pt; color: #64748b;">Mengetahui & Menyetujui:</div>
+          <div>Mengetahui & Menyetujui:</div>
           <div class="sign-space"></div>
           <div class="sign-line">Pimpinan / Kepala Operasional</div>
-          <div style="font-size: 7.5pt; color: #64748b; margin-top: 3px;">Jabatan: ____________________</div>
+          <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">Jabatan: ____________________</div>
         </td>
       </tr>
     </table>
-
   </div>
 
 </body>
 </html>
+
