@@ -195,7 +195,7 @@ async function importMonitoringBulk(req, res) {
     });
   } catch (error) {
     console.error('Controller importMonitoringBulk error:', error);
-    res.status(500).json({ error: 'Gagal memproses import bulk data monitoring' });
+    res.status(500).json({ error: error.message || 'Gagal memproses import bulk data monitoring' });
   }
 }
 

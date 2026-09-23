@@ -8,41 +8,32 @@ async function ensureMonitoringTable() {
       waybill VARCHAR(150) NOT NULL UNIQUE,
       tanggal DATE,
       outlet VARCHAR(150),
-      stuck VARCHAR(100) DEFAULT '0',
+      stuck VARCHAR(100) DEFAULT '0 Jam (1-12)',
       tlc VARCHAR(100),
       status VARCHAR(50) DEFAULT 'Pending',
       aksi VARCHAR(150),
-      nama_barang VARCHAR(200),
+      nama_barang TEXT,
       updated_by VARCHAR(100),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 
-  const [columns] = await db.query(
-    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'monitoring_stuck'`
-  );
-  const existing = new Set(columns.map((column) => column.COLUMN_NAME));
-  const alterations = [];
-
-  if (!existing.has('updated_at')) {
-    alterations.push('ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
-  }
-  if (!existing.has('aksi')) {
-    alterations.push('ADD COLUMN aksi VARCHAR(150)');
-  }
-  if (!existing.has('nama_barang')) {
-    alterations.push('ADD COLUMN nama_barang VARCHAR(200)');
-  }
-  if (!existing.has('updated_by')) {
-    alterations.push('ADD COLUMN updated_by VARCHAR(100)');
-  }
-  if (existing.has('stuck')) {
-    alterations.push("MODIFY COLUMN stuck VARCHAR(100) DEFAULT '0'");
-  }
-
-  if (alterations.length) {
-    await db.query(`ALTER TABLE monitoring_stuck ${alterations.join(', ')}`);
+  try {
+    await db.query(`
+      ALTER TABLE monitoring_stuck
+        MODIFY COLUMN waybill VARCHAR(150) NOT NULL,
+        MODIFY COLUMN tanggal DATE NULL DEFAULT NULL,
+        MODIFY COLUMN outlet VARCHAR(150) NULL DEFAULT '-',
+        MODIFY COLUMN stuck VARCHAR(100) NULL DEFAULT '0 Jam (1-12)',
+        MODIFY COLUMN tlc VARCHAR(100) NULL DEFAULT '-',
+        MODIFY COLUMN status VARCHAR(50) NULL DEFAULT 'Pending',
+        MODIFY COLUMN aksi VARCHAR(150) NULL DEFAULT '-',
+        MODIFY COLUMN nama_barang TEXT NULL,
+        MODIFY COLUMN updated_by VARCHAR(100) NULL DEFAULT 'System'
+    `);
+  } catch (err) {
+    console.error('ensureMonitoringTable alter warning:', err.message);
   }
 
   // Optimasi index untuk performa tinggi pada puluhan ribu data
@@ -73,41 +64,49 @@ async function ensureMonitoringHistoryTable() {
       waybill VARCHAR(150) NOT NULL,
       tanggal DATE,
       outlet VARCHAR(150),
-      stuck VARCHAR(100) DEFAULT '0',
+      stuck VARCHAR(100) DEFAULT '0 Jam (1-12)',
       tlc VARCHAR(100),
       status VARCHAR(50) DEFAULT 'Pending',
       aksi VARCHAR(150),
-      nama_barang VARCHAR(200),
+      nama_barang TEXT,
       updated_by VARCHAR(100),
       archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       source VARCHAR(50) DEFAULT 'system'
     )
   `);
 
-  const [columns] = await db.query(
-    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'monitoring_history'`
-  );
-  const existing = new Set(columns.map((column) => column.COLUMN_NAME));
-  const alterations = [];
-
-  if (!existing.has('aksi')) {
-    alterations.push('ADD COLUMN aksi VARCHAR(150)');
-  }
-  if (!existing.has('nama_barang')) {
-    alterations.push('ADD COLUMN nama_barang VARCHAR(200)');
-  }
-  if (!existing.has('updated_by')) {
-    alterations.push('ADD COLUMN updated_by VARCHAR(100)');
-  }
-  if (!existing.has('source')) {
-    alterations.push('ADD COLUMN source VARCHAR(50) DEFAULT "system"');
-  }
-  if (existing.has('stuck')) {
-    alterations.push("MODIFY COLUMN stuck VARCHAR(100) DEFAULT '0'");
+  try {
+    await db.query(`
+      ALTER TABLE monitoring_history
+        MODIFY COLUMN waybill VARCHAR(150) NOT NULL,
+        MODIFY COLUMN tanggal DATE NULL DEFAULT NULL,
+        MODIFY COLUMN outlet VARCHAR(150) NULL DEFAULT '-',
+        MODIFY COLUMN stuck VARCHAR(100) NULL DEFAULT '0 Jam (1-12)',
+        MODIFY COLUMN tlc VARCHAR(100) NULL DEFAULT '-',
+        MODIFY COLUMN status VARCHAR(50) NULL DEFAULT 'Pending',
+        MODIFY COLUMN aksi VARCHAR(150) NULL DEFAULT '-',
+        MODIFY COLUMN nama_barang TEXT NULL,
+        MODIFY COLUMN updated_by VARCHAR(100) NULL DEFAULT 'System',
+        MODIFY COLUMN source VARCHAR(50) NULL DEFAULT 'system'
+    `);
+  } catch (err) {
+    console.error('ensureMonitoringHistoryTable alter warning:', err.message);
   }
 
-  if (alterations.length) {
-    await db.query(`ALTER TABLE monitoring_history ${alterations.join(', ')}`);
+  try {
+    const [indexes] = await db.query(
+      `SELECT DISTINCT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'monitoring_history'`
+    );
+    const existingIndexes = new Set(indexes.map((idx) => idx.INDEX_NAME));
+
+    if (!existingIndexes.has('idx_history_waybill')) {
+      await db.query('ALTER TABLE monitoring_history ADD INDEX idx_history_waybill (waybill)');
+    }
+    if (!existingIndexes.has('idx_history_archived')) {
+      await db.query('ALTER TABLE monitoring_history ADD INDEX idx_history_archived (archived_at)');
+    }
+  } catch (idxErr) {
+    console.error('ensureMonitoringHistoryTable index check warning:', idxErr.message);
   }
 }
 
@@ -118,16 +117,33 @@ async function ensureMonitoringArchiveTable() {
       waybill VARCHAR(150) NOT NULL UNIQUE,
       tanggal DATE,
       outlet VARCHAR(150),
-      stuck VARCHAR(100) DEFAULT '0',
+      stuck VARCHAR(100) DEFAULT '0 Jam (1-12)',
       tlc VARCHAR(100),
       status VARCHAR(50) DEFAULT 'Pending',
       aksi VARCHAR(150),
-      nama_barang VARCHAR(200),
+      nama_barang TEXT,
       updated_by VARCHAR(100),
       archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
+
+  try {
+    await db.query(`
+      ALTER TABLE monitoring_archive
+        MODIFY COLUMN waybill VARCHAR(150) NOT NULL,
+        MODIFY COLUMN tanggal DATE NULL DEFAULT NULL,
+        MODIFY COLUMN outlet VARCHAR(150) NULL DEFAULT '-',
+        MODIFY COLUMN stuck VARCHAR(100) NULL DEFAULT '0 Jam (1-12)',
+        MODIFY COLUMN tlc VARCHAR(100) NULL DEFAULT '-',
+        MODIFY COLUMN status VARCHAR(50) NULL DEFAULT 'Pending',
+        MODIFY COLUMN aksi VARCHAR(150) NULL DEFAULT '-',
+        MODIFY COLUMN nama_barang TEXT NULL,
+        MODIFY COLUMN updated_by VARCHAR(100) NULL DEFAULT 'System'
+    `);
+  } catch (err) {
+    console.error('ensureMonitoringArchiveTable alter warning:', err.message);
+  }
 }
 
 async function initMonitoringTables() {
@@ -169,8 +185,16 @@ function normalizeMonitoringRow(raw = {}) {
   };
 }
 
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function normalizeMonitoringDate(value) {
-  if (!value) return '';
+  if (!value) return getTodayDateString();
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     const year = value.getFullYear();
@@ -180,7 +204,9 @@ function normalizeMonitoringDate(value) {
   }
 
   const raw = String(value || '').trim();
-  if (!raw) return '';
+  if (!raw || raw === '-' || raw.toLowerCase() === 'null' || raw.toLowerCase() === 'undefined' || raw.toLowerCase() === 'n/a') {
+    return getTodayDateString();
+  }
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
     return raw;
@@ -190,6 +216,8 @@ function normalizeMonitoringDate(value) {
     const y = Number(year);
     const m = String(month).padStart(2, '0');
     const d = String(day).padStart(2, '0');
+    if (Number.isNaN(y) || Number.isNaN(Number(month)) || Number.isNaN(Number(day))) return getTodayDateString();
+    if (Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > 31) return getTodayDateString();
     return `${y}-${m}-${d}`;
   };
 
@@ -207,7 +235,21 @@ function normalizeMonitoringDate(value) {
     const [year, month, day] = slashParts;
     return toSqlDate(year, month, day);
   }
-  return datePart;
+  const dotParts = datePart.split('.');
+  if (dotParts.length === 3 && dotParts[2].length === 4) {
+    const [day, month, year] = dotParts;
+    return toSqlDate(year, month, day);
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  return getTodayDateString();
 }
 
 function formatStuckByHours(hours) {
@@ -264,23 +306,12 @@ async function archiveMonitoringRecord(record, source = 'archive', client = null
   await dbClient.query(
     `INSERT INTO monitoring_history
       (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-       tanggal = VALUES(tanggal),
-       outlet = VALUES(outlet),
-       stuck = VALUES(stuck),
-       tlc = VALUES(tlc),
-       status = VALUES(status),
-       aksi = VALUES(aksi),
-       nama_barang = VALUES(nama_barang),
-       updated_by = VALUES(updated_by),
-       source = VALUES(source),
-       archived_at = CURRENT_TIMESTAMP`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       record.waybill,
-      record.tanggal || null,
+      normalizeMonitoringDate(record.tanggal),
       record.outlet || '-',
-      String(record.stuck || '0').trim() || '0',
+      String(record.stuck || '0 Jam (1-12)').trim() || '0 Jam (1-12)',
       record.tlc || '-',
       record.status || 'Pending',
       record.aksi || '-',
@@ -758,9 +789,13 @@ async function bulkImportMonitoring(rows, actor = null) {
     const [existingRows] = await connection.query('SELECT * FROM monitoring_stuck');
     const [historyRows] = await connection.query('SELECT waybill FROM monitoring_history');
     const historyWaybills = new Set(historyRows.map((row) => String(row.waybill)));
+
     skippedCount = normalizedRows.filter((row) => historyWaybills.has(row.waybill)).length;
     importRows = normalizedRows.filter((row) => !historyWaybills.has(row.waybill));
     const incomingWaybills = new Set(importRows.map((row) => row.waybill));
+
+    const toArchive = [];
+    const toDelete = [];
 
     for (const existing of existingRows) {
       const oldAksi = String(existing.aksi || '').trim();
@@ -770,19 +805,19 @@ async function bulkImportMonitoring(rows, actor = null) {
       if (isUpdated) {
         // SEMUA data yang berstatus 'Sudah Diupdate' / sudah ada aksi WAJIB masuk ke History!
         const source = incomingWaybills.has(existing.waybill) ? 'import_replace' : 'import_resolved';
-        await archiveMonitoringRecord(existing, source, connection);
+        toArchive.push({ ...existing, source });
         historyCount += 1;
 
         // Jika resi ini sudah TIDAK ADA di file CSV baru (paket sudah beres/selesai keluar dari stuck),
         // hapus dari tabel monitoring aktif
         if (!incomingWaybills.has(existing.waybill)) {
-          await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
+          toDelete.push(existing.waybill);
         }
       } else {
         // Data yang BELUM diupdate (masih Pending dan aksi '-'):
         if (!incomingWaybills.has(existing.waybill)) {
           // Data lama yang belum pernah diupdate dan hilang dari laporan baru dihapus permanen
-          await connection.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [existing.waybill]);
+          toDelete.push(existing.waybill);
           deletedCount += 1;
         } else {
           // Masih ada di file baru -> ditimpa
@@ -791,11 +826,58 @@ async function bulkImportMonitoring(rows, actor = null) {
       }
     }
 
-    for (const item of importRows) {
-      const [result] = await connection.query(
+    const CHUNK_SIZE = 500;
+
+    // 1. Batch archive ke monitoring_history (chunks of 500)
+    for (let i = 0; i < toArchive.length; i += CHUNK_SIZE) {
+      const chunk = toArchive.slice(i, i + CHUNK_SIZE);
+      const values = chunk.map((r) => [
+        r.waybill,
+        normalizeMonitoringDate(r.tanggal),
+        r.outlet || '-',
+        String(r.stuck || '0 Jam (1-12)').trim() || '0 Jam (1-12)',
+        r.tlc || '-',
+        r.status || 'Pending',
+        r.aksi || '-',
+        r.nama_barang || '-',
+        r.updated_by || 'System',
+        r.source || 'system',
+      ]);
+      await connection.query(
+        `INSERT INTO monitoring_history
+          (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
+         VALUES ?`,
+        [values]
+      );
+    }
+
+    // 2. Batch delete dari monitoring_stuck (chunks of 500)
+    for (let i = 0; i < toDelete.length; i += CHUNK_SIZE) {
+      const chunk = toDelete.slice(i, i + CHUNK_SIZE);
+      await connection.query(
+        'DELETE FROM monitoring_stuck WHERE waybill IN (?)',
+        [chunk]
+      );
+    }
+
+    // 3. Batch insert / upsert ke monitoring_stuck (chunks of 500)
+    for (let i = 0; i < importRows.length; i += CHUNK_SIZE) {
+      const chunk = importRows.slice(i, i + CHUNK_SIZE);
+      const values = chunk.map((item) => [
+        item.waybill,
+        normalizeMonitoringDate(item.tanggal),
+        item.outlet || '-',
+        item.stuck || '0 Jam (1-12)',
+        item.tlc || '-',
+        item.status || 'Pending',
+        item.aksi || '-',
+        item.nama_barang || '-',
+        item.updated_by || 'System',
+      ]);
+      await connection.query(
         `INSERT INTO monitoring_stuck
          (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES ?
          ON DUPLICATE KEY UPDATE
            tanggal = VALUES(tanggal),
            outlet = VALUES(outlet),
@@ -806,20 +888,9 @@ async function bulkImportMonitoring(rows, actor = null) {
            nama_barang = VALUES(nama_barang),
            updated_by = VALUES(updated_by),
            updated_at = CURRENT_TIMESTAMP`,
-        [
-          item.waybill,
-          item.tanggal || null,
-          item.outlet || '-',
-          item.stuck || 0,
-          item.tlc || '-',
-          item.status || 'Pending',
-          item.aksi || '-',
-          item.nama_barang || '-',
-          item.updated_by || 'System',
-        ]
+        [values]
       );
-
-      importedCount += result.affectedRows || 1;
+      importedCount += chunk.length;
     }
 
     await connection.commit();
@@ -831,22 +902,26 @@ async function bulkImportMonitoring(rows, actor = null) {
   }
 
   if (actor) {
-    await auditService.logAudit({
-      userId: actor.id,
-      username: actor.username,
-      action: 'bulk_import',
-      entityType: 'monitoring',
-      entityId: 'BULK_IMPORT',
-      details: {
-        importedCount,
-        rows: importRows.length,
-        actorRole: actor.role,
-        skippedCount,
-        overwrittenCount,
-        deletedCount,
-        historyCount,
-      },
-    });
+    try {
+      await auditService.logAudit({
+        userId: actor.id,
+        username: actor.username,
+        action: 'bulk_import',
+        entityType: 'monitoring',
+        entityId: 'BULK_IMPORT',
+        details: {
+          importedCount,
+          rows: importRows.length,
+          actorRole: actor.role,
+          skippedCount,
+          overwrittenCount,
+          deletedCount,
+          historyCount,
+        },
+      });
+    } catch (auditErr) {
+      console.error('bulkImportMonitoring audit log warning:', auditErr.message);
+    }
   }
 
   return { importedCount, rows: importRows.length, skippedCount, overwrittenCount, deletedCount, historyCount };
