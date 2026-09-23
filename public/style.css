@@ -3120,10 +3120,10 @@ button:disabled {
   border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
-/* UNIFIED STUCK CARDS GRID (3 COLUMNS) */
+/* UNIFIED STUCK CARDS GRID (RESPONSIVE) */
 .stuck-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
   width: 100%;
 }
@@ -3135,9 +3135,34 @@ button:disabled {
   display: none !important;
 }
 
-/* Mode Semua Level: tampilkan semua 6 kartu dalam 2 baris x 3 kolom */
+/* Mode Prioritas: tampilkan 4 level kritis (>36 jam: 36-48, 48-60, 60-72, 72 UP) */
+.stuck-cards-grid.mode-priority {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Mode Semua Level: tampilkan semua 7 kartu */
 .stuck-cards-grid.mode-all {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+@media (min-width: 1400px) {
+  .stuck-cards-grid.mode-all {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .stuck-cards-grid.mode-priority {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .stuck-cards-grid,
+  .stuck-cards-grid.mode-priority,
+  .stuck-cards-grid.mode-all {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* BASE KARTU STUCK ELEGAN & GLOSS */
@@ -3350,7 +3375,7 @@ button:disabled {
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.65);
 }
 
-/* 5. LEVEL 5: 60-72 Jam (WARM ORANGE / WARNING) */
+/* 5. LEVEL 5: 48-60 Jam (WARM ORANGE) */
 .stuck-card.accent-orange {
   background: linear-gradient(135deg, rgba(234, 88, 12, 0.26) 0%, rgba(15, 23, 42, 0.94) 100%);
   border: 1px solid rgba(251, 146, 60, 0.38);
@@ -3381,7 +3406,44 @@ button:disabled {
   box-shadow: 0 0 16px rgba(251, 146, 60, 0.65);
 }
 
-/* 6. LEVEL 6: 72 Jam UP (CRIMSON RED / EMERGENCY) */
+/* 6. LEVEL 6: 60-72 Jam (DEEP ORANGE / BURNT ORANGE) */
+.stuck-card.accent-deep-orange {
+  background: linear-gradient(135deg, rgba(194, 65, 12, 0.30) 0%, rgba(15, 23, 42, 0.94) 100%);
+  border: 1px solid rgba(234, 88, 12, 0.42);
+  box-shadow: 0 4px 16px rgba(194, 65, 12, 0.2);
+}
+.stuck-card.accent-deep-orange .stuck-card-label {
+  color: #f97316;
+}
+.stuck-card.accent-deep-orange .stuck-range-badge {
+  background: rgba(234, 88, 12, 0.20);
+  color: #ffedd5;
+  border: 1px solid rgba(234, 88, 12, 0.48);
+}
+.stuck-card.accent-deep-orange:hover {
+  border-color: rgba(249, 115, 22, 0.75);
+  box-shadow: 0 8px 24px rgba(234, 88, 12, 0.32);
+}
+.stuck-card.accent-deep-orange.is-active {
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.62) 0%, rgba(154, 52, 18, 0.42) 42%, rgba(15, 23, 42, 0.96) 100%) !important;
+  border: 2px solid #f97316 !important;
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.7), inset 0 0 18px rgba(234, 88, 12, 0.45), 0 0 0 3px rgba(234, 88, 12, 0.35), 0 14px 34px rgba(194, 65, 12, 0.5) !important;
+  transform: translateY(-3px) scale(1.015) !important;
+}
+.stuck-card.accent-deep-orange.is-active .stuck-count-number {
+  text-shadow: 0 0 14px rgba(254, 215, 170, 0.9);
+}
+.stuck-card.accent-deep-orange.is-active .stat-icon {
+  box-shadow: 0 0 16px rgba(234, 88, 12, 0.7);
+}
+
+.stat-icon.icon-deep-orange {
+  background: rgba(234, 88, 12, 0.16);
+  color: #fb923c;
+  border: 1px solid rgba(234, 88, 12, 0.35);
+}
+
+/* 7. LEVEL 7: 72 Jam UP (CRIMSON RED / EMERGENCY) */
 .stuck-card.accent-red {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.28) 0%, rgba(15, 23, 42, 0.94) 100%);
   border: 1px solid rgba(248, 113, 113, 0.4);
@@ -4588,27 +4650,36 @@ tbody tr.urgency-24-36:hover {
   box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.3) !important;
 }
 
-/* Level 4: 48-60 Jam (Golden Amber) */
-tbody tr.urgency-48-60 {
+/* Level 4: 36-48 Jam (Golden Amber) */
+tbody tr.urgency-36-48 {
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.14) 0%, rgba(15, 23, 42, 0.42) 60%, rgba(15, 23, 42, 0.2) 100%) !important;
 }
-tbody tr.urgency-48-60:hover {
+tbody tr.urgency-36-48:hover {
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.25) 0%, rgba(245, 158, 11, 0.12) 60%, rgba(15, 23, 42, 0.32) 100%) !important;
   box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.3) !important;
 }
 
-/* Level 5: 60-72 Jam (Warm Orange) */
-tbody tr.urgency-48-72,
-tbody tr.urgency-60-72 {
+/* Level 5: 48-60 Jam (Warm Orange) */
+tbody tr.urgency-48-60 {
   background: linear-gradient(90deg, rgba(234, 88, 12, 0.15) 0%, rgba(15, 23, 42, 0.42) 60%, rgba(15, 23, 42, 0.2) 100%) !important;
 }
-tbody tr.urgency-48-72:hover,
-tbody tr.urgency-60-72:hover {
+tbody tr.urgency-48-60:hover {
   background: linear-gradient(90deg, rgba(234, 88, 12, 0.26) 0%, rgba(249, 115, 22, 0.12) 60%, rgba(15, 23, 42, 0.32) 100%) !important;
   box-shadow: inset 0 0 0 1px rgba(251, 146, 60, 0.3) !important;
 }
 
-/* Level 6: 72 Jam UP (Crimson Red) */
+/* Level 6: 60-72 Jam (Deep Orange / Burnt Orange) */
+tbody tr.urgency-48-72,
+tbody tr.urgency-60-72 {
+  background: linear-gradient(90deg, rgba(194, 65, 12, 0.16) 0%, rgba(15, 23, 42, 0.44) 60%, rgba(15, 23, 42, 0.2) 100%) !important;
+}
+tbody tr.urgency-48-72:hover,
+tbody tr.urgency-60-72:hover {
+  background: linear-gradient(90deg, rgba(194, 65, 12, 0.28) 0%, rgba(234, 88, 12, 0.14) 60%, rgba(15, 23, 42, 0.32) 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.35) !important;
+}
+
+/* Level 7: 72 Jam UP (Crimson Red) */
 tbody tr.urgency-72-up {
   background: linear-gradient(90deg, rgba(220, 38, 38, 0.16) 0%, rgba(15, 23, 42, 0.45) 60%, rgba(15, 23, 42, 0.2) 100%) !important;
 }
@@ -4651,22 +4722,30 @@ tbody tr.is-updated:hover {
   box-shadow: 0 0 8px rgba(192, 132, 252, 0.9) !important;
 }
 
-.monitoring-table tbody tr.urgency-48-60 td:first-child::before,
-.archive-table tbody tr.urgency-48-60 td:first-child::before {
+.monitoring-table tbody tr.urgency-36-48 td:first-child::before,
+.archive-table tbody tr.urgency-36-48 td:first-child::before {
   background: #fbbf24 !important;
   opacity: 1 !important;
   width: 3.5px !important;
   box-shadow: 0 0 8px rgba(251, 191, 36, 0.9) !important;
 }
 
-.monitoring-table tbody tr.urgency-48-72 td:first-child::before,
-.monitoring-table tbody tr.urgency-60-72 td:first-child::before,
-.archive-table tbody tr.urgency-48-72 td:first-child::before,
-.archive-table tbody tr.urgency-60-72 td:first-child::before {
+.monitoring-table tbody tr.urgency-48-60 td:first-child::before,
+.archive-table tbody tr.urgency-48-60 td:first-child::before {
   background: #fb923c !important;
   opacity: 1 !important;
   width: 3.5px !important;
   box-shadow: 0 0 8px rgba(251, 146, 60, 0.9) !important;
+}
+
+.monitoring-table tbody tr.urgency-48-72 td:first-child::before,
+.monitoring-table tbody tr.urgency-60-72 td:first-child::before,
+.archive-table tbody tr.urgency-48-72 td:first-child::before,
+.archive-table tbody tr.urgency-60-72 td:first-child::before {
+  background: #f97316 !important;
+  opacity: 1 !important;
+  width: 3.5px !important;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.9) !important;
 }
 
 .monitoring-table tbody tr.urgency-72-up td:first-child::before,
@@ -4777,8 +4856,8 @@ tbody tr.urgency-24-36 .badge-stuck {
   font-weight: 800 !important;
 }
 
-/* Level 4: 48-60 Jam (Golden Amber) */
-tbody tr.urgency-48-60 .badge-stuck {
+/* Level 4: 36-48 Jam (Golden Amber) */
+tbody tr.urgency-36-48 .badge-stuck {
   background: linear-gradient(135deg, rgba(217, 119, 6, 0.26), rgba(245, 158, 11, 0.42)) !important;
   border: 1px solid rgba(251, 191, 36, 0.6) !important;
   color: #fef08a !important;
@@ -4786,9 +4865,8 @@ tbody tr.urgency-48-60 .badge-stuck {
   font-weight: 800 !important;
 }
 
-/* Level 5: 60-72 Jam (Warm Orange) */
-tbody tr.urgency-48-72 .badge-stuck,
-tbody tr.urgency-60-72 .badge-stuck {
+/* Level 5: 48-60 Jam (Warm Orange) */
+tbody tr.urgency-48-60 .badge-stuck {
   background: linear-gradient(135deg, rgba(234, 88, 12, 0.26), rgba(249, 115, 22, 0.42)) !important;
   border: 1px solid rgba(251, 146, 60, 0.6) !important;
   color: #fed7aa !important;
@@ -4796,7 +4874,17 @@ tbody tr.urgency-60-72 .badge-stuck {
   font-weight: 800 !important;
 }
 
-/* Level 6: 72 Jam UP (Crimson Red) */
+/* Level 6: 60-72 Jam (Deep Orange / Burnt Orange) */
+tbody tr.urgency-48-72 .badge-stuck,
+tbody tr.urgency-60-72 .badge-stuck {
+  background: linear-gradient(135deg, rgba(194, 65, 12, 0.28), rgba(234, 88, 12, 0.45)) !important;
+  border: 1px solid rgba(249, 115, 22, 0.65) !important;
+  color: #ffedd5 !important;
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.38) !important;
+  font-weight: 800 !important;
+}
+
+/* Level 7: 72 Jam UP (Crimson Red) */
 tbody tr.urgency-72-up .badge-stuck {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.28), rgba(239, 68, 68, 0.45)) !important;
   border: 1px solid rgba(248, 113, 113, 0.65) !important;
@@ -4809,9 +4897,10 @@ tbody tr.urgency-72-up .badge-stuck {
 tbody tr.urgency-1-12 .col-waybill strong { color: #f0fdfa !important; }
 tbody tr.urgency-12-24 .col-waybill strong { color: #eff6ff !important; }
 tbody tr.urgency-24-36 .col-waybill strong { color: #faf5ff !important; }
-tbody tr.urgency-48-60 .col-waybill strong { color: #fefce8 !important; }
+tbody tr.urgency-36-48 .col-waybill strong { color: #fefce8 !important; }
+tbody tr.urgency-48-60 .col-waybill strong { color: #fff7ed !important; }
 tbody tr.urgency-48-72 .col-waybill strong,
-tbody tr.urgency-60-72 .col-waybill strong { color: #fff7ed !important; }
+tbody tr.urgency-60-72 .col-waybill strong { color: #fed7aa !important; }
 tbody tr.urgency-72-up .col-waybill strong { color: #fef2f2 !important; }
 
 .search-highlight {
@@ -5906,30 +5995,47 @@ thead th input[type="checkbox"]:active {
   box-shadow: 0 0 10px rgba(124, 58, 237, 0.4) !important;
 }
 
-#monitoringPanel[data-active-card="card-48-60"],
-.panel[data-active-card="card-48-60"] {
+#monitoringPanel[data-active-card="card-36-48"],
+.panel[data-active-card="card-36-48"] {
   border-color: rgba(251, 191, 36, 0.45);
   box-shadow: 0 6px 24px rgba(217, 119, 6, 0.18);
 }
-#monitoringPanel[data-active-card="card-48-60"] .panel-counter-badge,
-.panel[data-active-card="card-48-60"] .panel-counter-badge {
+#monitoringPanel[data-active-card="card-36-48"] .panel-counter-badge,
+.panel[data-active-card="card-36-48"] .panel-counter-badge {
   background: rgba(217, 119, 6, 0.25) !important;
   border-color: rgba(251, 191, 36, 0.6) !important;
   color: #fef08a !important;
   box-shadow: 0 0 10px rgba(217, 119, 6, 0.4) !important;
 }
 
-#monitoringPanel[data-active-card="card-48-72"],
-.panel[data-active-card="card-48-72"] {
+#monitoringPanel[data-active-card="card-48-60"],
+.panel[data-active-card="card-48-60"] {
   border-color: rgba(251, 146, 60, 0.45);
   box-shadow: 0 6px 24px rgba(234, 88, 12, 0.18);
 }
-#monitoringPanel[data-active-card="card-48-72"] .panel-counter-badge,
-.panel[data-active-card="card-48-72"] .panel-counter-badge {
+#monitoringPanel[data-active-card="card-48-60"] .panel-counter-badge,
+.panel[data-active-card="card-48-60"] .panel-counter-badge {
   background: rgba(234, 88, 12, 0.25) !important;
   border-color: rgba(251, 146, 60, 0.6) !important;
   color: #fed7aa !important;
   box-shadow: 0 0 10px rgba(234, 88, 12, 0.4) !important;
+}
+
+#monitoringPanel[data-active-card="card-60-72"],
+#monitoringPanel[data-active-card="card-48-72"],
+.panel[data-active-card="card-60-72"],
+.panel[data-active-card="card-48-72"] {
+  border-color: rgba(249, 115, 22, 0.45);
+  box-shadow: 0 6px 24px rgba(194, 65, 12, 0.2);
+}
+#monitoringPanel[data-active-card="card-60-72"] .panel-counter-badge,
+#monitoringPanel[data-active-card="card-48-72"] .panel-counter-badge,
+.panel[data-active-card="card-60-72"] .panel-counter-badge,
+.panel[data-active-card="card-48-72"] .panel-counter-badge {
+  background: rgba(194, 65, 12, 0.28) !important;
+  border-color: rgba(249, 115, 22, 0.65) !important;
+  color: #ffedd5 !important;
+  box-shadow: 0 0 10px rgba(194, 65, 12, 0.4) !important;
 }
 
 #monitoringPanel[data-active-card="card-72-up"],

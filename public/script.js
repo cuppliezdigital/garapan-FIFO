@@ -1072,6 +1072,7 @@ function formatStuckByHours(hours) {
   if (h <= 11) return `${h} Jam (1-12)`;
   if (h <= 23) return `${h} Jam (12-24)`;
   if (h <= 35) return `${h} Jam (24-36)`;
+  if (h <= 47) return `${h} Jam (36-48)`;
   if (h <= 59) return `${h} Jam (48-60)`;
   if (h <= 71) return `${h} Jam (60-72)`;
   return `${h} Jam (72 UP)`;
@@ -1085,23 +1086,28 @@ function normalizeStuckCategory(value) {
 
   const normalized = rawStr.toLowerCase().replace(/\s+/g, ' ');
 
-  // 1. Dukungan format teks lama dengan penomoran (1. 12 Jam, 4. 48 Jam - 60 Jam, dsb)
-  if (/^1\.\s*(?:12\s*jam|1-12)/.test(normalized)) return '12 Jam (1-12)';
-  if (/^2\.\s*(?:12\s*jam\s*-\s*24\s*jam|12-24)/.test(normalized)) return '24 Jam (12-24)';
-  if (/^3\.\s*(?:24\s*jam\s*-\s*36\s*jam|24-36)/.test(normalized)) return '36 Jam (24-36)';
-  if (/^4\.\s*(?:48\s*jam\s*-\s*60\s*jam|48-60)/.test(normalized)) return '48 Jam (48-60)';
-  if (/^5\.\s*(?:(?:48|60)\s*jam\s*-\s*72\s*jam|(?:48-72|60-72))/.test(normalized)) return '60 Jam (60-72)';
-  if (/^6\.\s*(?:72(?:\s*jam)?\s*(?:up|\+)|72-up)/.test(normalized)) return '72 Jam (72 UP)';
+  // 1. Dukungan format teks lama dan baru dengan penomoran (1. 1-12 Jam, 4. 36-48 Jam, dsb)
+  if (/^(?:1\.\s*)?(?:12\s*jam$|1-12)/.test(normalized)) return '12 Jam (1-12)';
+  if (/^(?:2\.\s*)?(?:12\s*jam\s*-\s*24\s*jam|12-24)/.test(normalized)) return '24 Jam (12-24)';
+  if (/^(?:3\.\s*)?(?:24\s*jam\s*-\s*36\s*jam|24-36)/.test(normalized)) return '36 Jam (24-36)';
+  if (/^(?:4\.\s*)?(?:36\s*jam\s*-\s*48\s*jam|36-48)/.test(normalized)) return '48 Jam (36-48)';
+  if (/^(?:5\.\s*)?(?:48\s*jam\s*-\s*60\s*jam|48-60)/.test(normalized)) return '60 Jam (48-60)';
+  if (/^(?:6\.\s*)?(?:(?:48|60)\s*jam\s*-\s*72\s*jam|(?:48-72|60-72))/.test(normalized)) return '72 Jam (60-72)';
+  if (/^(?:7\.\s*)?(?:72(?:\s*jam)?\s*(?:up|\+)|72-up)/.test(normalized)) return '72 Jam (72 UP)';
 
   // Dukungan teks format lama tanpa penomoran
-  if (/^48\s*jam\s*-\s*60\s*jam$/.test(normalized)) return '48 Jam (48-60)';
-  if (/^(?:48|60)\s*jam\s*-\s*72\s*jam$/.test(normalized)) return '60 Jam (60-72)';
+  if (/^36\s*jam\s*-\s*48\s*jam$/.test(normalized)) return '48 Jam (36-48)';
+  if (/^48\s*jam\s*-\s*60\s*jam$/.test(normalized)) return '60 Jam (48-60)';
+  if (/^(?:48|60)\s*jam\s*-\s*72\s*jam$/.test(normalized)) return '72 Jam (60-72)';
   if (/^72(?:\s*jam)?\s*(?:up|\+)$/.test(normalized)) return '72 Jam (72 UP)';
   if (/^12\s*jam\s*-\s*24\s*jam$/.test(normalized)) return '24 Jam (12-24)';
   if (/^24\s*jam\s*-\s*36\s*jam$/.test(normalized)) return '36 Jam (24-36)';
   if (/^12\s*jam$/.test(normalized)) return '12 Jam (1-12)';
 
-  // 2. Input jam numerik (e.g. 45, 45 Jam, 45h, 45 Jam (48-60))
+  // Backward compatibility jika ada data lama berformat "4. 48-60" sebelum 36-48 dipisah
+  if (/^4\.\s*(?:48\s*jam\s*-\s*60\s*jam|48-60)/.test(normalized)) return '60 Jam (48-60)';
+
+  // 2. Input jam numerik (e.g. 5, 14, 45, 45 Jam, 45h, 45 Jam (48-60))
   // Cegah mencocokkan range seperti "48-72" sebagai single number 48
   if (!/^\d+\s*-\s*\d+/.test(rawStr)) {
     const numMatch = rawStr.match(/^(\d+(?:\.\d+)?)/);
@@ -1124,17 +1130,24 @@ function getItemStuckKey(item) {
   if (normalized.includes('(1-12)') || normalized.includes('(0-12)')) return '1-12';
   if (normalized.includes('(12-24)')) return '12-24';
   if (normalized.includes('(24-36)')) return '24-36';
+  if (normalized.includes('(36-48)')) return '36-48';
   if (normalized.includes('(48-60)') || normalized.includes('(36-60)')) return '48-60';
   if (normalized.includes('(60-72)') || normalized.includes('(48-72)')) return '60-72';
   if (normalized.includes('(72 up)') || normalized.includes('(72up)') || normalized.includes('(72+)') || normalized.includes('(72 jam up)')) return '72-up';
 
   // 2. Format teks lama dengan penomoran atau teks eksplisit
-  if (/^(?:1\.\s*)?12\s*jam$|^1-12/.test(normalized)) return '1-12';
-  if (/^(?:2\.\s*)?12\s*jam\s*-\s*24\s*jam$|^12-24/.test(normalized)) return '12-24';
-  if (/^(?:3\.\s*)?24\s*jam\s*-\s*36\s*jam$|^24-36/.test(normalized)) return '24-36';
-  if (/^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$|^48-60/.test(normalized)) return '48-60';
-  if (/^(?:5\.\s*)?(?:48|60)\s*jam\s*-\s*72\s*jam$|^(?:48-72|60-72)/.test(normalized)) return '60-72';
-  if (/^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$|^72-up/.test(normalized)) return '72-up';
+  if (/^(?:1\.\s*)?(?:1-12|12\s*jam$)/.test(normalized)) return '1-12';
+  if (/^(?:2\.\s*)?(?:12-24|12\s*jam\s*-\s*24\s*jam)/.test(normalized)) return '12-24';
+  if (/^(?:3\.\s*)?(?:24-36|24\s*jam\s*-\s*36\s*jam)/.test(normalized)) return '24-36';
+  if (/^(?:4\.\s*)?(?:36-48|36\s*jam\s*-\s*48\s*jam)/.test(normalized)) return '36-48';
+  if (/^(?:5\.\s*)?(?:48-60|48\s*jam\s*-\s*60\s*jam)/.test(normalized)) return '48-60';
+  if (/^(?:6\.\s*)?(?:60-72|48-72|(?:48|60)\s*jam\s*-\s*72\s*jam)/.test(normalized)) return '60-72';
+  if (/^(?:7\.\s*)?(?:72\s*up|72\s*jam\s*(?:up|\+)|72\+|72-up)/.test(normalized)) return '72-up';
+
+  // Dukungan backward compatibility jika ada data lama berformat "4. 48-60" sebelum penambahan 36-48
+  if (/^4\.\s*(?:48\s*jam\s*-\s*60\s*jam|48-60)/.test(normalized)) return '48-60';
+  if (/^5\.\s*(?:(?:48|60)\s*jam\s*-\s*72\s*jam|(?:48-72|60-72))/.test(normalized)) return '60-72';
+  if (/^6\.\s*(?:72(?:\s*jam)?\s*(?:up|\+)|72-up)/.test(normalized)) return '72-up';
 
   // 3. Jika hanya angka jam (misal 5, 14, 25, 45, 65, 80)
   const hours = getStuckNumericHours(rawStuck);
@@ -1142,6 +1155,7 @@ function getItemStuckKey(item) {
     if (hours < 12) return '1-12';
     if (hours < 24) return '12-24';
     if (hours < 36) return '24-36';
+    if (hours < 48) return '36-48';
     if (hours < 60) return '48-60';
     if (hours < 72) return '60-72';
     return '72-up';
@@ -1165,6 +1179,7 @@ function getUrgencyClass(stuckValue) {
   if (key === '1-12') return 'urgency-1-12';
   if (key === '12-24') return 'urgency-12-24';
   if (key === '24-36') return 'urgency-24-36';
+  if (key === '36-48') return 'urgency-36-48';
   if (key === '48-60') return 'urgency-48-60';
   if (key === '60-72') return 'urgency-60-72';
   if (key === '72-up') return 'urgency-72-up';
@@ -1185,6 +1200,7 @@ function updateStats(data) {
   const c1_12 = data.filter(item => matchesStuckFilter(item, '1-12')).length;
   const c12_24 = data.filter(item => matchesStuckFilter(item, '12-24')).length;
   const c24_36 = data.filter(item => matchesStuckFilter(item, '24-36')).length;
+  const c36_48 = data.filter(item => matchesStuckFilter(item, '36-48')).length;
   const c48_60 = data.filter(item => matchesStuckFilter(item, '48-60')).length;
   const c60_72 = data.filter(item => matchesStuckFilter(item, '60-72')).length;
   const c72_up = data.filter(item => matchesStuckFilter(item, '72-up')).length;
@@ -1192,21 +1208,23 @@ function updateStats(data) {
   const count1_12 = document.getElementById('count-1-12');
   const count12_24 = document.getElementById('count-12-24');
   const count24_36 = document.getElementById('count-24-36');
+  const count36_48 = document.getElementById('count-36-48');
   const count48_60 = document.getElementById('count-48-60');
-  const count48_72 = document.getElementById('count-48-72');
+  const count60_72 = document.getElementById('count-60-72') || document.getElementById('count-48-72');
   const count72_up = document.getElementById('count-72-up');
 
   if (count1_12) count1_12.textContent = c1_12;
   if (count12_24) count12_24.textContent = c12_24;
   if (count24_36) count24_36.textContent = c24_36;
+  if (count36_48) count36_48.textContent = c36_48;
   if (count48_60) count48_60.textContent = c48_60;
-  if (count48_72) count48_72.textContent = c60_72;
+  if (count60_72) count60_72.textContent = c60_72;
   if (count72_up) count72_up.textContent = c72_up;
 
   // Update ringkasan pada tombol drawer
   const drawerSummaryBadge = document.getElementById('drawerSummaryBadge');
   if (drawerSummaryBadge) {
-    const totalCritical = c48_60 + c60_72 + c72_up;
+    const totalCritical = c36_48 + c48_60 + c60_72 + c72_up;
     drawerSummaryBadge.textContent = `> 36 Jam: ${totalCritical} Data`;
   }
 }
@@ -1463,7 +1481,9 @@ function initCardFilters() {
     { id: 'card-1-12', filter: '1-12' },
     { id: 'card-12-24', filter: '12-24' },
     { id: 'card-24-36', filter: '24-36' },
+    { id: 'card-36-48', filter: '36-48' },
     { id: 'card-48-60', filter: '48-60' },
+    { id: 'card-60-72', filter: '60-72' },
     { id: 'card-48-72', filter: '60-72' },
     { id: 'card-72-up', filter: '72-up' }
   ];
@@ -2183,68 +2203,91 @@ function uploadImportWithProgress(rows, token) {
 if (closeImportProgressBtn) closeImportProgressBtn.addEventListener('click', hideImportProgress);
 
 function parseMonitoringCsv(content) {
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  if (!content) return [];
 
-  if (!lines.length) return [];
+  // Tentukan delimiter: koma, titik-koma, atau tab
+  let delimiter = ',';
+  const firstNewline = content.indexOf('\n');
+  const firstLine = firstNewline >= 0 ? content.slice(0, firstNewline) : content;
+  if (firstLine.includes('\t')) delimiter = '\t';
+  else if (firstLine.includes(';')) delimiter = ';';
 
-  const delimiter = lines[0].includes('\t') ? '\t' : (lines[0].includes(';') ? ';' : ',');
-  const parseLine = (line) => {
-    const cells = [];
-    let current = '';
-    let insideQuotes = false;
-
-    for (let index = 0; index < line.length; index += 1) {
-      const character = line[index];
-      const nextCharacter = line[index + 1];
-
-      if (character === '"' && insideQuotes && nextCharacter === '"') {
-        current += '"';
-        index += 1;
-      } else if (character === '"') {
-        insideQuotes = !insideQuotes;
-      } else if (character === delimiter && !insideQuotes) {
-        cells.push(current.trim());
-        current = '';
-      } else {
-        current += character;
-      }
-    }
-
-    cells.push(current.trim());
-    return cells;
-  };
-
-  const parseStuckValue = (value) => normalizeStuckCategory(value);
-
+  // RFC 4180 parser mendukung quoted multiline cells
   const rows = [];
-  const headers = parseLine(lines[0]).map((header) => header.toLowerCase().replace(/[\s_]+/g, '').replace(/\uFEFF/g, ''));
-  const headerIndex = (names) => headers.findIndex((header) => names.includes(header));
+  let currentRow = [];
+  let currentCell = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const nextChar = content[i + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        currentCell += '"';
+        i += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === delimiter && !insideQuotes) {
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+    } else if ((char === '\r' || char === '\n') && !insideQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i += 1;
+      }
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+      if (currentRow.some((c) => c !== '')) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+    } else {
+      currentCell += char;
+    }
+  }
+
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some((c) => c !== '')) {
+      rows.push(currentRow);
+    }
+  }
+
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map((header) =>
+    String(header || '')
+      .toLowerCase()
+      .replace(/[\s_]+/g, '')
+      .replace(/\uFEFF/g, '')
+  );
+  const headerIndex = (names) => headers.findIndex((h) => names.includes(h));
   const waybillIndex = headerIndex(['waybill', 'awb', 'resi']);
   const tanggalIndex = headerIndex(['tanggal', 'date']);
   const outletIndex = headerIndex(['outlet', 'outletname']);
-  const stuckIndex = headers.findIndex((header) => header.includes('stuck') || header.includes('aging'));
+  const stuckIndex = headers.findIndex((h) => h.includes('stuck') || h.includes('aging'));
   const tlcIndex = headerIndex(['tlc']);
   const namaBarangIndex = headerIndex(['namabarang', 'barang', 'product']);
 
   if (waybillIndex < 0 || stuckIndex < 0) return [];
 
-  for (let i = 1; i < lines.length; i += 1) {
-    const raw = parseLine(lines[i]);
+  const parsedData = [];
+  for (let i = 1; i < rows.length; i += 1) {
+    const raw = rows[i];
     if (raw.length <= Math.max(waybillIndex, stuckIndex)) continue;
 
     const waybill = raw[waybillIndex];
+    if (!waybill) continue;
+
     const tanggal = tanggalIndex >= 0 ? raw[tanggalIndex] : '';
     const outlet = outletIndex >= 0 ? raw[outletIndex] : '-';
     const stuck = raw[stuckIndex];
     const tlc = tlcIndex >= 0 ? raw[tlcIndex] : '-';
     const namaBarang = namaBarangIndex >= 0 ? raw[namaBarangIndex] : '-';
-    if (!waybill) continue;
 
-    const normalizedStuck = parseStuckValue(stuck);
-    rows.push({
+    const normalizedStuck = normalizeStuckCategory(stuck);
+    parsedData.push({
       waybill,
       tanggal,
       outlet,
@@ -2257,7 +2300,7 @@ function parseMonitoringCsv(content) {
     });
   }
 
-  return rows;
+  return parsedData;
 }
 
 async function deleteAllMonitoringData() {
@@ -4773,15 +4816,20 @@ async function handleScannedWaybill(rawCode) {
       fifoBorderClass = 'border-updated';
       fifoLabel = 'Sudah Diupdate';
       chipDotClass = 'dot-updated';
+    } else if (matchesStuckFilter(item, '36-48')) {
+      fifoBadgeClass = 'fifo-badge-warning';
+      fifoBorderClass = 'border-warning';
+      fifoLabel = 'FIFO Perhatian (36-48 Jam)';
+      chipDotClass = 'dot-warning';
     } else if (ageDays === 2 || matchesStuckFilter(item, '48-60')) {
       fifoBadgeClass = 'fifo-badge-warning';
       fifoBorderClass = 'border-warning';
       fifoLabel = 'FIFO Waspada (48-60 Jam)';
       chipDotClass = 'dot-warning';
-    } else if (ageDays === 3 || matchesStuckFilter(item, '48-72')) {
+    } else if (ageDays === 3 || matchesStuckFilter(item, '60-72') || matchesStuckFilter(item, '48-72')) {
       fifoBadgeClass = 'fifo-badge-alert';
       fifoBorderClass = 'border-alert';
-      fifoLabel = 'FIFO Peringatan (48-72 Jam)';
+      fifoLabel = 'FIFO Peringatan (60-72 Jam)';
       chipDotClass = 'dot-alert';
     } else if (ageDays >= 4 || matchesStuckFilter(item, '72-up')) {
       fifoBadgeClass = 'fifo-badge-danger';
