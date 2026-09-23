@@ -2118,6 +2118,7 @@ async function handleBulkImport(file) {
 
 function setImportProgress(percent, title, detail, rowCount, processing) {
   importProgressModal?.classList.remove('hidden');
+  importProgressModal?.setAttribute('aria-hidden', 'false');
   if (importProgressTitle) importProgressTitle.textContent = title;
   if (importProgressDetail) importProgressDetail.textContent = detail;
   if (importProgressBar) {
@@ -2139,7 +2140,11 @@ function showImportSummary(result) {
 }
 
 function hideImportProgress() {
+  if (document.activeElement && importProgressModal?.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
   importProgressModal?.classList.add('hidden');
+  importProgressModal?.setAttribute('aria-hidden', 'true');
   importSummary?.classList.add('hidden');
   closeImportProgressBtn?.classList.add('hidden');
 }
