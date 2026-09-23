@@ -259,8 +259,8 @@ function handleHashRoute() {
   } else if (target === 'audit') {
     fetchAuditLogs();
   } else if (target === 'settings') {
-    fetchAppLogo();
-    fetchAppBackground();
+    loadLogo();
+    loadBackground();
   }
 
   closeMobileSidebar();
@@ -2100,6 +2100,10 @@ async function handleBulkImport(file) {
   const result = await parseResponseJson(response);
   if (!response.ok) {
     hideImportProgress();
+    if (response.status === 401) {
+      logout('Sesi Anda telah berakhir atau belum login. Silakan login kembali.');
+      return;
+    }
     alert(result.error || 'Import gagal');
     return;
   }
