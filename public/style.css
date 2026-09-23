@@ -3966,6 +3966,7 @@ button:disabled {
   }
 
   .quick-bar-toggle-btn {
+    padding: 3px 8px !important;
     padding: 4px 6px !important;
     min-width: 26px !important;
     height: 26px !important;
