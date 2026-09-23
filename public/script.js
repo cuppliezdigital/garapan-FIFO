@@ -1596,6 +1596,8 @@ function initQuickBarToggle() {
   const btnToggleQuickBar = document.getElementById('btnToggleQuickBar');
   const monitoringQuickBar = document.getElementById('monitoringQuickBar');
   const chevronQuickBar = document.getElementById('chevronQuickBar');
+  const quickBarToggleText = document.getElementById('quickBarToggleText');
+  const quickBarHeader = document.getElementById('quickBarHeader');
 
   if (!btnToggleQuickBar || !monitoringQuickBar) return;
 
@@ -1607,25 +1609,37 @@ function initQuickBarToggle() {
     monitoringQuickBar.classList.add('is-collapsed');
     monitoringQuickBar.classList.remove('is-open');
     chevronQuickBar?.classList.remove('is-open');
+    if (quickBarToggleText) quickBarToggleText.textContent = 'Buka';
   } else {
     monitoringQuickBar.classList.add('is-open');
     monitoringQuickBar.classList.remove('is-collapsed');
     chevronQuickBar?.classList.add('is-open');
+    if (quickBarToggleText) quickBarToggleText.textContent = 'Sembunyikan';
   }
 
   btnToggleQuickBar.addEventListener('click', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     const isOpen = monitoringQuickBar.classList.contains('is-open');
     if (isOpen) {
       monitoringQuickBar.classList.remove('is-open');
       monitoringQuickBar.classList.add('is-collapsed');
       chevronQuickBar?.classList.remove('is-open');
+      if (quickBarToggleText) quickBarToggleText.textContent = 'Buka';
     } else {
       monitoringQuickBar.classList.add('is-open');
       monitoringQuickBar.classList.remove('is-collapsed');
       chevronQuickBar?.classList.add('is-open');
+      if (quickBarToggleText) quickBarToggleText.textContent = 'Sembunyikan';
     }
   });
+
+  if (quickBarHeader) {
+    quickBarHeader.addEventListener('click', (e) => {
+      if (e.target.closest('#btnToggleQuickBar')) return;
+      btnToggleQuickBar.click();
+    });
+  }
 }
 
 initQuickBarToggle();
