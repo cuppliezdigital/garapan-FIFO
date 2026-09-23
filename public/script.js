@@ -1114,52 +1114,60 @@ function normalizeStuckCategory(value) {
   return rawStr;
 }
 
+function getItemStuckKey(item) {
+  const rawStuck = String(item?.stuck || item || '').trim();
+  if (!rawStuck) return '1-12';
+
+  const normalized = rawStuck.toLowerCase().replace(/\s+/g, ' ');
+
+  // 1. Cek rentang eksplisit dalam tanda kurung
+  if (normalized.includes('(1-12)') || normalized.includes('(0-12)')) return '1-12';
+  if (normalized.includes('(12-24)')) return '12-24';
+  if (normalized.includes('(24-36)')) return '24-36';
+  if (normalized.includes('(48-60)') || normalized.includes('(36-60)')) return '48-60';
+  if (normalized.includes('(60-72)') || normalized.includes('(48-72)')) return '60-72';
+  if (normalized.includes('(72 up)') || normalized.includes('(72up)') || normalized.includes('(72+)') || normalized.includes('(72 jam up)')) return '72-up';
+
+  // 2. Format teks lama dengan penomoran atau teks eksplisit
+  if (/^(?:1\.\s*)?12\s*jam$|^1-12/.test(normalized)) return '1-12';
+  if (/^(?:2\.\s*)?12\s*jam\s*-\s*24\s*jam$|^12-24/.test(normalized)) return '12-24';
+  if (/^(?:3\.\s*)?24\s*jam\s*-\s*36\s*jam$|^24-36/.test(normalized)) return '24-36';
+  if (/^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$|^48-60/.test(normalized)) return '48-60';
+  if (/^(?:5\.\s*)?(?:48|60)\s*jam\s*-\s*72\s*jam$|^(?:48-72|60-72)/.test(normalized)) return '60-72';
+  if (/^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$|^72-up/.test(normalized)) return '72-up';
+
+  // 3. Jika hanya angka jam (misal 5, 14, 25, 45, 65, 80)
+  const hours = getStuckNumericHours(rawStuck);
+  if (hours !== null) {
+    if (hours < 12) return '1-12';
+    if (hours < 24) return '12-24';
+    if (hours < 36) return '24-36';
+    if (hours < 60) return '48-60';
+    if (hours < 72) return '60-72';
+    return '72-up';
+  }
+
+  // 4. Default fallback aman
+  return '1-12';
+}
+
 function matchesStuckFilter(item, filter) {
   if (filter === 'updated') return isSudahUpdate(item);
   if (isSudahUpdate(item)) return false;
 
-  const rawStuck = String(item.stuck || '').trim();
-  const hours = getStuckNumericHours(rawStuck);
-  const normalized = rawStuck.toLowerCase().replace(/\s+/g, ' ');
-
-  if (hours !== null) {
-    if (filter === '1-12') return hours <= 11;
-    if (filter === '12-24') return hours >= 12 && hours <= 23;
-    if (filter === '24-36') return hours >= 24 && hours <= 35;
-    if (filter === '48-60') return hours >= 36 && hours <= 59;
-    if (filter === '48-72' || filter === '60-72') return hours >= 60 && hours <= 71;
-    if (filter === '72-up') return hours >= 72;
-  }
-
-  // Fallback string matching untuk data lama tanpa angka jam terdepan
-  if (filter === '1-12') return /^(?:1\.\s*)?12\s*jam$|^1-12/.test(normalized);
-  if (filter === '12-24') return /^(?:2\.\s*)?12\s*jam\s*-\s*24\s*jam$|^12-24/.test(normalized);
-  if (filter === '24-36') return /^(?:3\.\s*)?24\s*jam\s*-\s*36\s*jam$|^24-36/.test(normalized);
-  if (filter === '48-60') return /^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$|^48-60/.test(normalized);
-  if (filter === '48-72' || filter === '60-72') return /^(?:5\.\s*)?(?:48|60)\s*jam\s*-\s*72\s*jam$|^(?:48-72|60-72)/.test(normalized);
-  if (filter === '72-up') return /^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$|^72-up/.test(normalized);
-
-  return true;
+  const key = getItemStuckKey(item);
+  if (filter === '48-72') return key === '60-72';
+  return key === filter;
 }
 
 function getUrgencyClass(stuckValue) {
-  const hours = getStuckNumericHours(stuckValue);
-  if (hours !== null) {
-    if (hours <= 11) return 'urgency-1-12';
-    if (hours <= 23) return 'urgency-12-24';
-    if (hours <= 35) return 'urgency-24-36';
-    if (hours <= 59) return 'urgency-48-60';
-    if (hours <= 71) return 'urgency-60-72';
-    return 'urgency-72-up';
-  }
-
-  const stuck = String(stuckValue || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  if (/^(?:1\.\s*)?12\s*jam$|^1-12/.test(stuck)) return 'urgency-1-12';
-  if (/^(?:2\.\s*)?12\s*jam\s*-\s*24\s*jam$|^12-24/.test(stuck)) return 'urgency-12-24';
-  if (/^(?:3\.\s*)?24\s*jam\s*-\s*36\s*jam$|^24-36/.test(stuck)) return 'urgency-24-36';
-  if (/^(?:4\.\s*)?48\s*jam\s*-\s*60\s*jam$|^48-60/.test(stuck)) return 'urgency-48-60';
-  if (/^(?:5\.\s*)?(?:48|60)\s*jam\s*-\s*72\s*jam$|^(?:48-72|60-72)/.test(stuck)) return 'urgency-60-72';
-  if (/^(?:6\.\s*)?72(?:\s*jam)?\s*(?:up|\+)$|^72-up/.test(stuck)) return 'urgency-72-up';
+  const key = getItemStuckKey(stuckValue);
+  if (key === '1-12') return 'urgency-1-12';
+  if (key === '12-24') return 'urgency-12-24';
+  if (key === '24-36') return 'urgency-24-36';
+  if (key === '48-60') return 'urgency-48-60';
+  if (key === '60-72') return 'urgency-60-72';
+  if (key === '72-up') return 'urgency-72-up';
   return 'urgency-normal';
 }
 
