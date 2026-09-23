@@ -793,8 +793,13 @@ async function bulkImportMonitoring(rows, actor = null) {
     await connection.beginTransaction();
 
     const [existingRows] = await connection.query('SELECT * FROM monitoring_stuck');
-    skippedCount = Math.max(0, rows.length - normalizedRows.length);
-    importRows = normalizedRows;
+    const [historyRows] = await connection.query('SELECT waybill FROM monitoring_history');
+    const historyWaybills = new Set(historyRows.map((row) => String(row.waybill)));
+
+    // Resi yang sudah pernah diupdate/diproses di hari-hari sebelumnya dan sudah masuk ke tabel History
+    // dianggap sudah beres, sehingga dilewati (skip) agar tidak perlu discan ulang oleh operator.
+    skippedCount = normalizedRows.filter((row) => historyWaybills.has(row.waybill)).length + Math.max(0, rows.length - normalizedRows.length);
+    importRows = normalizedRows.filter((row) => !historyWaybills.has(row.waybill));
     const incomingWaybills = new Set(importRows.map((row) => row.waybill));
 
     const toArchive = [];
