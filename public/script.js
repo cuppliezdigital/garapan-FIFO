@@ -267,7 +267,7 @@ function handleHashRoute() {
     fetchKendaraanDashboard();
     fetchKendaraanList();
   } else if (target === 'generator-feishu') {
-    fetchFeishuHoldList();
+    fetchFeishuHoldList(false);
   } else if (target === 'archive') {
     fetchMonitoringArchive();
   } else if (target === 'history') {
@@ -7200,6 +7200,38 @@ window.deleteKendaraanById = async function(id, awb) {
   }
 };
 
+// 8b. Clear All Kendaraan Instock
+async function clearAllKendaraan() {
+  const count = (kendaraanCurrentList && kendaraanCurrentList.length) || 0;
+  const confirmed = window.confirm(
+    `⚠️ PERINGATAN HAPUS SEMUA DATA!\n\nApakah Anda yakin ingin menghapus SEMUA data kendaraan instock (${count} unit)?\n\nData yang dihapus dapat ditarik kembali sewaktu-waktu dari AppSheet via tombol "Sinkron AppSheet".\n\nLanjutkan penghapusan?`
+  );
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btnKendaraanClearAll');
+  if (btn) btn.classList.add('is-loading');
+
+  try {
+    const res = await fetch('/api/kendaraan/clear-all', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal menghapus semua data kendaraan');
+    }
+    showAppAlert(data.message || 'Semua data kendaraan instock berhasil dihapus.');
+    await fetchKendaraanDashboard();
+    await fetchKendaraanList();
+  } catch (err) {
+    console.error('clearAllKendaraan error:', err);
+    showAppAlert(err.message, true);
+  } finally {
+    if (btn) btn.classList.remove('is-loading');
+  }
+}
+window.clearAllKendaraan = clearAllKendaraan;
+
 // 9. Save Kendaraan (Create or Update)
 async function submitKendaraanForm(e) {
   e.preventDefault();
@@ -7375,6 +7407,11 @@ function initKendaraanEventListeners() {
   // Sync Button
   const btnSync = document.getElementById('btnSyncKendaraanGSheet');
   if (btnSync) btnSync.addEventListener('click', syncKendaraanFromGoogleSheet);
+
+  // Clear All Kendaraan Button
+  const btnClearKendaraan = document.getElementById('btnKendaraanClearAll');
+  if (btnClearKendaraan) btnClearKendaraan.addEventListener('click', clearAllKendaraan);
+
 
   // Copy WA Capacity
   const btnCopyWa = document.getElementById('btnCopyWaCapacity');
@@ -7834,9 +7871,9 @@ function generateFeishuPreviewText() {
 }
 
 // 13. Pull HOLD Units from Database
-async function fetchFeishuHoldList() {
+async function fetchFeishuHoldList(isManual = false) {
   const btnPull = document.getElementById('btnPullFeishuHold');
-  if (btnPull) btnPull.classList.add('is-loading');
+  if (btnPull && isManual) btnPull.classList.add('is-loading');
 
   try {
     await ensureFeishuPicMap();
@@ -7846,7 +7883,9 @@ async function fetchFeishuHoldList() {
     const holdItems = data.data || [];
 
     if (holdItems.length === 0) {
-      showAppAlert('Tidak ada unit kendaraan yang sedang berstatus HOLD.');
+      if (isManual) {
+        showAppAlert('Tidak ada unit kendaraan yang sedang berstatus HOLD.');
+      }
       return;
     }
 
@@ -7871,12 +7910,16 @@ async function fetchFeishuHoldList() {
     updateFeishuStats();
     generateFeishuPreviewText();
 
-    showAppAlert(`Berhasil menarik ${holdItems.length} unit motor HOLD ke tabel.`);
+    if (isManual) {
+      showAppAlert(`Berhasil menarik ${holdItems.length} unit motor HOLD ke tabel.`);
+    }
   } catch (err) {
     console.error('fetchFeishuHoldList error:', err);
-    showAppAlert(err.message, true);
+    if (isManual) {
+      showAppAlert(err.message, true);
+    }
   } finally {
-    if (btnPull) btnPull.classList.remove('is-loading');
+    if (btnPull && isManual) btnPull.classList.remove('is-loading');
   }
 }
 
@@ -7987,7 +8030,7 @@ function initFeishuEventListeners() {
 
   // Pull button
   const btnPull = document.getElementById('btnPullFeishuHold');
-  if (btnPull) btnPull.addEventListener('click', fetchFeishuHoldList);
+  if (btnPull) btnPull.addEventListener('click', () => fetchFeishuHoldList(true));
 
   // Add Row buttons
   const btnAdd = document.getElementById('btnAddExcelRow');

@@ -381,6 +381,22 @@ exports.delete = async (req, res) => {
   }
 };
 
+// 5b. Clear All Kendaraan Instock
+exports.clearAll = async (req, res) => {
+  try {
+    const [result] = await db.query('DELETE FROM kendaraan_instock');
+    res.json({
+      success: true,
+      message: `Semua data kendaraan instock (${result.affectedRows || 0} unit) berhasil dihapus.`,
+      affectedRows: result.affectedRows
+    });
+  } catch (err) {
+    console.error('clearAll error:', err);
+    res.status(500).json({ error: 'Gagal menghapus semua data kendaraan: ' + err.message });
+  }
+};
+
+
 // 6. Realtime Sync from Google Sheet (AppSheet LOG_UPDATE)
 exports.syncFromGoogleSheet = async (req, res) => {
   try {

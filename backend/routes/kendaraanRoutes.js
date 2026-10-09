@@ -7,8 +7,11 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 router.get('/kendaraan/dashboard', authMiddleware, kendaraanController.getDashboard);
 router.get('/kendaraan/list', authMiddleware, kendaraanController.getList);
 router.post('/kendaraan', authMiddleware, kendaraanController.create);
+router.post('/kendaraan/clear-all', authMiddleware, kendaraanController.clearAll);
+router.delete('/kendaraan/all', authMiddleware, kendaraanController.clearAll);
 router.put('/kendaraan/:id', authMiddleware, kendaraanController.update);
 router.delete('/kendaraan/:id', authMiddleware, kendaraanController.delete);
+
 
 // Sync from Google Sheet
 router.post('/kendaraan/sync-sheet', authMiddleware, kendaraanController.syncFromGoogleSheet);

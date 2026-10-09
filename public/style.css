@@ -10145,7 +10145,24 @@ thead th input[type="checkbox"]:active {
   transform: translateY(-1px);
 }
 
+.btn-kendaraan-action.btn-danger-action {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.btn-kendaraan-action.btn-danger-action:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #f87171;
+  transform: translateY(-1px);
+}
+
+.btn-kendaraan-action.btn-danger-action.is-loading svg {
+  animation: spin 1s linear infinite;
+}
+
 .btn-kendaraan-action.btn-add {
+
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
