@@ -10,9 +10,9 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.4.5" />
+    <link rel="stylesheet" href="style.css?v=2.4.8" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.4.5" defer></script>
+    <script src="script.js?v=2.4.8" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -222,6 +222,28 @@
             </span>
             <span class="nav-text">Rekonsiliasi Muat-Bongkar</span>
             <span class="nav-pda-tag" style="background: rgba(14, 165, 233, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35);">BARU</span>
+          </a>
+          <a href="#/kendaraan" class="nav-link" id="navKendaraan">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="3" width="15" height="13"/>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
+              </svg>
+            </span>
+            <span class="nav-text">Monitoring Kendaraan</span>
+            <span class="nav-pda-tag" style="background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.35);">CAPACITY</span>
+          </a>
+          <a href="#/generator-feishu" class="nav-link" id="navFeishuDoc">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m22 2-7 20-4-9-9-4Z"/>
+                <path d="M22 2 11 13"/>
+              </svg>
+            </span>
+            <span class="nav-text">Generator Feishu</span>
+            <span class="nav-pda-tag" style="background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35);">TAGIHAN</span>
           </a>
           <a href="#/archive" class="nav-link" id="navArchive">
             <span class="nav-icon">
@@ -1722,6 +1744,412 @@
               </div>
             </section>
           </div>
+
+          <!-- VIEW 9: MONITORING INSTOCK KENDARAAN & CAPACITY REPORT -->
+          <div id="viewKendaraan" class="view-page hidden">
+            <section class="panel kendaraan-panel">
+              <!-- HEADER SECTION -->
+              <div class="kendaraan-header">
+                <div class="kendaraan-header-titles">
+                  <div class="kendaraan-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="1" y="3" width="15" height="13"/>
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                      <circle cx="5.5" cy="18.5" r="2.5"/>
+                      <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="kendaraan-title">Monitoring Instock Kendaraan &amp; Capacity Report</h2>
+                    <p class="kendaraan-subtitle">Pantau stok unit kendaraan (Motor Bensin, Listrik, Sepeda Listrik), rekap muat rute PNK &amp; BDJ, tagihan kelengkapan dokumen, dan otomasi Feishu.</p>
+                  </div>
+                </div>
+                <div class="kendaraan-header-actions">
+                  <button type="button" class="btn-kendaraan-action btn-sync" id="btnSyncKendaraanGSheet" title="Tarik data terbaru dari Google Sheet / AppSheet">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                    <span>Sinkron AppSheet</span>
+                  </button>
+                  <button type="button" class="btn-kendaraan-action btn-gateways" id="btnOpenMasterGateways" title="Kelola 122 PIC Gateway se-Indonesia">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>Master PIC Gateway</span>
+                  </button>
+                  <button type="button" class="btn-kendaraan-action btn-add" id="btnOpenAddKendaraanModal" title="Tambah / Scan Unit Kendaraan Baru">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="16"/>
+                      <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>+ Input Unit</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 4 EXECUTIVE KPI SUMMARY STRIPS -->
+              <div class="kendaraan-kpi-grid">
+                <div class="kendaraan-kpi-card card-kpi-green is-active" id="kpiCardSiapMuat" data-filter="siap_muat" title="Klik untuk memfilter unit SIAP MUAT">
+                  <div class="kpi-icon-wrap icon-green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                  </div>
+                  <div class="kpi-data">
+                    <span class="kpi-label">SIAP MUAT PNK &amp; BDJ</span>
+                    <h3 class="kpi-val" id="valSiapMuatPnkBdj">0</h3>
+                    <span class="kpi-sub">Motor Dokumen + SPL Langsung Kirim</span>
+                  </div>
+                </div>
+
+                <div class="kendaraan-kpi-card card-kpi-blue" id="kpiCardMotorDok" data-filter="motor_dok" title="Klik untuk memfilter Motor Berdokumen">
+                  <div class="kpi-icon-wrap icon-blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                  </div>
+                  <div class="kpi-data">
+                    <span class="kpi-label">MOTOR BERDOKUMEN</span>
+                    <h3 class="kpi-val" id="valMotorDokumen">0</h3>
+                    <span class="kpi-sub">Dokumen Lengkap &amp; Aman</span>
+                  </div>
+                </div>
+
+                <div class="kendaraan-kpi-card card-kpi-cyan" id="kpiCardSpl" data-filter="spl" title="Klik untuk memfilter Sepeda Listrik (SPL)">
+                  <div class="kpi-icon-wrap icon-cyan">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                  </div>
+                  <div class="kpi-data">
+                    <span class="kpi-label">SEPEDA LISTRIK (SPL)</span>
+                    <h3 class="kpi-val" id="valTotalSpl">0</h3>
+                    <span class="kpi-sub" id="valSplSub">Unit Siap Berangkat (Aki ON / OFF)</span>
+                  </div>
+                </div>
+
+                <div class="kendaraan-kpi-card card-kpi-rose" id="kpiCardMotorHold" data-filter="hold" title="Klik untuk memfilter MOTOR HOLD (Dokumen Kurang)">
+                  <div class="kpi-icon-wrap icon-rose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                    </svg>
+                  </div>
+                  <div class="kpi-data">
+                    <span class="kpi-label">MOTOR NON-DOKUMEN (HOLD)</span>
+                    <h3 class="kpi-val" id="valMotorHold">0</h3>
+                    <span class="kpi-sub">Tertahan Butuh Konfirmasi PIC</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MATRIKS REKAP STATUS PER TUJUAN (PNK & BDJ) -->
+              <div class="kendaraan-matrix-card">
+                <div class="matrix-card-header">
+                  <div class="matrix-header-title">
+                    <span class="matrix-badge">📊 REKAP CAPACITY</span>
+                    <h4>1. Rekap Status Kendaraan Per Tujuan (PNK &amp; BDJ)</h4>
+                  </div>
+                  <div class="matrix-header-date" id="kendaraanMatrixDate">
+                    Tanggal Laporan: <strong>Hari Ini</strong>
+                  </div>
+                </div>
+
+                <div class="reconcile-table-wrap">
+                  <table class="reconcile-table kendaraan-matrix-table">
+                    <thead>
+                      <tr>
+                        <th>Tujuan</th>
+                        <th>Motor Bensin (Dok)</th>
+                        <th>Motor Listrik (Dok)</th>
+                        <th style="color: #38bdf8;">Total Motor Dokumen</th>
+                        <th>SPL (Aki ON)</th>
+                        <th>SPL (Aki OFF)</th>
+                        <th style="color: #22d3ee;">Total SPL</th>
+                        <th style="color: #34d399; font-weight: 800;">TOTAL SIAP MUAT</th>
+                        <th style="color: #fb7185;">Motor Non-Dokumen (HOLD)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kendaraanMatrixBody">
+                      <!-- Populated dynamically via JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 2 GENERATOR TOOLS (WHATSAPP CAPACITY & FEISHU/WA DOKUMEN) -->
+              <div class="kendaraan-generators-grid">
+                <!-- TOOL 1: LAPORAN CAPACITY WHATSAPP -->
+                <div class="generator-box box-wa">
+                  <div class="generator-header">
+                    <div class="gen-title-group">
+                      <span class="gen-badge-green">📱 FORMAT WHATSAPP CAPACITY</span>
+                      <h5>Template Laporan Siap Kirim (Ke Tim Capacity / Mobil)</h5>
+                      <p>Teks otomatis mengkalkulasi Motor Berdokumen &amp; SPL tujuan PNK dan BDJ hari ini.</p>
+                    </div>
+                    <button type="button" class="btn-copy-template btn-copy-wa" id="btnCopyWaCapacity">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                      </svg>
+                      <span id="btnCopyWaCapacityText">Salin Format WA</span>
+                    </button>
+                  </div>
+                  <pre class="generator-preview" id="previewWaCapacity">Memuat format laporan...</pre>
+                </div>
+
+                <!-- TOOL 2: TAGIHAN DOKUMEN & FEISHU PUSH -->
+                <div class="generator-box box-feishu">
+                  <div class="generator-header">
+                    <div class="gen-title-group">
+                      <span class="gen-badge-purple">🚨 TAGIHAN DOKUMEN (HOLD)</span>
+                      <h5>Generator Tagihan Dokumen ke Gateway Asal &amp; Feishu</h5>
+                      <p>Otomatis mencocokkan AWB HOLD ke Master 14.300+ Outlet &amp; PIC Gateway.</p>
+                    </div>
+                    <div class="gen-actions-dual">
+                      <button type="button" class="btn-copy-template btn-copy-doc" id="btnCopyWaDokumen" title="Salin template tagihan untuk grup WhatsApp">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                        </svg>
+                        <span id="btnCopyWaDokumenText">Salin Pesan WA</span>
+                      </button>
+                      <button type="button" class="btn-feishu-push" id="btnPushFeishu" title="Kirim otomatis ke bot grup Feishu / Lark">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                          <line x1="22" y1="2" x2="11" y2="13"/>
+                          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                        <span id="btnPushFeishuText">🚀 Kirim ke Feishu</span>
+                      </button>
+                    </div>
+                  </div>
+                  <pre class="generator-preview" id="previewWaDokumen">Memuat data unit HOLD...</pre>
+                </div>
+              </div>
+
+              <!-- DATA DETAIL KENDARAAN TABLE -->
+              <div class="kendaraan-table-section">
+                <div class="kendaraan-table-toolbar">
+                  <div class="toolbar-filter-tabs" id="kendaraanFilterTabs">
+                    <button type="button" class="filter-tab-btn active" data-tab="all">Semua (<span id="countTabAll">0</span>)</button>
+                    <button type="button" class="filter-tab-btn tab-green" data-tab="siap_muat">Siap Muat (<span id="countTabSiapMuat">0</span>)</button>
+                    <button type="button" class="filter-tab-btn tab-rose" data-tab="hold">HOLD / Butuh Dokumen (<span id="countTabHold">0</span>)</button>
+                    <button type="button" class="filter-tab-btn tab-pnk" data-tab="pnk">Tujuan PNK (<span id="countTabPnk">0</span>)</button>
+                    <button type="button" class="filter-tab-btn tab-bdj" data-tab="bdj">Tujuan BDJ (<span id="countTabBdj">0</span>)</button>
+                  </div>
+                  <div class="toolbar-search-wrap">
+                    <input type="text" id="kendaraanSearchInput" placeholder="Cari No AWB, Petugas, Outlet, Gateway..." />
+                    <button type="button" class="btn-clear-search hidden" id="btnClearKendaraanSearch">×</button>
+                  </div>
+                </div>
+
+                <div class="reconcile-table-wrap">
+                  <table class="reconcile-table kendaraan-data-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 40px; text-align: center;">NO</th>
+                        <th>NO AWB / RESI</th>
+                        <th>TIPE KENDARAAN</th>
+                        <th>TUJUAN</th>
+                        <th>STATUS DOKUMEN / AKI</th>
+                        <th>GATEWAY ASAL &amp; PIC</th>
+                        <th>KOLI</th>
+                        <th>KETERANGAN</th>
+                        <th>TANGGAL &amp; PETUGAS</th>
+                        <th style="text-align: center;">AKSI</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kendaraanTableBody">
+                      <!-- Rendered dynamically -->
+                    </tbody>
+                  </table>
+                  <div id="kendaraanEmptyState" class="reconcile-empty-card hidden">
+                    <div class="empty-icon-wrap">🛵</div>
+                    <h4>Belum Ada Data Kendaraan</h4>
+                    <p>Klik tombol "Sinkron AppSheet" untuk menarik data dari Google Sheet atau klik "+ Input Unit" untuk menambah manual.</p>
+                  </div>
+                  <div id="kendaraanNoMatchState" class="reconcile-empty-card hidden">
+                    <div class="empty-icon-wrap">🔎</div>
+                    <h4>Tidak Ada Data yang Sesuai</h4>
+                    <p>Coba sesuaikan kata kunci pencarian atau tab filter yang aktif.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ============================================================== -->
+          <!-- VIEW: GENERATOR FEISHU - MONITORING DOKUMEN KENDARAAN          -->
+          <!-- ============================================================== -->
+          <div id="viewFeishuDoc" class="view-page hidden">
+            <section class="panel feishu-panel">
+              <!-- HEADER SECTION -->
+              <div class="feishu-header">
+                <div class="feishu-header-titles">
+                  <div class="feishu-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m22 2-7 20-4-9-9-4Z"/>
+                      <path d="M22 2 11 13"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="feishu-title">GENERATOR FEISHU - MONITORING DOKUMEN KENDARAAN</h2>
+                    <p class="feishu-subtitle">Sistem Otomasi Input AWB, Outlet &amp; Generator Pesan WhatsApp Dinamis ke Gateway Asal &amp; Bot Feishu.</p>
+                  </div>
+                </div>
+                <div class="feishu-header-actions">
+                  <button type="button" class="btn-feishu-action btn-pull" id="btnPullFeishuHold" title="Ambil daftar unit Motor HOLD yang aktif saat ini">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Tarik Unit HOLD Monitoring</span>
+                  </button>
+                  <button type="button" class="btn-feishu-action btn-paste" id="btnOpenBatchAwbModal" title="Paste massal nomor resi (10 - 100 resi sekaligus)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                      <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+                    </svg>
+                    <span>+ Paste Multi-AWB</span>
+                  </button>
+                  <button type="button" class="btn-feishu-action btn-gateways" id="btnOpenMasterGatewaysFromFeishu" title="Lihat database 122 Gateway &amp; 14.317 Outlet">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                    </svg>
+                    <span>Master PIC Gateway</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- STAT STRIP -->
+              <div class="feishu-stat-strip">
+                <div class="feishu-stat-card">
+                  <span class="feishu-stat-label">TOTAL DATA AWB HOLD</span>
+                  <div class="feishu-stat-row">
+                    <h3 class="feishu-stat-val text-rose" id="feishuTotalAwb">0 Resi</h3>
+                    <span class="feishu-stat-badge">Unit Non-Dokumen</span>
+                  </div>
+                </div>
+                <div class="feishu-stat-card">
+                  <span class="feishu-stat-label">TERHUBUNG KE GATEWAY &amp; PIC</span>
+                  <div class="feishu-stat-row">
+                    <h3 class="feishu-stat-val text-cyan" id="feishuMappedAwb">0 / 0</h3>
+                    <span class="feishu-stat-badge">14.317 Outlet DB</span>
+                  </div>
+                </div>
+                <div class="feishu-stat-card">
+                  <span class="feishu-stat-label">WAKTU GENERATOR</span>
+                  <div class="feishu-stat-row">
+                    <h3 class="feishu-stat-val text-amber" id="feishuTimestamp">--:--</h3>
+                    <span class="feishu-stat-badge" id="feishuDateStr">Hari Ini</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MAIN 2-COLUMN WORKSPACE: LEFT TABLE & RIGHT GENERATOR BOX -->
+              <div class="feishu-workspace-grid">
+                <!-- LEFT COLUMN: TABLE OF HOLD AWB & MAPPED GATEWAYS -->
+                <div class="feishu-table-card">
+                  <div class="feishu-card-topbar">
+                    <div class="feishu-topbar-title">
+                      <h5>Daftar Resi Motor Non-Dokumen (HOLD)</h5>
+                      <span class="badge-count" id="feishuTableCount">0 Resi</span>
+                    </div>
+                    <div class="feishu-table-search">
+                      <input type="text" id="feishuTableSearch" placeholder="Cari AWB, Outlet, Gateway, PIC..." />
+                    </div>
+                  </div>
+
+                  <div class="reconcile-table-wrap" style="max-height: 520px; overflow-y: auto;">
+                    <table class="reconcile-table feishu-data-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 45px; text-align: center;">NO</th>
+                          <th>AWB NON DOKUMEN</th>
+                          <th>OUTLET / ASAL</th>
+                          <th>GATEWAY &amp; TAGGING PIC</th>
+                          <th style="text-align: center;">CHAT WA</th>
+                          <th style="width: 40px; text-align: center;">AKSI</th>
+                        </tr>
+                      </thead>
+                      <tbody id="feishuTableBody">
+                        <!-- Populated dynamically -->
+                      </tbody>
+                    </table>
+
+                    <div id="feishuTableEmpty" class="reconcile-empty-card">
+                      <div class="empty-icon-wrap">📋</div>
+                      <h4>Belum Ada Data Resi HOLD</h4>
+                      <p>Klik tombol <strong>"Tarik Unit HOLD Monitoring"</strong> untuk mengambil unit nunggak dokumen dari gudang, atau klik <strong>"+ Paste Multi-AWB"</strong> untuk paste daftar resi secara massal.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RIGHT COLUMN: DYNAMIC WHATSAPP & FEISHU MESSAGE GENERATOR -->
+                <div class="feishu-generator-card">
+                  <div class="feishu-gen-header">
+                    <div class="gen-title-box">
+                      <span class="gen-tag-purple">TEMPLATE PESAN OTOMATIS</span>
+                      <h4>Generator Pesan Siap Kirim ke Grup</h4>
+                      <p>Format otomatis merangkai AWB, Outlet Asal, Gateway, dan Tagging PIC.</p>
+                    </div>
+                  </div>
+
+                  <!-- GREETING CHIPS -->
+                  <div class="greeting-chips-row">
+                    <span class="greeting-label">Sapaan:</span>
+                    <button type="button" class="chip-greeting active" data-greeting="Selamat pagi">Pagi</button>
+                    <button type="button" class="chip-greeting" data-greeting="Selamat siang">Siang</button>
+                    <button type="button" class="chip-greeting" data-greeting="Selamat sore">Sore</button>
+                    <button type="button" class="chip-greeting" data-greeting="Selamat malam">Malam</button>
+                  </div>
+
+                  <!-- LIVE PREVIEW TEXTAREA -->
+                  <div class="generator-preview-box">
+                    <div class="preview-box-header">
+                      <span>PREVIEW TEKS PESAN:</span>
+                      <span class="preview-hint">💡 Klik tombol salin untuk langsung kirim ke grup WA / bot</span>
+                    </div>
+                    <pre class="feishu-preview-content" id="feishuDynamicPreview">Memuat teks pesan...</pre>
+                  </div>
+
+                  <!-- ACTION BUTTONS -->
+                  <div class="feishu-gen-actions">
+                    <button type="button" class="btn-feishu-main btn-copy-whatsapp" id="btnCopyFeishuMessage">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                      </svg>
+                      <span id="btnCopyFeishuMessageText">📋 Salin Pesan WhatsApp</span>
+                    </button>
+
+                    <button type="button" class="btn-feishu-main btn-send-bot" id="btnSendToFeishuBot">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                      </svg>
+                      <span id="btnSendToFeishuBotText">🚀 Kirim ke Bot Feishu</span>
+                    </button>
+                  </div>
+
+                  <div class="feishu-gen-footer-hint">
+                    <span>Target Bot: <strong>Grup Feishu / Lark Ekspedisi</strong> &bull; Terhubung ke Webhook Resmi</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         </main>
       </div>
     </div>
@@ -2353,6 +2781,224 @@
           <div class="form-actions">
             <button type="button" class="secondary-btn" id="cancelQuickAddBtn">Batal</button>
             <button type="submit" class="primary-btn" id="submitQuickAddBtn">Daftarkan Sekarang</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL INPUT / SCAN KENDARAAN (APPSHEET STYLE)-->
+    <!-- ============================================ -->
+    <div id="kendaraanInputModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="kendaraanModalTitle">
+      <div class="modal-content modal-kendaraan-appsheet">
+        <div class="modal-header" style="padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); margin-bottom: 12px;">
+          <div>
+            <span class="eyebrow text-emerald" style="font-size: 0.72rem; letter-spacing: 0.06em;">APPSHEET INSTOCK SCANNER</span>
+            <h3 id="kendaraanModalTitle" style="font-size: 1.15rem; margin: 2px 0 0 0;">Input Kendaraan Baru</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeKendaraanModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="kendaraanForm">
+          <input type="hidden" id="kendaraanId" name="id" />
+
+          <div class="appsheet-form-stack">
+            <!-- 1. AWB -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label" for="kendaraanAwb">AWB</label>
+              <div class="appsheet-input-wrap">
+                <input type="text" id="kendaraanAwb" class="appsheet-input" placeholder="Scan / ketik nomor resi..." required autofocus />
+                <span class="appsheet-input-icon" id="btnScanAwbIcon" title="Scan Barcode PDA">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="6" height="6" x="3" y="3" rx="1"/>
+                    <rect width="6" height="6" x="15" y="3" rx="1"/>
+                    <rect width="6" height="6" x="15" y="15" rx="1"/>
+                    <rect width="6" height="6" x="3" y="15" rx="1"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- 2. TLC_Tujuan -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">TLC_Tujuan<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn active" data-group="tlc" data-val="BDJ">BDJ</button>
+                <button type="button" class="appsheet-toggle-btn" data-group="tlc" data-val="PNK">PNK</button>
+              </div>
+              <input type="hidden" id="kendaraanTujuan" value="BDJ" />
+            </div>
+
+            <!-- 3. TipeMotor -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">TipeMotor<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn active" data-group="tipe" data-val="Motor Bensin">Motor Bensin</button>
+                <button type="button" class="appsheet-toggle-btn" data-group="tipe" data-val="Motor Listrik">Motor Listrik</button>
+              </div>
+              <div class="appsheet-btn-group-single">
+                <button type="button" class="appsheet-toggle-btn" data-group="tipe" data-val="Sepeda Listrik">Sepeda Listrik</button>
+              </div>
+              <input type="hidden" id="kendaraanTipe" value="Motor Bensin" />
+            </div>
+
+            <!-- 4A. Dokumen (Conditional for Motor) -->
+            <div class="appsheet-field" id="wrapFieldDokumen">
+              <label class="appsheet-field-label">Dokumen<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn" data-group="dokumen" data-val="Lengkap">Lengkap</button>
+                <button type="button" class="appsheet-toggle-btn active" data-group="dokumen" data-val="Tidak">Tidak</button>
+              </div>
+              <input type="hidden" id="kendaraanStatusDokumen" value="Tidak" />
+            </div>
+
+            <!-- 4B. Status Aki (Conditional for Sepeda Listrik) -->
+            <div class="appsheet-field hidden" id="wrapFieldStatusAki">
+              <label class="appsheet-field-label">Status Aki<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn active" data-group="aki" data-val="ON">ON</button>
+                <button type="button" class="appsheet-toggle-btn" data-group="aki" data-val="OFF">OFF</button>
+              </div>
+              <input type="hidden" id="kendaraanStatusAki" value="ON" />
+            </div>
+
+            <!-- 5. koli -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">koli</label>
+              <div class="appsheet-stepper-wrap">
+                <input type="number" id="kendaraanKoli" class="appsheet-stepper-val" value="1" min="1" max="99" />
+                <div class="appsheet-stepper-actions">
+                  <button type="button" class="appsheet-stepper-btn" id="btnKoliMinus" title="Kurangi">−</button>
+                  <button type="button" class="appsheet-stepper-btn" id="btnKoliPlus" title="Tambah">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Keterangan -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">Keterangan</label>
+              <textarea id="kendaraanKeterangan" class="appsheet-textarea" placeholder="Contoh: Packing kayu, kunci ada..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" id="cancelKendaraanModalBtn" style="padding: 10px 18px;">Batal</button>
+            <button type="submit" class="primary-btn" id="submitKendaraanBtn" style="padding: 10px 22px;">Simpan Unit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL MASTER GATEWAY & PIC WHATSAPP (122 GW) -->
+    <!-- ============================================ -->
+    <div id="masterGatewaysModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="gwModalTitle">
+      <div class="modal-content modal-gateways-wide">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">DATABASE MASTER PIC GATEWAY</span>
+            <h3 id="gwModalTitle">122 PIC Gateway &amp; 14.317 Outlet Terdaftar</h3>
+            <p class="modal-subtitle">Daftar PIC Gateway digunakan otomatis untuk menagih unit Motor HOLD via WhatsApp dan bot Feishu.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeMasterGatewaysBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div class="gateways-modal-toolbar">
+          <div class="gateways-search-wrap">
+            <input type="text" id="searchGatewayInput" placeholder="Cari Kode TLC (BDJ99A), Nama Gateway, Kota, atau PIC..." />
+            <button type="button" class="btn-clear-search hidden" id="btnClearGatewaySearch">×</button>
+          </div>
+          <div class="gateways-stat-badge">
+            <span id="gatewayCountBadge">122 Gateway</span> &bull; <span>14.317 Outlet</span>
+          </div>
+        </div>
+
+        <div class="gateways-table-wrap">
+          <table class="reconcile-table gateways-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">NO</th>
+                <th>KODE TLC</th>
+                <th>NAMA GATEWAY</th>
+                <th>AREA / WILAYAH</th>
+                <th>NAMA PIC</th>
+                <th>NO WHATSAPP</th>
+                <th style="text-align: center;">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="masterGatewaysTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer-bar">
+          <button type="button" class="secondary-btn" id="closeMasterGatewaysBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL EDIT PIC GATEWAY CEPAT                 -->
+    <!-- ============================================ -->
+    <div id="editGatewayPicModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="editPicTitle">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">UPDATE KONTAK PIC</span>
+            <h3 id="editPicTitle">Edit PIC Gateway</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeEditPicModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+        <form id="editGatewayPicForm">
+          <input type="hidden" id="editPicGatewayCode" />
+          <div class="form-grid single-col">
+            <label>
+              <span>Kode Gateway</span>
+              <input type="text" id="editPicGatewayLabel" readonly disabled style="opacity: 0.7;" />
+            </label>
+            <label>
+              <span>Nama PIC Gateway *</span>
+              <input type="text" id="editPicName" placeholder="Contoh: Yoga / Rian Cargo" required />
+            </label>
+            <label>
+              <span>Nomor WhatsApp *</span>
+              <input type="text" id="editPicPhone" placeholder="Contoh: 08123456789 / 628123456789" required />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelEditPicBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="saveEditPicBtn">Simpan Kontak</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL PASTE MULTI-AWB MASSAL (FEISHU)        -->
+    <!-- ============================================ -->
+    <div id="feishuBatchModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="batchModalTitle">
+      <div class="modal-content modal-kendaraan-appsheet" style="width: min(520px, 95%);">
+        <div class="modal-header" style="padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); margin-bottom: 12px;">
+          <div>
+            <span class="eyebrow text-emerald" style="font-size: 0.72rem; letter-spacing: 0.06em;">INPUT CEPAT MASSAL</span>
+            <h3 id="batchModalTitle" style="font-size: 1.15rem; margin: 2px 0 0 0;">Paste Multi-AWB Non-Dokumen</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeFeishuBatchModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="feishuBatchForm">
+          <div class="appsheet-form-stack">
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">Tempel Daftar Nomor Resi / AWB (Bisa 10 - 100 AWB)</label>
+              <textarea id="feishuBatchTextarea" class="appsheet-textarea" style="min-height: 160px; font-family: monospace; font-size: 0.88rem;" placeholder="201799206750&#10;201795884847&#10;201806106477&#10;... (Satu AWB per baris)" required></textarea>
+              <span style="font-size: 0.75rem; color: #94a3b8;">Sistem akan otomatis mencocokkan setiap resi ke database history &amp; master PIC gateway untuk menarik outlet &amp; PIC-nya.</span>
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" id="cancelFeishuBatchModalBtn" style="padding: 10px 18px;">Batal</button>
+            <button type="submit" class="primary-btn" id="submitFeishuBatchBtn" style="padding: 10px 22px;">Proses &amp; Cocokkan PIC</button>
           </div>
         </form>
       </div>

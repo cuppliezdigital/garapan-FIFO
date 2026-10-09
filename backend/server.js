@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const monitoringRoutes = require('./routes/monitoringRoutes');
 const authRoutes = require('./routes/authRoutes');
 const auditRoutes = require('./routes/auditRoutes');
+const kendaraanRoutes = require('./routes/kendaraanRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -95,6 +96,7 @@ app.use('/api', (req, res, next) => {
 });
 app.use('/api', monitoringRoutes);
 app.use('/api', auditRoutes);
+app.use('/api', kendaraanRoutes);
 app.use('/api/auth', authRoutes);
 
 const publicDir = path.join(__dirname, '../public');

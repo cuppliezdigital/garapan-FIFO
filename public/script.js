@@ -175,6 +175,8 @@ const pageEyebrow = document.getElementById('pageEyebrow');
 const viewPages = {
   monitoring: document.getElementById('viewMonitoring'),
   reconcile: document.getElementById('viewReconcile'),
+  kendaraan: document.getElementById('viewKendaraan'),
+  'generator-feishu': document.getElementById('viewFeishuDoc'),
   archive: document.getElementById('viewArchive'),
   history: document.getElementById('viewHistory'),
   users: document.getElementById('viewUsers'),
@@ -186,6 +188,8 @@ const viewPages = {
 const navLinks = {
   monitoring: document.getElementById('navMonitoring'),
   reconcile: document.getElementById('navReconcile'),
+  kendaraan: document.getElementById('navKendaraan'),
+  'generator-feishu': document.getElementById('navFeishuDoc'),
   archive: document.getElementById('navArchive'),
   history: document.getElementById('navHistory'),
   users: document.getElementById('navUsers'),
@@ -211,6 +215,8 @@ function handleHashRoute() {
   const routeConfig = {
     monitoring: { title: 'FIFO Dashboard', eyebrow: 'Monitoring System' },
     reconcile: { title: 'Rekonsiliasi Muat-Bongkar', eyebrow: 'Pemeriksaan Selisih & Non-AWB' },
+    kendaraan: { title: 'Monitoring Kendaraan & Capacity', eyebrow: 'Capacity Report & Otomasi Gateway' },
+    'generator-feishu': { title: 'Generator Feishu - Dokumen', eyebrow: 'Otomasi Tagihan & WhatsApp Dinamis' },
     archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
     history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
     users: { title: 'Manajemen User', eyebrow: 'Administrasi Sistem' },
@@ -257,6 +263,11 @@ function handleHashRoute() {
 
   if (target === 'monitoring') {
     if (!monitoringData.length) fetchMonitoring();
+  } else if (target === 'kendaraan') {
+    fetchKendaraanDashboard();
+    fetchKendaraanList();
+  } else if (target === 'generator-feishu') {
+    fetchFeishuHoldList();
   } else if (target === 'archive') {
     fetchMonitoringArchive();
   } else if (target === 'history') {
@@ -6734,3 +6745,1150 @@ bootstrapAuth();
     });
   }
 })();
+
+// ==========================================================================
+// MONITORING INSTOCK KENDARAAN & CAPACITY REPORT MODULE
+// ==========================================================================
+
+let kendaraanListData = [];
+let kendaraanFilterTab = 'all';
+let masterGatewaysData = [];
+let kendaraanSearchDebounce = null;
+let masterGatewaySearchDebounce = null;
+
+function escKendaraanHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  })[m]);
+}
+
+// 1. Fetch & Render Dashboard & KPIs
+async function fetchKendaraanDashboard() {
+  try {
+    const res = await fetch('/api/kendaraan/dashboard', { credentials: 'include' });
+    if (!res.ok) throw new Error('Gagal memuat dashboard kendaraan');
+    const data = await res.json();
+    if (!data.success) return;
+
+    // Update KPI Cards
+    const valSiapMuat = document.getElementById('valSiapMuatPnkBdj');
+    const valMotorDok = document.getElementById('valMotorDokumen');
+    const valTotalSpl = document.getElementById('valTotalSpl');
+    const valMotorHold = document.getElementById('valMotorHold');
+
+    if (valSiapMuat) valSiapMuat.textContent = data.kpi.siap_muat_pnk_bdj || 0;
+    if (valMotorDok) valMotorDok.textContent = data.kpi.total_motor_dokumen || 0;
+    if (valTotalSpl) valTotalSpl.textContent = data.kpi.total_spl || 0;
+    if (valMotorHold) valMotorHold.textContent = data.kpi.total_motor_hold || 0;
+
+    // Render Matrix Table
+    renderKendaraanMatrix(data.matrix);
+
+    // Previews for Copy
+    const previewWa = document.getElementById('previewWaCapacity');
+    if (previewWa && data.templates?.capacity_wa) {
+      previewWa.textContent = data.templates.capacity_wa;
+    }
+
+    const previewDoc = document.getElementById('previewWaDokumen');
+    if (previewDoc && data.templates?.dokumen_wa) {
+      previewDoc.textContent = data.templates.dokumen_wa;
+    }
+
+    const dateHeader = document.getElementById('kendaraanMatrixDate');
+    if (dateHeader) {
+      const now = new Date();
+      dateHeader.innerHTML = `Tanggal Laporan: <strong>${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>`;
+    }
+  } catch (err) {
+    console.error('fetchKendaraanDashboard error:', err);
+  }
+}
+
+// 2. Render Matrix Table (Exact Match with Capacity Sheet)
+function renderKendaraanMatrix(matrix) {
+  const tbody = document.getElementById('kendaraanMatrixBody');
+  if (!tbody || !matrix) return;
+
+  const rows = [
+    { key: 'PNK', label: 'Pontianak (PNK)', data: matrix.PNK },
+    { key: 'BDJ', label: 'Banjarmasin (BDJ)', data: matrix.BDJ },
+    { key: 'TOTAL', label: 'TOTAL (PNK + BDJ)', data: matrix.TOTAL, isTotal: true }
+  ];
+
+  tbody.innerHTML = rows.map(r => {
+    const d = r.data || {};
+    const trClass = r.isTotal ? 'row-total-matrix' : '';
+    const labelHtml = r.isTotal ? `<strong>${r.label}</strong>` : `<span class="tag-badge ${r.key === 'PNK' ? 'tag-pnk' : 'tag-bdj'}">${r.label}</span>`;
+    const mDok = d.total_motor_dok ?? d.total_motor_dokumen ?? ((d.motor_bensin_dok || 0) + (d.motor_listrik_dok || 0));
+    const sTot = d.total_spl ?? ((d.spl_on || 0) + (d.spl_off || 0));
+    const siapMuat = d.total_siap_muat ?? (mDok + sTot);
+    const hold = d.total_nondok ?? d.motor_hold ?? 0;
+
+    return `
+      <tr class="${trClass}">
+        <td>${labelHtml}</td>
+        <td style="text-align: right; font-weight: 600;">${d.motor_bensin_dok ?? d.motor_bensin ?? 0}</td>
+        <td style="text-align: right; font-weight: 600;">${d.motor_listrik_dok ?? d.motor_listrik ?? 0}</td>
+        <td style="text-align: right; font-weight: 700; color: #38bdf8;">${mDok}</td>
+        <td style="text-align: right; font-weight: 600;">${d.spl_on ?? d.spl_aki_on ?? 0}</td>
+        <td style="text-align: right; font-weight: 600;">${d.spl_off ?? d.spl_aki_off ?? 0}</td>
+        <td style="text-align: right; font-weight: 700; color: #22d3ee;">${sTot}</td>
+        <td style="text-align: right; font-weight: 800; color: #34d399; font-size: 1rem;">${siapMuat}</td>
+        <td style="text-align: right; font-weight: 700; color: #fb7185;">${hold}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 3. Fetch Vehicles List & Filter
+async function fetchKendaraanList() {
+  try {
+    const searchInput = document.getElementById('kendaraanSearchInput');
+    const searchVal = searchInput ? searchInput.value.trim() : '';
+    
+    let url = `/api/kendaraan/list?`;
+    if (searchVal) {
+      url += `search=${encodeURIComponent(searchVal)}&`;
+    }
+
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error('Gagal memuat list kendaraan');
+    const data = await res.json();
+    kendaraanListData = data.data || [];
+
+    updateKendaraanTabCounters();
+    renderKendaraanTable();
+  } catch (err) {
+    console.error('fetchKendaraanList error:', err);
+  }
+}
+
+// 4. Update Tab Counters
+function updateKendaraanTabCounters() {
+  const allCount = kendaraanListData.length;
+  let siapCount = 0;
+  let holdCount = 0;
+  let pnkCount = 0;
+  let bdjCount = 0;
+
+  kendaraanListData.forEach(k => {
+    const tipe = (k.tipe_kendaraan || '').toLowerCase();
+    const dok = (k.status_dokumen || '');
+    const isSpl = tipe.includes('spl') || tipe.includes('sepeda');
+    const isDokumen = dok === 'Lengkap';
+    const isHold = (tipe.includes('motor') && !isDokumen) || k.status_muat === 'hold';
+    const isSiap = isSpl || (tipe.includes('motor') && isDokumen);
+
+    if (isSiap) siapCount++;
+    if (isHold) holdCount++;
+
+    const tlc = (k.tlc_tujuan || '').toUpperCase();
+    if (tlc.includes('PNK') || tlc.includes('PONTIANAK')) pnkCount++;
+    if (tlc.includes('BDJ') || tlc.includes('BANJARMASIN')) bdjCount++;
+  });
+
+  const elAll = document.getElementById('countTabAll');
+  const elSiap = document.getElementById('countTabSiapMuat');
+  const elHold = document.getElementById('countTabHold');
+  const elPnk = document.getElementById('countTabPnk');
+  const elBdj = document.getElementById('countTabBdj');
+
+  if (elAll) elAll.textContent = allCount;
+  if (elSiap) elSiap.textContent = siapCount;
+  if (elHold) elHold.textContent = holdCount;
+  if (elPnk) elPnk.textContent = pnkCount;
+  if (elBdj) elBdj.textContent = bdjCount;
+}
+
+// 5. Render Vehicles Table
+function renderKendaraanTable() {
+  const tbody = document.getElementById('kendaraanTableBody');
+  const emptyState = document.getElementById('kendaraanEmptyState');
+  const noMatchState = document.getElementById('kendaraanNoMatchState');
+  if (!tbody) return;
+
+  let filtered = [...kendaraanListData];
+
+  // Apply tab filter
+  if (kendaraanFilterTab === 'siap_muat') {
+    filtered = filtered.filter(k => {
+      const tipe = (k.tipe_kendaraan || '').toLowerCase();
+      const isSpl = tipe.includes('spl') || tipe.includes('sepeda');
+      const isDok = k.status_dokumen === 'Lengkap';
+      return isSpl || (tipe.includes('motor') && isDok);
+    });
+  } else if (kendaraanFilterTab === 'hold') {
+    filtered = filtered.filter(k => {
+      const tipe = (k.tipe_kendaraan || '').toLowerCase();
+      return (tipe.includes('motor') && k.status_dokumen !== 'Lengkap') || k.status_muat === 'hold';
+    });
+  } else if (kendaraanFilterTab === 'pnk') {
+    filtered = filtered.filter(k => (k.tlc_tujuan || '').toUpperCase().includes('PNK'));
+  } else if (kendaraanFilterTab === 'bdj') {
+    filtered = filtered.filter(k => (k.tlc_tujuan || '').toUpperCase().includes('BDJ'));
+  }
+
+  if (kendaraanListData.length === 0) {
+    tbody.innerHTML = '';
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (noMatchState) noMatchState.classList.add('hidden');
+    return;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    if (emptyState) emptyState.classList.add('hidden');
+    if (noMatchState) noMatchState.classList.remove('hidden');
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add('hidden');
+  if (noMatchState) noMatchState.classList.add('hidden');
+
+  tbody.innerHTML = filtered.map((k, idx) => {
+    // Badges logic
+    const tlc = (k.tlc_tujuan || '').toUpperCase();
+    let tujuanBadge = `<span class="tag-badge tag-lainnya">${escKendaraanHtml(tlc || '-')}</span>`;
+    if (tlc.includes('PNK') || tlc.includes('PONTIANAK')) {
+      tujuanBadge = `<span class="tag-badge tag-pnk">📍 PNK</span>`;
+    } else if (tlc.includes('BDJ') || tlc.includes('BANJARMASIN')) {
+      tujuanBadge = `<span class="tag-badge tag-bdj">📍 BDJ</span>`;
+    }
+
+    const tipe = k.tipe_kendaraan || '-';
+    let tipeBadge = `<span class="tag-badge tag-motor-bensin">${escKendaraanHtml(tipe)}</span>`;
+    if (tipe.toLowerCase().includes('spl') || tipe.toLowerCase().includes('sepeda')) {
+      tipeBadge = `<span class="tag-badge tag-spl">⚡ Sepeda Listrik</span>`;
+    } else if (tipe.toLowerCase().includes('listrik')) {
+      tipeBadge = `<span class="tag-badge tag-motor-listrik">🔌 Motor Listrik</span>`;
+    }
+
+    const dok = k.status_dokumen || '-';
+    let dokBadge = `<span class="tag-badge tag-dok-tidak">❌ Non-Dokumen (HOLD)</span>`;
+    if (dok === 'Lengkap') {
+      dokBadge = `<span class="tag-badge tag-dok-lengkap">✅ Dokumen Lengkap</span>`;
+    } else if (tipe.toLowerCase().includes('spl') || tipe.toLowerCase().includes('sepeda')) {
+      const aki = k.status_spl || k.status_aki || 'Aki Terpasang';
+      const isOff = aki.toLowerCase().includes('lepas') || aki.toLowerCase().includes('off');
+      dokBadge = isOff 
+        ? `<span class="tag-badge tag-spl" style="opacity: 0.85;">Aki Lepas (OFF)</span>` 
+        : `<span class="tag-badge tag-dok-lengkap">Aki Terpasang (ON)</span>`;
+    }
+
+    // Gateway & PIC info
+    const gw = k.effective_gateway || k.nama_gateway || '-';
+    const pic = k.effective_pic || k.tagging_pic || '-';
+    const outlet = k.effective_outlet || k.kode_outlet || '';
+
+    // Direct WhatsApp Link
+    let waButton = '';
+    const phone = k.pic_phone || '';
+    if (pic !== '-' && phone) {
+      const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '62');
+      const waMsg = encodeURIComponent(`Halo Kak ${pic}, izin konfirmasi unit tertahan dokumen di Gudang: No Resi ${k.awb} tujuan ${k.tlc_tujuan}. Mohon bantuannya terimakasih.`);
+      waButton = `<a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" rel="noopener noreferrer" class="wa-btn-link" title="Chat WhatsApp PIC Gateway">📱 WA PIC</a>`;
+    }
+
+    // Format date
+    let dateStr = '-';
+    if (k.tanggal_input) {
+      const d = new Date(k.tanggal_input);
+      dateStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    return `
+      <tr>
+        <td style="text-align: center; color: #94a3b8; font-size: 0.8rem;">${idx + 1}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <strong style="color: #f8fafc; font-family: monospace; font-size: 0.88rem;">${escKendaraanHtml(k.awb)}</strong>
+            <button type="button" class="btn-copy-mini" onclick="navigator.clipboard.writeText('${escKendaraanHtml(k.awb)}'); showAppAlert('No AWB disalin ke clipboard!');" title="Salin AWB">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+        </td>
+        <td>${tipeBadge}</td>
+        <td>${tujuanBadge}</td>
+        <td>${dokBadge}</td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-weight: 600; color: #e2e8f0; font-size: 0.82rem;">${escKendaraanHtml(gw)}</span>
+            <span style="font-size: 0.75rem; color: #94a3b8;">${outlet ? escKendaraanHtml(outlet) + ' &bull; ' : ''}PIC: <strong style="color: #cbd5e1;">${escKendaraanHtml(pic)}</strong></span>
+            ${waButton}
+          </div>
+        </td>
+        <td style="text-align: center; font-weight: 700; color: #38bdf8;">${k.koli || 1}</td>
+        <td>
+          <span style="font-size: 0.78rem; color: #94a3b8; max-width: 180px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escKendaraanHtml(k.keterangan || '-')}">
+            ${escKendaraanHtml(k.keterangan || '-')}
+          </span>
+        </td>
+        <td>
+          <div style="display: flex; flex-direction: column; font-size: 0.75rem; color: #94a3b8;">
+            <span>${dateStr}</span>
+            <span style="color: #64748b;">${escKendaraanHtml(k.spot_petugas || '-')}</span>
+          </div>
+        </td>
+        <td style="text-align: center;">
+          <div class="table-action-btns">
+            <button type="button" class="btn-action-icon" title="Edit Unit" onclick="editKendaraanById(${k.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button type="button" class="btn-action-icon btn-delete" title="Hapus Unit" onclick="deleteKendaraanById(${k.id}, '${escKendaraanHtml(k.awb)}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 6. Google Sheet Sync Handler
+async function syncKendaraanFromGoogleSheet() {
+  const btn = document.getElementById('btnSyncKendaraanGSheet');
+  if (btn) btn.classList.add('is-loading');
+
+  try {
+    const res = await fetch('/api/kendaraan/sync-sheet', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal menyinkronkan data dari Google Sheet');
+    }
+
+    showAppAlert(`Sinkronisasi Berhasil! ${data.synced_count || 0} unit kendaraan aktif berhasil ditarik dari AppSheet Google Sheet.`);
+    await fetchKendaraanDashboard();
+    await fetchKendaraanList();
+  } catch (err) {
+    showAppAlert(err.message, true);
+  } finally {
+    if (btn) btn.classList.remove('is-loading');
+  }
+}
+
+// 7. Push To Feishu Webhook Bot
+async function pushKendaraanToFeishu() {
+  const btn = document.getElementById('btnPushFeishu');
+  if (btn) btn.classList.add('is-loading');
+
+  try {
+    const res = await fetch('/api/kendaraan/push-feishu', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
+    }
+
+    showAppAlert(`Pesan Tagihan Dokumen HOLD Terkirim! Notifikasi otomatis berhasil masuk ke Bot Feishu.`);
+  } catch (err) {
+    showAppAlert(err.message, true);
+  } finally {
+    if (btn) btn.classList.remove('is-loading');
+  }
+}
+
+// 8. Open Add / Edit Modal (AppSheet Style)
+function setAppSheetToggle(group, value) {
+  const buttons = document.querySelectorAll(`.appsheet-toggle-btn[data-group="${group}"]`);
+  buttons.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-val') === value);
+  });
+  if (group === 'tlc') {
+    const el = document.getElementById('kendaraanTujuan');
+    if (el) el.value = value;
+  } else if (group === 'tipe') {
+    const el = document.getElementById('kendaraanTipe');
+    if (el) el.value = value;
+    updateConditionalFields();
+  } else if (group === 'dokumen') {
+    const el = document.getElementById('kendaraanStatusDokumen');
+    if (el) el.value = value;
+  } else if (group === 'aki') {
+    const el = document.getElementById('kendaraanStatusAki');
+    if (el) el.value = value;
+  }
+}
+
+function updateConditionalFields() {
+  const tipeInput = document.getElementById('kendaraanTipe');
+  const tipe = tipeInput ? tipeInput.value : 'Motor Bensin';
+  const wrapDokumen = document.getElementById('wrapFieldDokumen');
+  const wrapAki = document.getElementById('wrapFieldStatusAki');
+
+  if (tipe === 'Sepeda Listrik') {
+    if (wrapDokumen) wrapDokumen.classList.add('hidden');
+    if (wrapAki) wrapAki.classList.remove('hidden');
+  } else {
+    if (wrapDokumen) wrapDokumen.classList.remove('hidden');
+    if (wrapAki) wrapAki.classList.add('hidden');
+  }
+}
+
+function openKendaraanModal(data = null) {
+  const modal = document.getElementById('kendaraanInputModal');
+  const title = document.getElementById('kendaraanModalTitle');
+  const idInput = document.getElementById('kendaraanId');
+  const awbInput = document.getElementById('kendaraanAwb');
+  const koliInput = document.getElementById('kendaraanKoli');
+  const ketInput = document.getElementById('kendaraanKeterangan');
+
+  if (data) {
+    if (title) title.textContent = 'Edit Data Kendaraan';
+    if (idInput) idInput.value = data.id;
+    if (awbInput) { awbInput.value = data.awb || ''; awbInput.readOnly = true; }
+
+    const tlc = (data.tlc_tujuan || 'BDJ').toUpperCase();
+    setAppSheetToggle('tlc', tlc.includes('PNK') ? 'PNK' : 'BDJ');
+
+    let tipe = data.tipe_kendaraan || 'Motor Bensin';
+    if (tipe.toLowerCase().includes('spl') || tipe.toLowerCase().includes('sepeda')) tipe = 'Sepeda Listrik';
+    else if (tipe.toLowerCase().includes('listrik')) tipe = 'Motor Listrik';
+    else tipe = 'Motor Bensin';
+    setAppSheetToggle('tipe', tipe);
+
+    const dok = data.status_dokumen === 'Lengkap' ? 'Lengkap' : 'Tidak';
+    setAppSheetToggle('dokumen', dok);
+
+    const aki = (data.status_spl || data.status_aki || 'ON').toUpperCase().includes('OFF') ? 'OFF' : 'ON';
+    setAppSheetToggle('aki', aki);
+
+    if (koliInput) koliInput.value = data.koli || 1;
+    if (ketInput) ketInput.value = data.keterangan || '';
+  } else {
+    if (title) title.textContent = 'Input Kendaraan Baru';
+    if (idInput) idInput.value = '';
+    if (awbInput) {
+      awbInput.value = '';
+      awbInput.readOnly = false;
+      setTimeout(() => awbInput.focus(), 150);
+    }
+    setAppSheetToggle('tlc', 'BDJ');
+    setAppSheetToggle('tipe', 'Motor Bensin');
+    setAppSheetToggle('dokumen', 'Tidak');
+    setAppSheetToggle('aki', 'ON');
+    if (koliInput) koliInput.value = 1;
+    if (ketInput) ketInput.value = '';
+  }
+
+  updateConditionalFields();
+
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeKendaraanModal() {
+  const modal = document.getElementById('kendaraanInputModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+// Global functions for inline HTML button triggers
+window.editKendaraanById = function(id) {
+  const item = kendaraanListData.find(k => k.id === id);
+  if (item) openKendaraanModal(item);
+};
+
+window.deleteKendaraanById = async function(id, awb) {
+  if (!confirm(`Hapus unit kendaraan dengan No AWB ${awb}?`)) return;
+
+  try {
+    const res = await fetch(`/api/kendaraan/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal menghapus unit');
+    }
+    showAppAlert(`Unit ${awb} berhasil dihapus.`);
+    await fetchKendaraanDashboard();
+    await fetchKendaraanList();
+  } catch (err) {
+    showAppAlert(err.message, true);
+  }
+};
+
+// 9. Save Kendaraan (Create or Update)
+async function submitKendaraanForm(e) {
+  e.preventDefault();
+  const id = document.getElementById('kendaraanId').value;
+  const awb = document.getElementById('kendaraanAwb').value.trim();
+  const tlc = document.getElementById('kendaraanTujuan').value;
+  const tipe = document.getElementById('kendaraanTipe').value;
+  const dok = document.getElementById('kendaraanStatusDokumen').value;
+  const aki = document.getElementById('kendaraanStatusAki').value;
+  const koli = document.getElementById('kendaraanKoli').value;
+  const keterangan = document.getElementById('kendaraanKeterangan').value.trim();
+
+  const isSpl = tipe === 'Sepeda Listrik';
+
+  const payload = {
+    awb,
+    tipe_kendaraan: tipe,
+    tlc_tujuan: tlc,
+    status_dokumen: isSpl ? null : dok,
+    status_spl: isSpl ? aki : null,
+    koli: parseInt(koli, 10) || 1,
+    keterangan
+  };
+
+  try {
+    let res;
+    if (id) {
+      res = await fetch(`/api/kendaraan/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch('/api/kendaraan', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal menyimpan unit kendaraan');
+    }
+
+    closeKendaraanModal();
+    showAppAlert('Data unit kendaraan berhasil disimpan.');
+    await fetchKendaraanDashboard();
+    await fetchKendaraanList();
+  } catch (err) {
+    showAppAlert(err.message, true);
+  }
+}
+
+// 11. Master Gateways Modal
+async function openMasterGatewaysModal() {
+  const modal = document.getElementById('masterGatewaysModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  try {
+    const res = await fetch('/api/kendaraan/gateways', { credentials: 'include' });
+    const data = await res.json();
+    masterGatewaysData = data.data || [];
+    renderMasterGatewaysTable();
+  } catch (err) {
+    console.error('openMasterGatewaysModal error:', err);
+  }
+}
+
+function closeMasterGatewaysModal() {
+  const modal = document.getElementById('masterGatewaysModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function renderMasterGatewaysTable() {
+  const tbody = document.getElementById('masterGatewaysTableBody');
+  const searchInput = document.getElementById('searchGatewayInput');
+  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  if (!tbody) return;
+
+  let filtered = [...masterGatewaysData];
+  if (searchVal) {
+    filtered = filtered.filter(g => {
+      const code = (g.tlc_gateway || '').toLowerCase();
+      const name = (g.nama_gateway || '').toLowerCase();
+      const pic = (g.tagging_pic || '').toLowerCase();
+      return code.includes(searchVal) || name.includes(searchVal) || pic.includes(searchVal);
+    });
+  }
+
+  tbody.innerHTML = filtered.map((g, idx) => {
+    return `
+      <tr>
+        <td style="text-align: center; color: #94a3b8; font-size: 0.8rem;">${idx + 1}</td>
+        <td><strong style="color: #38bdf8; font-family: monospace;">${escKendaraanHtml(g.tlc_gateway || '-')}</strong></td>
+        <td><strong style="color: #f8fafc;">${escKendaraanHtml(g.nama_gateway || '-')}</strong></td>
+        <td><span style="color: #94a3b8; font-size: 0.8rem;">${escKendaraanHtml(g.area || 'Nasional')}</span></td>
+        <td><strong style="color: #cbd5e1;">${escKendaraanHtml(g.tagging_pic || '-')}</strong></td>
+        <td><span style="color: #94a3b8; font-size: 0.8rem;">${escKendaraanHtml(g.no_wa || '-')}</span></td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-kendaraan-action btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="openEditPicModal(${g.id}, '${escKendaraanHtml(g.nama_gateway)}', '${escKendaraanHtml(g.tagging_pic || '')}', '${escKendaraanHtml(g.no_wa || '')}')">
+            Edit PIC
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.openEditPicModal = function(id, gatewayName, currentPic, currentPhone) {
+  const modal = document.getElementById('editGatewayPicModal');
+  const label = document.getElementById('editPicGatewayLabel');
+  const nameInput = document.getElementById('editPicName');
+  const phoneInput = document.getElementById('editPicPhone');
+  const idInput = document.getElementById('editPicGatewayCode');
+
+  if (idInput) idInput.value = id;
+  if (label) label.value = gatewayName;
+  if (nameInput) nameInput.value = currentPic || '';
+  if (phoneInput) phoneInput.value = currentPhone || '';
+
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+};
+
+function closeEditPicModal() {
+  const modal = document.getElementById('editGatewayPicModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function submitEditPicForm(e) {
+  e.preventDefault();
+  const id = document.getElementById('editPicGatewayCode').value;
+  const name = document.getElementById('editPicName').value.trim();
+  const phone = document.getElementById('editPicPhone').value.trim();
+
+  try {
+    const res = await fetch(`/api/kendaraan/gateways/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tagging_pic: name, feishu_open_id: phone })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal menyimpan PIC');
+    }
+
+    closeEditPicModal();
+    showAppAlert('Kontak PIC Gateway berhasil diperbarui.');
+    await openMasterGatewaysModal(); // refresh list
+  } catch (err) {
+    showAppAlert(err.message, true);
+  }
+}
+
+// 12. Setup Event Listeners for Kendaraan Module
+function initKendaraanEventListeners() {
+  // Sync Button
+  const btnSync = document.getElementById('btnSyncKendaraanGSheet');
+  if (btnSync) btnSync.addEventListener('click', syncKendaraanFromGoogleSheet);
+
+  // Push Feishu Button
+  const btnFeishu = document.getElementById('btnPushFeishu');
+  if (btnFeishu) btnFeishu.addEventListener('click', pushKendaraanToFeishu);
+
+  // Copy WA Capacity
+  const btnCopyWa = document.getElementById('btnCopyWaCapacity');
+  if (btnCopyWa) {
+    btnCopyWa.addEventListener('click', () => {
+      const preview = document.getElementById('previewWaCapacity');
+      if (preview && preview.textContent) {
+        navigator.clipboard.writeText(preview.textContent);
+        const span = document.getElementById('btnCopyWaCapacityText');
+        if (span) span.textContent = 'Tersalin! ✅';
+        setTimeout(() => { if (span) span.textContent = 'Salin Format WA'; }, 2000);
+      }
+    });
+  }
+
+  // Copy WA Dokumen
+  const btnCopyDoc = document.getElementById('btnCopyWaDokumen');
+  if (btnCopyDoc) {
+    btnCopyDoc.addEventListener('click', () => {
+      const preview = document.getElementById('previewWaDokumen');
+      if (preview && preview.textContent) {
+        navigator.clipboard.writeText(preview.textContent);
+        const span = document.getElementById('btnCopyWaDokumenText');
+        if (span) span.textContent = 'Tersalin! ✅';
+        setTimeout(() => { if (span) span.textContent = 'Salin Pesan WA'; }, 2000);
+      }
+    });
+  }
+
+  // Open Add Modal
+  const btnAdd = document.getElementById('btnOpenAddKendaraanModal');
+  if (btnAdd) btnAdd.addEventListener('click', () => openKendaraanModal());
+
+  // Close Add Modal
+  const closeAddBtn = document.getElementById('closeKendaraanModalBtn');
+  const cancelAddBtn = document.getElementById('cancelKendaraanModalBtn');
+  if (closeAddBtn) closeAddBtn.addEventListener('click', closeKendaraanModal);
+  if (cancelAddBtn) cancelAddBtn.addEventListener('click', closeKendaraanModal);
+
+  // Submit Add/Edit Form
+  const formKendaraan = document.getElementById('kendaraanForm');
+  if (formKendaraan) formKendaraan.addEventListener('submit', submitKendaraanForm);
+
+  // AppSheet Toggle Buttons Listener
+  document.querySelectorAll('.appsheet-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.getAttribute('data-group');
+      const val = btn.getAttribute('data-val');
+      if (group && val) {
+        setAppSheetToggle(group, val);
+      }
+    });
+  });
+
+  // Stepper Buttons for koli
+  const btnKoliMinus = document.getElementById('btnKoliMinus');
+  const btnKoliPlus = document.getElementById('btnKoliPlus');
+  const koliInput = document.getElementById('kendaraanKoli');
+  if (btnKoliMinus && koliInput) {
+    btnKoliMinus.addEventListener('click', () => {
+      const cur = parseInt(koliInput.value, 10) || 1;
+      if (cur > 1) koliInput.value = cur - 1;
+    });
+  }
+  if (btnKoliPlus && koliInput) {
+    btnKoliPlus.addEventListener('click', () => {
+      const cur = parseInt(koliInput.value, 10) || 1;
+      koliInput.value = cur + 1;
+    });
+  }
+
+  // Barcode / QR Icon Focus
+  const btnScanAwbIcon = document.getElementById('btnScanAwbIcon');
+  const awbInput = document.getElementById('kendaraanAwb');
+  if (btnScanAwbIcon && awbInput) {
+    btnScanAwbIcon.addEventListener('click', () => {
+      awbInput.focus();
+      showAppAlert('Arahkan laser scanner PDA ke barcode waybill!');
+    });
+  }
+
+  // Filter Tabs
+  const tabButtons = document.querySelectorAll('.toolbar-filter-tabs .filter-tab-btn');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      kendaraanFilterTab = btn.getAttribute('data-tab') || 'all';
+      renderKendaraanTable();
+    });
+  });
+
+  // KPI Cards click -> filters table tab
+  const kpiSiap = document.getElementById('kpiCardSiapMuat');
+  if (kpiSiap) {
+    kpiSiap.addEventListener('click', () => {
+      const tab = document.querySelector('.filter-tab-btn[data-tab="siap_muat"]');
+      if (tab) tab.click();
+    });
+  }
+
+  const kpiHold = document.getElementById('kpiCardMotorHold');
+  if (kpiHold) {
+    kpiHold.addEventListener('click', () => {
+      const tab = document.querySelector('.filter-tab-btn[data-tab="hold"]');
+      if (tab) tab.click();
+    });
+  }
+
+  // Search Input for Kendaraan
+  const searchInput = document.getElementById('kendaraanSearchInput');
+  const btnClearSearch = document.getElementById('btnClearKendaraanSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      if (btnClearSearch) btnClearSearch.classList.toggle('hidden', !searchInput.value);
+      clearTimeout(kendaraanSearchDebounce);
+      kendaraanSearchDebounce = setTimeout(() => {
+        fetchKendaraanList();
+      }, 300);
+    });
+  }
+  if (btnClearSearch) {
+    btnClearSearch.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      btnClearSearch.classList.add('hidden');
+      fetchKendaraanList();
+    });
+  }
+
+  // Master Gateways Modal triggers
+  const btnOpenGw = document.getElementById('btnOpenMasterGateways');
+  const closeGwBtn = document.getElementById('closeMasterGatewaysBtn');
+  const closeGwBottomBtn = document.getElementById('closeMasterGatewaysBottomBtn');
+  if (btnOpenGw) btnOpenGw.addEventListener('click', openMasterGatewaysModal);
+  if (closeGwBtn) closeGwBtn.addEventListener('click', closeMasterGatewaysModal);
+  if (closeGwBottomBtn) closeGwBottomBtn.addEventListener('click', closeMasterGatewaysModal);
+
+  // Search Gateways
+  const searchGwInput = document.getElementById('searchGatewayInput');
+  const btnClearGwSearch = document.getElementById('btnClearGatewaySearch');
+  if (searchGwInput) {
+    searchGwInput.addEventListener('input', () => {
+      if (btnClearGwSearch) btnClearGwSearch.classList.toggle('hidden', !searchGwInput.value);
+      clearTimeout(masterGatewaySearchDebounce);
+      masterGatewaySearchDebounce = setTimeout(renderMasterGatewaysTable, 200);
+    });
+  }
+  if (btnClearGwSearch) {
+    btnClearGwSearch.addEventListener('click', () => {
+      if (searchGwInput) searchGwInput.value = '';
+      btnClearGwSearch.classList.add('hidden');
+      renderMasterGatewaysTable();
+    });
+  }
+
+  // Edit PIC Modal triggers
+  const closeEditPicBtn = document.getElementById('closeEditPicModalBtn');
+  const cancelEditPicBtn = document.getElementById('cancelEditPicBtn');
+  const editPicForm = document.getElementById('editGatewayPicForm');
+  if (closeEditPicBtn) closeEditPicBtn.addEventListener('click', closeEditPicModal);
+  if (cancelEditPicBtn) cancelEditPicBtn.addEventListener('click', closeEditPicModal);
+  if (editPicForm) editPicForm.addEventListener('submit', submitEditPicForm);
+}
+
+// Auto-run event listeners registration once DOM loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initKendaraanEventListeners);
+} else {
+  initKendaraanEventListeners();
+}
+
+// ==========================================================================
+// GENERATOR FEISHU - MONITORING DOKUMEN KENDARAAN MODULE
+// ==========================================================================
+
+let feishuHoldData = [];
+let feishuSelectedGreeting = 'Selamat pagi';
+let feishuSearchDebounce = null;
+
+// 1. Fetch HOLD Vehicles for Feishu Generator
+async function fetchFeishuHoldList() {
+  const btnPull = document.getElementById('btnPullFeishuHold');
+  if (btnPull) btnPull.classList.add('is-loading');
+
+  try {
+    const res = await fetch('/api/kendaraan/feishu-hold-list', { credentials: 'include' });
+    if (!res.ok) throw new Error('Gagal memuat data HOLD Feishu');
+    const data = await res.json();
+    feishuHoldData = data.data || [];
+
+    updateFeishuStats();
+    renderFeishuTable();
+    generateFeishuPreviewText();
+  } catch (err) {
+    console.error('fetchFeishuHoldList error:', err);
+    showAppAlert(err.message, true);
+  } finally {
+    if (btnPull) btnPull.classList.remove('is-loading');
+  }
+}
+
+// 2. Update Feishu Stat Strip
+function updateFeishuStats() {
+  const totalEl = document.getElementById('feishuTotalAwb');
+  const mappedEl = document.getElementById('feishuMappedAwb');
+  const timeEl = document.getElementById('feishuTimestamp');
+  const dateEl = document.getElementById('feishuDateStr');
+  const countEl = document.getElementById('feishuTableCount');
+
+  const total = feishuHoldData.length;
+  const mapped = feishuHoldData.filter(d => (d.effective_gateway || d.nama_gateway)).length;
+
+  if (totalEl) totalEl.textContent = `${total} Resi`;
+  if (mappedEl) mappedEl.textContent = `${mapped} / ${total}`;
+  if (countEl) countEl.textContent = `${total} Resi`;
+
+  const now = new Date();
+  if (timeEl) timeEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  if (dateEl) dateEl.textContent = now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// 3. Render Feishu Table
+function renderFeishuTable() {
+  const tbody = document.getElementById('feishuTableBody');
+  const emptyState = document.getElementById('feishuTableEmpty');
+  const searchInput = document.getElementById('feishuTableSearch');
+  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  if (!tbody) return;
+
+  let filtered = [...feishuHoldData];
+  if (searchVal) {
+    filtered = filtered.filter(item => {
+      const awb = String(item.awb || '').toLowerCase();
+      const outlet = String(item.effective_outlet || item.outlet || '').toLowerCase();
+      const gw = String(item.effective_gateway || item.nama_gateway || '').toLowerCase();
+      const pic = String(item.effective_pic || item.tagging_pic || '').toLowerCase();
+      return awb.includes(searchVal) || outlet.includes(searchVal) || gw.includes(searchVal) || pic.includes(searchVal);
+    });
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    if (emptyState) emptyState.classList.remove('hidden');
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add('hidden');
+
+  tbody.innerHTML = filtered.map((item, idx) => {
+    const awb = item.awb || '-';
+    const outlet = item.effective_outlet || item.outlet || '-';
+    const gw = item.effective_gateway || item.nama_gateway || '-';
+    const pic = item.effective_pic || item.tagging_pic || '-';
+    const phone = item.no_wa || item.pic_phone || '';
+
+    let waBtn = '<span style="color: #64748b; font-size: 0.75rem;">-</span>';
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '62');
+      const waMsg = encodeURIComponent(`Halo Kak ${pic}, tolong dibantu kelengkapan dokumen kendaraan resi ${awb} asal ${outlet} (${gw}) terimakasih.`);
+      waBtn = `<a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" rel="noopener noreferrer" class="wa-btn-link" title="Chat PIC Gateway">📱 Chat</a>`;
+    }
+
+    return `
+      <tr>
+        <td style="text-align: center; color: #94a3b8; font-size: 0.8rem;">${idx + 1}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <strong style="color: #f8fafc; font-family: monospace; font-size: 0.88rem;">${escKendaraanHtml(awb)}</strong>
+            <button type="button" class="btn-copy-mini" onclick="navigator.clipboard.writeText('${escKendaraanHtml(awb)}'); showAppAlert('No AWB disalin!');" title="Salin AWB">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+        </td>
+        <td><strong style="color: #38bdf8;">${escKendaraanHtml(outlet)}</strong></td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-weight: 600; color: #e2e8f0; font-size: 0.82rem;">${escKendaraanHtml(gw)}</span>
+            <span style="font-size: 0.75rem; color: #c084fc; font-weight: 600;">@${escKendaraanHtml(pic)}</span>
+          </div>
+        </td>
+        <td style="text-align: center;">${waBtn}</td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-action-icon btn-delete" title="Hapus dari daftar tagihan" onclick="removeFeishuRow(${idx})">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 4. Generate Live Preview Text for Feishu / WhatsApp
+function generateFeishuPreviewText() {
+  const preview = document.getElementById('feishuDynamicPreview');
+  if (!preview) return;
+
+  if (feishuHoldData.length === 0) {
+    preview.textContent = 'Belum ada data resi HOLD. Tarik unit dari monitoring atau paste nomor resi untuk membuat pesan otomatis.';
+    return;
+  }
+
+  let text = `${feishuSelectedGreeting} kak, tolong dibantu untuk kelengkapan dokumen kendaraan dengan awb berikut terimakasih :\n`;
+
+  feishuHoldData.forEach(item => {
+    const awb = item.awb || '';
+    const outlet = item.effective_outlet || item.outlet || '';
+    const gw = item.effective_gateway || item.nama_gateway || '';
+    const pic = item.effective_pic || item.tagging_pic || '';
+
+    const parts = [awb];
+    if (outlet && outlet !== '-') parts.push(outlet);
+    if (gw && gw !== '-') parts.push(gw);
+    if (pic && pic !== '-') parts.push(`@${pic}`);
+
+    text += parts.join(' ') + '\n';
+  });
+
+  preview.textContent = text.trim();
+}
+
+window.removeFeishuRow = function(index) {
+  if (index >= 0 && index < feishuHoldData.length) {
+    feishuHoldData.splice(index, 1);
+    updateFeishuStats();
+    renderFeishuTable();
+    generateFeishuPreviewText();
+  }
+};
+
+// 5. Batch Paste Modal Handling
+function openFeishuBatchModal() {
+  const modal = document.getElementById('feishuBatchModal');
+  const textarea = document.getElementById('feishuBatchTextarea');
+  if (textarea) textarea.value = '';
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => { if (textarea) textarea.focus(); }, 150);
+  }
+}
+
+function closeFeishuBatchModal() {
+  const modal = document.getElementById('feishuBatchModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function submitFeishuBatchForm(e) {
+  e.preventDefault();
+  const textarea = document.getElementById('feishuBatchTextarea');
+  const btn = document.getElementById('submitFeishuBatchBtn');
+  if (!textarea || !textarea.value.trim()) {
+    showAppAlert('Masukkan setidaknya satu nomor AWB.');
+    return;
+  }
+
+  const raw = textarea.value.trim();
+  const awbs = raw.split(/[\r\n,\t\s]+/).map(a => a.trim()).filter(Boolean);
+
+  if (awbs.length === 0) {
+    showAppAlert('Nomor AWB tidak valid.');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/kendaraan/feishu-batch-lookup', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ awb_list: awbs })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal memproses daftar AWB');
+    }
+
+    // Merge or replace feishuHoldData
+    feishuHoldData = data.data || [];
+    closeFeishuBatchModal();
+    updateFeishuStats();
+    renderFeishuTable();
+    generateFeishuPreviewText();
+
+    showAppAlert(`Berhasil mencocokkan ${feishuHoldData.length} AWB dengan database outlet & gateway.`);
+  } catch (err) {
+    showAppAlert(err.message, true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// 6. Event Listeners for Generator Feishu Module
+function initFeishuEventListeners() {
+  // Pull button
+  const btnPull = document.getElementById('btnPullFeishuHold');
+  if (btnPull) btnPull.addEventListener('click', fetchFeishuHoldList);
+
+  // Batch paste button
+  const btnBatch = document.getElementById('btnOpenBatchAwbModal');
+  if (btnBatch) btnBatch.addEventListener('click', openFeishuBatchModal);
+
+  // Close batch modal
+  const closeBatchBtn = document.getElementById('closeFeishuBatchModalBtn');
+  const cancelBatchBtn = document.getElementById('cancelFeishuBatchModalBtn');
+  if (closeBatchBtn) closeBatchBtn.addEventListener('click', closeFeishuBatchModal);
+  if (cancelBatchBtn) cancelBatchBtn.addEventListener('click', closeFeishuBatchModal);
+
+  // Submit batch form
+  const batchForm = document.getElementById('feishuBatchForm');
+  if (batchForm) batchForm.addEventListener('submit', submitFeishuBatchForm);
+
+  // Open Master Gateways from Feishu
+  const btnGw = document.getElementById('btnOpenMasterGatewaysFromFeishu');
+  if (btnGw) btnGw.addEventListener('click', openMasterGatewaysModal);
+
+  // Greeting Chips
+  document.querySelectorAll('.chip-greeting').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip-greeting').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      feishuSelectedGreeting = chip.getAttribute('data-greeting') || 'Selamat pagi';
+      generateFeishuPreviewText();
+    });
+  });
+
+  // Copy WhatsApp Message
+  const btnCopy = document.getElementById('btnCopyFeishuMessage');
+  if (btnCopy) {
+    btnCopy.addEventListener('click', () => {
+      const preview = document.getElementById('feishuDynamicPreview');
+      if (preview && preview.textContent) {
+        navigator.clipboard.writeText(preview.textContent);
+        const span = document.getElementById('btnCopyFeishuMessageText');
+        if (span) span.textContent = 'Tersalin ke Clipboard! ✅';
+        setTimeout(() => { if (span) span.textContent = '📋 Salin Pesan WhatsApp'; }, 2000);
+      }
+    });
+  }
+
+  // Send to Feishu Bot
+  const btnBot = document.getElementById('btnSendToFeishuBot');
+  if (btnBot) {
+    btnBot.addEventListener('click', async () => {
+      const preview = document.getElementById('feishuDynamicPreview');
+      if (!preview || !preview.textContent || feishuHoldData.length === 0) {
+        showAppAlert('Tidak ada pesan tagihan untuk dikirim.');
+        return;
+      }
+
+      btnBot.classList.add('is-loading');
+      try {
+        const res = await fetch('/api/kendaraan/push-feishu', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
+        }
+        showAppAlert('Pesan berhasil terkirim ke Bot Feishu grup!');
+      } catch (err) {
+        showAppAlert(err.message, true);
+      } finally {
+        btnBot.classList.remove('is-loading');
+      }
+    });
+  }
+
+  // Table search
+  const searchInput = document.getElementById('feishuTableSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(feishuSearchDebounce);
+      feishuSearchDebounce = setTimeout(renderFeishuTable, 200);
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initFeishuEventListeners);
+} else {
+  initFeishuEventListeners();
+}
+
+
