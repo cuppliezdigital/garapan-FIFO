@@ -86,10 +86,14 @@ app.use('/api', (req, res, next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
   const origin = req.headers.origin;
   const referer = req.headers.referer;
-  const allowed = !origin || allowedOrigins.includes(origin) || (referer && allowedOrigins.some((item) => referer.startsWith(item)));
-  
-  if (!allowed) {
-    console.log('Security Blocked API Access:', { origin, referer, method: req.method });
+  const host = req.headers.host;
+  const hostOrigins = host ? [`http://${host}`, `https://${host}`] : [];
+
+  const isAllowedOrigin = !origin || allowedOrigins.includes(origin) || hostOrigins.includes(origin);
+  const isAllowedReferer = !referer || allowedOrigins.some((item) => referer.startsWith(item)) || hostOrigins.some((item) => referer.startsWith(item));
+
+  if (!isAllowedOrigin && !isAllowedReferer) {
+    console.log('Security Blocked API Access:', { origin, referer, host, method: req.method });
     return res.status(403).json({ error: 'Permintaan lintas situs tidak diizinkan' });
   }
   next();

@@ -267,7 +267,10 @@ function handleHashRoute() {
     fetchKendaraanDashboard();
     fetchKendaraanList();
   } else if (target === 'generator-feishu') {
-    fetchFeishuHoldList(false);
+    ensureFeishuPicMap();
+    if (feishuExcelRows.length === 0) {
+      initFeishuExcelRows();
+    }
   } else if (target === 'archive') {
     fetchMonitoringArchive();
   } else if (target === 'history') {
@@ -7202,7 +7205,7 @@ window.deleteKendaraanById = async function(id, awb) {
 
 // 8b. Clear All Kendaraan Instock
 async function clearAllKendaraan() {
-  const count = (kendaraanCurrentList && kendaraanCurrentList.length) || 0;
+  const count = (typeof kendaraanListData !== 'undefined' && Array.isArray(kendaraanListData)) ? kendaraanListData.length : 0;
   const confirmed = window.confirm(
     `⚠️ PERINGATAN HAPUS SEMUA DATA!\n\nApakah Anda yakin ingin menghapus SEMUA data kendaraan instock (${count} unit)?\n\nData yang dihapus dapat ditarik kembali sewaktu-waktu dari AppSheet via tombol "Sinkron AppSheet".\n\nLanjutkan penghapusan?`
   );
