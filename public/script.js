@@ -174,6 +174,7 @@ const pageEyebrow = document.getElementById('pageEyebrow');
 
 const viewPages = {
   monitoring: document.getElementById('viewMonitoring'),
+  reconcile: document.getElementById('viewReconcile'),
   archive: document.getElementById('viewArchive'),
   history: document.getElementById('viewHistory'),
   users: document.getElementById('viewUsers'),
@@ -184,6 +185,7 @@ const viewPages = {
 
 const navLinks = {
   monitoring: document.getElementById('navMonitoring'),
+  reconcile: document.getElementById('navReconcile'),
   archive: document.getElementById('navArchive'),
   history: document.getElementById('navHistory'),
   users: document.getElementById('navUsers'),
@@ -208,6 +210,7 @@ function handleHashRoute() {
 
   const routeConfig = {
     monitoring: { title: 'FIFO Dashboard', eyebrow: 'Monitoring System' },
+    reconcile: { title: 'Rekonsiliasi Muat-Bongkar', eyebrow: 'Pemeriksaan Selisih & Non-AWB' },
     archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
     history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
     users: { title: 'Manajemen User', eyebrow: 'Administrasi Sistem' },
@@ -242,6 +245,14 @@ function handleHashRoute() {
   if (!authUser) {
     closeMobileSidebar();
     return;
+  }
+
+  if (target === 'reconcile') {
+    const userRole = (authUser && authUser.role) ? authUser.role : (getCurrentUser().role || '');
+    if (userRole !== 'super_admin' && userRole !== 'admin') {
+      window.location.hash = '#/monitoring';
+      return;
+    }
   }
 
   if (target === 'monitoring') {
@@ -384,6 +395,7 @@ function applyUIPermissions() {
   const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user', 'restore_updated', 'delete_selected'];
   const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
 
+  toggle(navLinks.reconcile, role === 'super_admin' || role === 'admin');
   toggle(navLinks.users, canManageUsers);
   toggle(navLinks.history, canViewHistory);
   toggle(navLinks.permissions, canAccessConfig || canCreateUser);
@@ -5688,3 +5700,1037 @@ loadLogo();
 loadBackground();
 
 bootstrapAuth();
+
+
+// ========================================================
+// MODUL REKONSILIASI MUAT - BONGKAR & NON-AWB HUNTER
+// ========================================================
+
+(function initReconcileModule() {
+  let currentReconcileMode = 'single'; // 'single' | 'multi'
+  let multiUploadedFiles = { muat: [], bongkar: [] };
+  let activeKpiFilter = 'missing'; // 'missing' | 'matched' | 'all'
+
+  let reconcileDataMode1 = null; // Stored results for Mode 1 (1 File Resi Tugas)
+  let reconcileDataMode2 = null; // Stored results for Mode 2 (Multi-File Transitan)
+
+  let reconcileDataState = {
+    totalLoaded: 0,
+    totalLoadedWeight: 0,
+    totalUnloaded: 0,
+    allList: [],       // All loaded waybills with status: 'belum_bongkar' | 'sudah_bongkar'
+    matchedList: [],   // Waybills with scan bongkar
+    unmatchedList: [], // Waybills without scan bongkar
+    origins: new Set(),
+    destinations: new Set()
+  };
+
+  let filterState = {
+    keyword: '',
+    weight: null,
+    tolerance: 1.0,
+    perKoli: true,
+    origin: '',
+    destination: ''
+  };
+
+  // DOM Elements
+  const tabSingle = document.getElementById('tabModeSingle');
+  const tabMulti = document.getElementById('tabModeMulti');
+  const areaSingle = document.getElementById('reconcileSingleUploadArea');
+  const areaMulti = document.getElementById('reconcileMultiUploadArea');
+  const dropzoneSingle = document.getElementById('dropzoneSingle');
+  const inputSingle = document.getElementById('reconcileSingleFileInput');
+  const btnBrowseSingle = document.getElementById('btnBrowseSingle');
+
+  const dropzoneMuat = document.getElementById('dropzoneMuat');
+  const inputMuat = document.getElementById('reconcileMuatFileInput');
+  const btnBrowseMuat = document.getElementById('btnBrowseMuat');
+  const listMuat = document.getElementById('selectedMuatFilesList');
+
+  const dropzoneBongkar = document.getElementById('dropzoneBongkar');
+  const inputBongkar = document.getElementById('reconcileBongkarFileInput');
+  const btnBrowseBongkar = document.getElementById('btnBrowseBongkar');
+  const listBongkar = document.getElementById('selectedBongkarFilesList');
+
+  const btnExecuteMulti = document.getElementById('btnExecuteMultiReconcile');
+  const loadingBar = document.getElementById('reconcileLoadingBar');
+  const progressText = document.getElementById('reconcileProgressText');
+  const progressSub = document.getElementById('reconcileProgressSub');
+
+  const resultsSection = document.getElementById('reconcileResultsSection');
+  
+  // Interactive KPI Cards
+  const kpiCardTotal = document.getElementById('kpiCardTotal');
+  const kpiCardBongkar = document.getElementById('kpiCardBongkar');
+  const kpiCardBelumBongkar = document.getElementById('kpiCardBelumBongkar');
+
+  const kpiTotalMuat = document.getElementById('kpiTotalMuat');
+  const kpiTotalMuatBerat = document.getElementById('kpiTotalMuatBerat');
+  const kpiTotalBongkar = document.getElementById('kpiTotalBongkar');
+  const kpiPersenBongkar = document.getElementById('kpiPersenBongkar');
+  const kpiTotalBelumBongkar = document.getElementById('kpiTotalBelumBongkar');
+  const kpiBelumBongkarBerat = document.getElementById('kpiBelumBongkarBerat');
+
+  // Filter DOM
+  const filterKeyword = document.getElementById('filterKeyword');
+  const btnClearKeyword = document.getElementById('btnClearKeyword');
+  const filterOrigin = document.getElementById('filterOrigin');
+  const filterDestination = document.getElementById('filterDestination');
+  const btnResetFilters = document.getElementById('btnResetFilters');
+
+  // Table & Action DOM
+  const tableBody = document.getElementById('reconcileTableBody');
+  const visibleCountEl = document.getElementById('visibleCount');
+  const totalUnmatchedCountEl = document.getElementById('totalUnmatchedCount');
+  const resultsCountBadge = document.getElementById('resultsCountBadge');
+  const emptyState = document.getElementById('reconcileEmptyState');
+  const noMatchState = document.getElementById('reconcileNoMatchState');
+  const btnCopyAll = document.getElementById('btnCopyAllUnmatched');
+  const btnCopyAllText = document.getElementById('btnCopyAllText');
+  const btnExportExcel = document.getElementById('btnExportExcel');
+  const btnRestart = document.getElementById('btnRestartReconcile');
+
+  // 1. Tab Switching (Single vs Multi file)
+  if (tabSingle && tabMulti) {
+    tabSingle.addEventListener('click', () => switchMode('single'));
+    tabMulti.addEventListener('click', () => switchMode('multi'));
+  }
+
+  function switchMode(mode) {
+    currentReconcileMode = mode;
+    if (mode === 'single') {
+      tabSingle.classList.add('active');
+      tabSingle.setAttribute('aria-selected', 'true');
+      tabMulti.classList.remove('active');
+      tabMulti.setAttribute('aria-selected', 'false');
+      if (areaSingle) areaSingle.classList.remove('hidden');
+      if (areaMulti) areaMulti.classList.add('hidden');
+
+      if (reconcileDataMode1) {
+        reconcileDataState = reconcileDataMode1;
+        renderResults(false);
+      } else {
+        if (resultsSection) resultsSection.classList.add('hidden');
+      }
+    } else {
+      tabMulti.classList.add('active');
+      tabMulti.setAttribute('aria-selected', 'true');
+      tabSingle.classList.remove('active');
+      tabSingle.setAttribute('aria-selected', 'false');
+      if (areaMulti) areaMulti.classList.remove('hidden');
+      if (areaSingle) areaSingle.classList.add('hidden');
+
+      if (reconcileDataMode2) {
+        reconcileDataState = reconcileDataMode2;
+        renderResults(false);
+      } else {
+        if (resultsSection) resultsSection.classList.add('hidden');
+      }
+    }
+  }
+
+  // 2. Interactive Clickable KPI Cards Setup
+  function setupKpiCardClicks() {
+    const cards = [
+      { el: kpiCardTotal, filter: 'all' },
+      { el: kpiCardBongkar, filter: 'matched' },
+      { el: kpiCardBelumBongkar, filter: 'missing' }
+    ];
+
+    cards.forEach(({ el, filter }) => {
+      if (!el) return;
+      el.addEventListener('click', () => {
+        setKpiFilter(filter);
+      });
+    });
+  }
+
+  function setKpiFilter(filter) {
+    activeKpiFilter = filter;
+    updateKpiCardsVisual();
+    applyFiltersAndRenderTable();
+  }
+
+  function updateKpiCardsVisual() {
+    const cardMap = {
+      all: kpiCardTotal,
+      matched: kpiCardBongkar,
+      missing: kpiCardBelumBongkar
+    };
+
+    Object.entries(cardMap).forEach(([key, el]) => {
+      if (!el) return;
+      const isActive = key === activeKpiFilter;
+      el.classList.toggle('is-active', isActive);
+    });
+
+    // Update export button label
+    if (btnExportExcel) {
+      const labels = {
+        missing: 'Download Excel Belum Bongkar (.xlsx)',
+        matched: 'Download Excel Sudah Bongkar (.xlsx)',
+        all: 'Download Excel Semua Data (.xlsx)'
+      };
+      const span = btnExportExcel.querySelector('span');
+      if (span) span.textContent = labels[activeKpiFilter] || 'Download Excel (.xlsx)';
+    }
+  }
+
+  setupKpiCardClicks();
+
+  // 3. File Parsing Helper using SheetJS
+  async function parseFileRows(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          if (typeof XLSX === 'undefined') {
+            throw new Error('Pustaka SheetJS belum termuat. Harap periksa koneksi internet atau muat ulang halaman.');
+          }
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+          resolve(rows);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Gagal membaca file ' + file.name));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Helper: Find value from multiple possible header keys
+  function getFieldValue(row, possibleKeys) {
+    for (const key of possibleKeys) {
+      if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+        return row[key];
+      }
+    }
+    const lowerKeys = Object.keys(row).reduce((acc, k) => {
+      acc[k.trim().toLowerCase()] = row[k];
+      return acc;
+    }, {});
+    for (const key of possibleKeys) {
+      const lk = key.trim().toLowerCase();
+      if (lowerKeys[lk] !== undefined && lowerKeys[lk] !== null && String(lowerKeys[lk]).trim() !== '') {
+        return lowerKeys[lk];
+      }
+    }
+    return '';
+  }
+
+  // Normalize row to standard object
+  function normalizeRow(r) {
+    const waybill = String(getFieldValue(r, ['Kode Waybill', 'nomor waybill utama', 'Waybill', 'waybill', 'No Waybill', 'resi', 'AWB'])).trim();
+    const scanType = String(getFieldValue(r, ['jenis scan', 'Jenis Scan', 'scan_type', 'tipe scan'])).trim();
+    const scanTime = String(getFieldValue(r, ['waktu scan', 'Waktu Scan', 'waktu unggah', 'scan_time'])).trim();
+    const origin = String(getFieldValue(r, ['outlet pemindai', 'Outlet Pemindai', 'Outlet pengiriman', 'asal', 'Asal'])).trim();
+    const destination = String(getFieldValue(r, [
+      'Perhentian sebelumnya atau perhentian berikutnya next',
+      'Pemberhentian sebelumnya/berikutnya',
+      'tujuan',
+      'Tujuan'
+    ])).trim();
+
+    let rawWeight = getFieldValue(r, ['Berat', 'Total berat scan', 'berat', 'Perhitungan biaya berat']);
+    let weight = parseFloat(rawWeight) || 0;
+
+    let rawVolWeight = getFieldValue(r, ['berat volumetrik', 'Total volume scan', 'Perhitungan biaya berat']);
+    let volWeight = parseFloat(rawVolWeight) || 0;
+
+    let rawKoli = getFieldValue(r, ['Jumlah Koli', 'Jumlah koli', 'koli', 'Koli', 'Qty', 'qty']);
+    let koli = parseInt(rawKoli, 10) || 1;
+    if (koli < 1) koli = 1;
+
+    const namaBarang = String(getFieldValue(r, ['Nama Barang', 'nama barang', 'Deskripsi', 'deskripsi barang yang disimpan di gudang', 'Komoditas'])).trim();
+    const kemasan = String(getFieldValue(r, ['jenis kemasan', 'kemasan', 'Packaging'])).trim();
+    const pemindai = String(getFieldValue(r, ['pemindai', 'Pemindai', 'petugas', 'nomor staf scan'])).trim();
+    const resiTugas = String(getFieldValue(r, ['Nomor resi tugas', 'resi tugas', 'segel mobil'])).trim();
+
+    const panjang = getFieldValue(r, ['panjang']);
+    const lebar = getFieldValue(r, ['lebar']);
+    const tinggi = getFieldValue(r, ['tinggi']);
+
+    return {
+      waybill,
+      scanType,
+      scanTime,
+      origin,
+      destination,
+      weight,
+      volWeight,
+      koli,
+      namaBarang,
+      kemasan,
+      pemindai,
+      resiTugas,
+      dimensi: panjang && lebar && tinggi ? `${panjang}x${lebar}x${tinggi} cm` : '',
+      status: 'belum_bongkar',
+      raw: r
+    };
+  }
+
+  // 4. Single File Mode Handler
+  if (btnBrowseSingle && inputSingle) {
+    btnBrowseSingle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      inputSingle.click();
+    });
+  }
+
+  if (dropzoneSingle && inputSingle) {
+    dropzoneSingle.addEventListener('click', () => inputSingle.click());
+
+    dropzoneSingle.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzoneSingle.classList.add('drag-over');
+    });
+
+    dropzoneSingle.addEventListener('dragleave', () => {
+      dropzoneSingle.classList.remove('drag-over');
+    });
+
+    dropzoneSingle.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzoneSingle.classList.remove('drag-over');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processSingleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    inputSingle.addEventListener('change', () => {
+      if (inputSingle.files && inputSingle.files.length > 0) {
+        processSingleFile(inputSingle.files[0]);
+      }
+    });
+  }
+
+  function showLoading(mainMsg, subMsg) {
+    if (loadingBar) {
+      loadingBar.classList.remove('hidden');
+      if (progressText) progressText.textContent = mainMsg;
+      if (progressSub) progressSub.textContent = subMsg;
+    }
+  }
+
+  function hideLoading() {
+    if (loadingBar) loadingBar.classList.add('hidden');
+  }
+
+  async function processSingleFile(file) {
+    if (!file) return;
+    try {
+      showLoading('Membaca file ' + file.name + '...', 'Mengekstrak data lembar kerja...');
+      const rawRows = await parseFileRows(file);
+
+      if (!rawRows || !rawRows.length) {
+        alert('File kosong atau format tidak dapat dikenali.');
+        hideLoading();
+        return;
+      }
+
+      showLoading('Menganalisis ' + rawRows.length.toLocaleString('id-ID') + ' baris...', 'Memilah scan muat vs scan bongkar...');
+
+      const loadedMap = new Map();
+      const unloadedMap = new Map();
+      const origins = new Set();
+      const destinations = new Set();
+
+      for (const r of rawRows) {
+        const item = normalizeRow(r);
+        if (!item.waybill) continue;
+
+        const st = item.scanType.toLowerCase();
+
+        if (st.includes('bongkar')) {
+          unloadedMap.set(item.waybill, item);
+        } else if (st.includes('kirim') || st.includes('muat')) {
+          if (!loadedMap.has(item.waybill)) {
+            loadedMap.set(item.waybill, item);
+          } else {
+            const existing = loadedMap.get(item.waybill);
+            if (!existing.namaBarang && item.namaBarang) existing.namaBarang = item.namaBarang;
+            if (!existing.weight && item.weight) existing.weight = item.weight;
+          }
+        } else {
+          if (!loadedMap.has(item.waybill)) {
+            loadedMap.set(item.waybill, item);
+          }
+        }
+      }
+
+      const allList = [];
+      const matchedList = [];
+      const unmatchedList = [];
+      let totalLoadedWeight = 0;
+
+      for (const [wb, item] of loadedMap.entries()) {
+        totalLoadedWeight += (item.weight || 0);
+        if (item.origin) origins.add(item.origin);
+        if (item.destination) destinations.add(item.destination);
+
+        const isUnloaded = unloadedMap.has(wb);
+        item.status = isUnloaded ? 'sudah_bongkar' : 'belum_bongkar';
+        
+        allList.push(item);
+
+        if (isUnloaded) {
+          matchedList.push(item);
+        } else {
+          unmatchedList.push(item);
+        }
+      }
+
+      // Also if there are extra unloaded waybills not in loadedMap, add them to matchedList
+      for (const [wb, item] of unloadedMap.entries()) {
+        if (!loadedMap.has(wb)) {
+          item.status = 'sudah_bongkar';
+          matchedList.push(item);
+          allList.push(item);
+        }
+      }
+
+      reconcileDataMode1 = {
+        totalLoaded: loadedMap.size,
+        totalLoadedWeight,
+        totalUnloaded: unloadedMap.size,
+        allList,
+        matchedList,
+        unmatchedList,
+        origins,
+        destinations
+      };
+      reconcileDataState = reconcileDataMode1;
+
+      activeKpiFilter = 'missing'; // Default view: Belum Bongkar
+      hideLoading();
+      renderResults(true);
+
+    } catch (err) {
+      hideLoading();
+      alert('Terjadi kesalahan saat memproses file: ' + err.message);
+    }
+  }
+
+  // 5. Multi-File Mode Handler
+  function setupMultiDropzone(dropzoneEl, inputEl, btnBrowseEl, listEl, type) {
+    if (btnBrowseEl && inputEl) {
+      btnBrowseEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        inputEl.click();
+      });
+    }
+
+    if (dropzoneEl && inputEl) {
+      dropzoneEl.addEventListener('click', () => inputEl.click());
+
+      dropzoneEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzoneEl.classList.add('drag-over');
+      });
+
+      dropzoneEl.addEventListener('dragleave', () => {
+        dropzoneEl.classList.remove('drag-over');
+      });
+
+      dropzoneEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzoneEl.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleMultiFilesSelected(Array.from(e.dataTransfer.files), type, listEl);
+        }
+      });
+
+      inputEl.addEventListener('change', () => {
+        if (inputEl.files && inputEl.files.length > 0) {
+          handleMultiFilesSelected(Array.from(inputEl.files), type, listEl);
+        }
+      });
+    }
+  }
+
+  setupMultiDropzone(dropzoneMuat, inputMuat, btnBrowseMuat, listMuat, 'muat');
+  setupMultiDropzone(dropzoneBongkar, inputBongkar, btnBrowseBongkar, listBongkar, 'bongkar');
+
+  async function handleMultiFilesSelected(files, type, listEl) {
+    for (const f of files) {
+      multiUploadedFiles[type].push(f);
+    }
+    renderMultiFilesList(type, listEl);
+    checkMultiExecuteReady();
+  }
+
+  function renderMultiFilesList(type, listEl) {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    multiUploadedFiles[type].forEach((file, idx) => {
+      const pill = document.createElement('div');
+      pill.className = 'selected-file-pill';
+      pill.innerHTML = `
+        <div class="file-pill-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          </svg>
+          <span class="file-pill-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <span class="file-pill-rows">(${(file.size / 1024).toFixed(0)} KB)</span>
+        </div>
+        <button type="button" class="file-pill-remove" title="Hapus file" data-type="${type}" data-idx="${idx}">×</button>
+      `;
+      listEl.appendChild(pill);
+    });
+
+    listEl.querySelectorAll('.file-pill-remove').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const t = btn.getAttribute('data-type');
+        const i = parseInt(btn.getAttribute('data-idx'), 10);
+        multiUploadedFiles[t].splice(i, 1);
+        renderMultiFilesList(t, listEl);
+        checkMultiExecuteReady();
+      });
+    });
+  }
+
+  function checkMultiExecuteReady() {
+    if (!btnExecuteMulti) return;
+    const hasMuat = multiUploadedFiles.muat.length > 0;
+    const hasBongkar = multiUploadedFiles.bongkar.length > 0;
+    btnExecuteMulti.disabled = !(hasMuat && hasBongkar);
+  }
+
+  if (btnExecuteMulti) {
+    btnExecuteMulti.addEventListener('click', processMultiFiles);
+  }
+
+  async function processMultiFiles() {
+    if (!multiUploadedFiles.muat.length || !multiUploadedFiles.bongkar.length) return;
+
+    try {
+      showLoading('Membaca semua file Muat & Bongkar...', 'Menggabungkan data transitan...');
+
+      const loadedMap = new Map();
+      const unloadedMap = new Map();
+      const origins = new Set();
+      const destinations = new Set();
+
+      // 1. Process all Muat files
+      for (let i = 0; i < multiUploadedFiles.muat.length; i++) {
+        const file = multiUploadedFiles.muat[i];
+        showLoading(`Membaca file Muat (${i + 1}/${multiUploadedFiles.muat.length}): ${file.name}...`, 'Menguraikan data...');
+        const rows = await parseFileRows(file);
+        for (const r of rows) {
+          const item = normalizeRow(r);
+          if (!item.waybill) continue;
+          if (!loadedMap.has(item.waybill)) {
+            loadedMap.set(item.waybill, item);
+          } else {
+            const prev = loadedMap.get(item.waybill);
+            if (item.scanTime && (!prev.scanTime || item.scanTime > prev.scanTime)) {
+              loadedMap.set(item.waybill, item);
+            }
+          }
+        }
+      }
+
+      // 2. Process all Bongkar files
+      for (let i = 0; i < multiUploadedFiles.bongkar.length; i++) {
+        const file = multiUploadedFiles.bongkar[i];
+        showLoading(`Membaca file Bongkar (${i + 1}/${multiUploadedFiles.bongkar.length}): ${file.name}...`, 'Menguraikan data...');
+        const rows = await parseFileRows(file);
+        for (const r of rows) {
+          const item = normalizeRow(r);
+          if (!item.waybill) continue;
+          unloadedMap.set(item.waybill, item);
+        }
+      }
+
+      showLoading('Mencocokkan selisih transitan...', 'Menghitung hasil rekonsiliasi...');
+
+      const allList = [];
+      const matchedList = [];
+      const unmatchedList = [];
+      let totalLoadedWeight = 0;
+
+      for (const [wb, item] of loadedMap.entries()) {
+        totalLoadedWeight += (item.weight || 0);
+        if (item.origin) origins.add(item.origin);
+        if (item.destination) destinations.add(item.destination);
+
+        const isUnloaded = unloadedMap.has(wb);
+        item.status = isUnloaded ? 'sudah_bongkar' : 'belum_bongkar';
+        allList.push(item);
+
+        if (isUnloaded) {
+          matchedList.push(item);
+        } else {
+          unmatchedList.push(item);
+        }
+      }
+
+      for (const [wb, item] of unloadedMap.entries()) {
+        if (!loadedMap.has(wb)) {
+          item.status = 'sudah_bongkar';
+          matchedList.push(item);
+          allList.push(item);
+        }
+      }
+
+      reconcileDataMode2 = {
+        totalLoaded: loadedMap.size,
+        totalLoadedWeight,
+        totalUnloaded: unloadedMap.size,
+        allList,
+        matchedList,
+        unmatchedList,
+        origins,
+        destinations
+      };
+      reconcileDataState = reconcileDataMode2;
+
+      activeKpiFilter = 'missing';
+      hideLoading();
+      renderResults(true);
+
+    } catch (err) {
+      hideLoading();
+      alert('Gagal merekonsiliasi multi-file: ' + err.message);
+    }
+  }
+
+  // 6. Results & KPI Display
+  function renderResults(autoScroll = true) {
+    if (!resultsSection) return;
+    resultsSection.classList.remove('hidden');
+
+    const totalMuat = reconcileDataState.totalLoaded;
+    const totalBongkar = reconcileDataState.totalUnloaded;
+    const unmatchedCount = reconcileDataState.unmatchedList.length;
+    const totalMuatWeight = reconcileDataState.totalLoadedWeight;
+
+    let totalUnmatchedWeight = 0;
+    let totalUnmatchedKoli = 0;
+    reconcileDataState.unmatchedList.forEach((it) => {
+      totalUnmatchedWeight += (it.weight || 0);
+      totalUnmatchedKoli += (it.koli || 1);
+    });
+
+    const percentBongkar = totalMuat > 0 ? ((totalBongkar / totalMuat) * 100).toFixed(1) : 0;
+    const percentMissing = totalMuat > 0 ? ((unmatchedCount / totalMuat) * 100).toFixed(1) : 0;
+
+    if (kpiTotalMuat) kpiTotalMuat.textContent = totalMuat.toLocaleString('id-ID');
+    if (kpiTotalMuatBerat) kpiTotalMuatBerat.textContent = `${totalMuatWeight.toFixed(1)} kg total muat`;
+
+    if (kpiTotalBongkar) kpiTotalBongkar.textContent = totalBongkar.toLocaleString('id-ID');
+    if (kpiPersenBongkar) kpiPersenBongkar.textContent = `${percentBongkar}% terselesaikan`;
+
+    if (kpiTotalBelumBongkar) kpiTotalBelumBongkar.textContent = unmatchedCount.toLocaleString('id-ID');
+    if (kpiBelumBongkarBerat) kpiBelumBongkarBerat.textContent = `${totalUnmatchedWeight.toFixed(1)} kg selisih (${percentMissing}%)`;
+
+    updateKpiCardsVisual();
+    populateFilterDropdowns();
+    resetFilterValues();
+    applyFiltersAndRenderTable();
+
+    if (autoScroll) {
+      resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function populateFilterDropdowns() {
+    if (filterOrigin) {
+      filterOrigin.innerHTML = '<option value="">Semua Asal</option>';
+      Array.from(reconcileDataState.origins).sort().forEach((orig) => {
+        if (!orig) return;
+        const opt = document.createElement('option');
+        opt.value = orig;
+        opt.textContent = orig;
+        filterOrigin.appendChild(opt);
+      });
+    }
+
+    if (filterDestination) {
+      filterDestination.innerHTML = '<option value="">Semua Tujuan</option>';
+      Array.from(reconcileDataState.destinations).sort().forEach((dest) => {
+        if (!dest) return;
+        const opt = document.createElement('option');
+        opt.value = dest;
+        opt.textContent = dest;
+        filterDestination.appendChild(opt);
+      });
+    }
+  }
+
+  // 7. Filter Controls & Non-AWB Hunter
+  if (filterKeyword) {
+    filterKeyword.addEventListener('input', () => {
+      filterState.keyword = filterKeyword.value.trim().toLowerCase();
+      if (btnClearKeyword) btnClearKeyword.classList.toggle('hidden', !filterState.keyword);
+      applyFiltersAndRenderTable();
+    });
+  }
+
+  if (btnClearKeyword) {
+    btnClearKeyword.addEventListener('click', () => {
+      if (filterKeyword) filterKeyword.value = '';
+      filterState.keyword = '';
+      btnClearKeyword.classList.add('hidden');
+      applyFiltersAndRenderTable();
+    });
+  }
+
+  if (filterOrigin) {
+    filterOrigin.addEventListener('change', () => {
+      filterState.origin = filterOrigin.value;
+      applyFiltersAndRenderTable();
+    });
+  }
+
+  if (filterDestination) {
+    filterDestination.addEventListener('change', () => {
+      filterState.destination = filterDestination.value;
+      applyFiltersAndRenderTable();
+    });
+  }
+
+  if (btnResetFilters) {
+    btnResetFilters.addEventListener('click', resetFilterValuesAndApply);
+  }
+
+  function resetFilterValues() {
+    filterState = {
+      keyword: '',
+      origin: '',
+      destination: ''
+    };
+    if (filterKeyword) filterKeyword.value = '';
+    if (btnClearKeyword) btnClearKeyword.classList.add('hidden');
+    if (filterOrigin) filterOrigin.value = '';
+    if (filterDestination) filterDestination.value = '';
+  }
+
+  function resetFilterValuesAndApply() {
+    resetFilterValues();
+    applyFiltersAndRenderTable();
+  }
+
+  // 8. Filter Execution and Table Rendering
+  function applyFiltersAndRenderTable() {
+    if (!tableBody) return;
+
+    // Pick base list based on active KPI filter card
+    let baseList = [];
+    let filterTitle = 'AWB';
+
+    if (activeKpiFilter === 'missing') {
+      baseList = reconcileDataState.unmatchedList || [];
+      filterTitle = 'AWB Belum Dibongkar';
+    } else if (activeKpiFilter === 'matched') {
+      baseList = reconcileDataState.matchedList || [];
+      filterTitle = 'AWB Sudah Scan Bongkar';
+    } else {
+      baseList = reconcileDataState.allList || [];
+      filterTitle = 'AWB Total Dimuat';
+    }
+
+    const filtered = baseList.filter((item) => {
+      // Keyword filter
+      if (filterState.keyword) {
+        const kw = filterState.keyword;
+        const wbMatch = item.waybill.toLowerCase().includes(kw);
+        const nameMatch = item.namaBarang.toLowerCase().includes(kw);
+        const originMatch = item.origin.toLowerCase().includes(kw);
+        const destMatch = item.destination.toLowerCase().includes(kw);
+        const picMatch = item.pemindai.toLowerCase().includes(kw);
+        const resiTugasMatch = item.resiTugas.toLowerCase().includes(kw);
+        if (!wbMatch && !nameMatch && !originMatch && !destMatch && !picMatch && !resiTugasMatch) {
+          return false;
+        }
+      }
+
+      // Origin filter
+      if (filterState.origin && item.origin !== filterState.origin) {
+        return false;
+      }
+
+      // Destination filter
+      if (filterState.destination && item.destination !== filterState.destination) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (resultsCountBadge) {
+      resultsCountBadge.innerHTML = `Menampilkan <strong id="visibleCount">${filtered.length.toLocaleString('id-ID')}</strong> dari <strong id="totalUnmatchedCount">${baseList.length.toLocaleString('id-ID')}</strong> ${filterTitle}`;
+    }
+
+    tableBody.innerHTML = '';
+
+    if (baseList.length === 0) {
+      if (emptyState) emptyState.classList.remove('hidden');
+      if (noMatchState) noMatchState.classList.add('hidden');
+      return;
+    }
+
+    if (filtered.length === 0) {
+      if (emptyState) emptyState.classList.add('hidden');
+      if (noMatchState) noMatchState.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+    if (noMatchState) noMatchState.classList.add('hidden');
+
+    const fragment = document.createDocumentFragment();
+
+    filtered.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      const estPerKoli = item.koli > 1 && item.weight > 0 ? (item.weight / item.koli).toFixed(1) : null;
+      const isBelumBongkar = item.status === 'belum_bongkar';
+
+      tr.innerHTML = `
+        <td style="color: #94a3b8; font-size: 0.8rem; text-align: center;">${index + 1}</td>
+        <td>
+          <div class="reconcile-waybill-cell">
+            <span class="reconcile-waybill-code">${item.waybill}</span>
+            <button type="button" class="btn-copy-waybill" title="Copy nomor resi" data-waybill="${item.waybill}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+            </button>
+          </div>
+        </td>
+        <td>
+          ${isBelumBongkar
+            ? `<span class="reconcile-status-badge status-missing"><span class="status-dot-pulse"></span>Belum Bongkar</span>`
+            : `<span class="reconcile-status-badge status-matched"><span class="status-dot-pulse"></span>Sudah Bongkar</span>`
+          }
+        </td>
+        <td>
+          <div class="reconcile-barang-name" title="${escapeHtml(item.namaBarang || 'Tanpa Keterangan')}">
+            ${escapeHtml(item.namaBarang || '—')}
+          </div>
+          ${item.kemasan ? `<div class="reconcile-barang-sub">📦 Kemasan: ${escapeHtml(item.kemasan)}</div>` : ''}
+        </td>
+        <td>
+          <div class="reconcile-weight-primary">${item.weight ? item.weight.toFixed(1) + ' kg' : '—'}</div>
+          <div class="reconcile-weight-sub">${item.koli} Koli${estPerKoli ? ` (±${estPerKoli} kg/koli)` : ''}</div>
+        </td>
+        <td>
+          <div class="reconcile-route-badge">
+            <span>${escapeHtml(item.origin || '?')}</span>
+            <span class="route-arrow">➔</span>
+            <span>${escapeHtml(item.destination || '?')}</span>
+          </div>
+        </td>
+        <td>
+          <div style="font-size: 0.8rem; color: #cbd5e1;">${item.dimensi || '—'}</div>
+          ${item.volWeight ? `<div style="font-size: 0.72rem; color: #94a3b8;">${item.volWeight.toFixed(2)} Vol kg</div>` : ''}
+        </td>
+        <td>
+          <div style="font-size: 0.8rem; font-weight: 600; color: #e2e8f0;">${item.scanTime ? item.scanTime.split(' ')[1] || item.scanTime : '—'}</div>
+          <div style="font-size: 0.72rem; color: #94a3b8;">${item.scanTime ? item.scanTime.split(' ')[0] : ''}</div>
+        </td>
+        <td>
+          <div style="font-size: 0.82rem; color: #f1f5f9; font-weight: 500;">${escapeHtml(item.pemindai || '—')}</div>
+        </td>
+        <td>
+          <div style="font-size: 0.76rem; font-family: monospace; color: #94a3b8;">${escapeHtml(item.resiTugas || '—')}</div>
+        </td>
+      `;
+
+      fragment.appendChild(tr);
+    });
+
+    tableBody.appendChild(fragment);
+
+    // Setup Copy Waybill Buttons
+    tableBody.querySelectorAll('.btn-copy-waybill').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wb = btn.getAttribute('data-waybill');
+        if (!wb) return;
+        navigator.clipboard.writeText(wb).then(() => {
+          btn.classList.add('copied');
+          btn.innerHTML = `
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          `;
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = `
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+            `;
+          }, 1500);
+        });
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // 9. Copy All Filtered Waybills
+  if (btnCopyAll) {
+    btnCopyAll.addEventListener('click', () => {
+      let currentItems = [];
+      if (activeKpiFilter === 'missing') {
+        currentItems = reconcileDataState.unmatchedList || [];
+      } else if (activeKpiFilter === 'matched') {
+        currentItems = reconcileDataState.matchedList || [];
+      } else {
+        currentItems = reconcileDataState.allList || [];
+      }
+
+      if (!currentItems.length) {
+        alert('Tidak ada resi untuk disalin.');
+        return;
+      }
+
+      const waybillText = currentItems.map((it) => it.waybill).join('\n');
+      navigator.clipboard.writeText(waybillText).then(() => {
+        if (btnCopyAllText) {
+          const orig = btnCopyAllText.textContent;
+          btnCopyAllText.textContent = `Tersalin ${currentItems.length} Resi! ✓`;
+          setTimeout(() => {
+            btnCopyAllText.textContent = orig;
+          }, 2000);
+        }
+      });
+    });
+  }
+
+  // 10. Export to Excel using SheetJS (Exports current active tab data)
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', exportFilteredToExcel);
+  }
+
+  function exportFilteredToExcel() {
+    let items = [];
+    let sheetName = 'Belum Scan Bongkar';
+    let filePrefix = 'REKONSILIASI_BELUM_BONGKAR';
+
+    if (activeKpiFilter === 'missing') {
+      items = reconcileDataState.unmatchedList || [];
+      sheetName = 'Belum Scan Bongkar';
+      filePrefix = 'REKONSILIASI_BELUM_BONGKAR';
+    } else if (activeKpiFilter === 'matched') {
+      items = reconcileDataState.matchedList || [];
+      sheetName = 'Sudah Scan Bongkar';
+      filePrefix = 'REKONSILIASI_SUDAH_BONGKAR';
+    } else {
+      items = reconcileDataState.allList || [];
+      sheetName = 'Semua Muatan';
+      filePrefix = 'REKONSILIASI_SEMUA_DATA';
+    }
+
+    if (!items.length) {
+      alert('Tidak ada data untuk diekspor.');
+      return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+      alert('Pustaka SheetJS belum tersedia.');
+      return;
+    }
+
+    const exportRows = items.map((item, idx) => ({
+      'No': idx + 1,
+      'Kode Waybill': item.waybill,
+      'Status': item.status === 'sudah_bongkar' ? 'Sudah Bongkar' : 'Belum Bongkar',
+      'Nama Barang': item.namaBarang || '',
+      'Jenis Kemasan': item.kemasan || '',
+      'Berat (Kg)': item.weight || 0,
+      'Jumlah Koli': item.koli || 1,
+      'Estimasi Berat/Koli (Kg)': item.koli > 1 && item.weight > 0 ? parseFloat((item.weight / item.koli).toFixed(2)) : item.weight || 0,
+      'Dimensi (P x L x T)': item.dimensi || '',
+      'Berat Volumetrik (Kg)': item.volWeight || 0,
+      'Asal Muat': item.origin || '',
+      'Tujuan': item.destination || '',
+      'Waktu Scan Muat': item.scanTime || '',
+      'Petugas Pemindai': item.pemindai || '',
+      'Nomor Resi Tugas': item.resiTugas || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+
+    const colWidths = [
+      { wch: 6 },  // No
+      { wch: 18 }, // Kode Waybill
+      { wch: 16 }, // Status
+      { wch: 35 }, // Nama Barang
+      { wch: 15 }, // Kemasan
+      { wch: 12 }, // Berat
+      { wch: 12 }, // Koli
+      { wch: 22 }, // Est Berat/koli
+      { wch: 20 }, // Dimensi
+      { wch: 20 }, // Volumetrik
+      { wch: 16 }, // Asal
+      { wch: 16 }, // Tujuan
+      { wch: 20 }, // Waktu
+      { wch: 20 }, // Petugas
+      { wch: 22 }  // Resi Tugas
+    ];
+    worksheet['!cols'] = colWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+    const fileName = `${filePrefix}_${dateStr}_${timeStr}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+  }
+
+  // 11. Restart / Upload Ulang
+  if (btnRestart) {
+    btnRestart.addEventListener('click', () => {
+      const modeName = currentReconcileMode === 'single' ? '1 File Resi Tugas' : 'Multi-File Transitan';
+      if (confirm(`Mulai rekonsiliasi baru untuk mode ${modeName}? Data pada mode ini akan direset.`)) {
+        if (resultsSection) resultsSection.classList.add('hidden');
+        if (currentReconcileMode === 'single') {
+          if (inputSingle) inputSingle.value = '';
+          reconcileDataMode1 = null;
+        } else {
+          if (inputMuat) inputMuat.value = '';
+          if (inputBongkar) inputBongkar.value = '';
+          multiUploadedFiles = { muat: [], bongkar: [] };
+          if (listMuat) listMuat.innerHTML = '';
+          if (listBongkar) listBongkar.innerHTML = '';
+          checkMultiExecuteReady();
+          reconcileDataMode2 = null;
+        }
+        reconcileDataState = {
+          totalLoaded: 0,
+          totalLoadedWeight: 0,
+          totalUnloaded: 0,
+          allList: [],
+          matchedList: [],
+          unmatchedList: [],
+          origins: new Set(),
+          destinations: new Set()
+        };
+        resetFilterValues();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }
+})();

@@ -6,3 +6,5 @@ server.log
 server_err.log
 .gradle/
 android/.gradle/
+*.xlsx
+*.xls
