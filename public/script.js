@@ -7075,30 +7075,7 @@ async function syncKendaraanFromGoogleSheet() {
   }
 }
 
-// 7. Push To Feishu Webhook Bot
-async function pushKendaraanToFeishu() {
-  const btn = document.getElementById('btnPushFeishu');
-  if (btn) btn.classList.add('is-loading');
-
-  try {
-    const res = await fetch('/api/kendaraan/push-feishu', {
-      method: 'POST',
-      credentials: 'include'
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
-    }
-
-    showAppAlert(`Pesan Tagihan Dokumen HOLD Terkirim! Notifikasi otomatis berhasil masuk ke Bot Feishu.`);
-  } catch (err) {
-    showAppAlert(err.message, true);
-  } finally {
-    if (btn) btn.classList.remove('is-loading');
-  }
-}
-
-// 8. Open Add / Edit Modal (AppSheet Style)
+// 7. Open Add / Edit Modal (AppSheet Style)
 function setAppSheetToggle(group, value) {
   const buttons = document.querySelectorAll(`.appsheet-toggle-btn[data-group="${group}"]`);
   buttons.forEach(btn => {
@@ -7399,10 +7376,6 @@ function initKendaraanEventListeners() {
   const btnSync = document.getElementById('btnSyncKendaraanGSheet');
   if (btnSync) btnSync.addEventListener('click', syncKendaraanFromGoogleSheet);
 
-  // Push Feishu Button
-  const btnFeishu = document.getElementById('btnPushFeishu');
-  if (btnFeishu) btnFeishu.addEventListener('click', pushKendaraanToFeishu);
-
   // Copy WA Capacity
   const btnCopyWa = document.getElementById('btnCopyWaCapacity');
   if (btnCopyWa) {
@@ -7413,20 +7386,6 @@ function initKendaraanEventListeners() {
         const span = document.getElementById('btnCopyWaCapacityText');
         if (span) span.textContent = 'Tersalin! ✅';
         setTimeout(() => { if (span) span.textContent = 'Salin Format WA'; }, 2000);
-      }
-    });
-  }
-
-  // Copy WA Dokumen
-  const btnCopyDoc = document.getElementById('btnCopyWaDokumen');
-  if (btnCopyDoc) {
-    btnCopyDoc.addEventListener('click', () => {
-      const preview = document.getElementById('previewWaDokumen');
-      if (preview && preview.textContent) {
-        navigator.clipboard.writeText(preview.textContent);
-        const span = document.getElementById('btnCopyWaDokumenText');
-        if (span) span.textContent = 'Tersalin! ✅';
-        setTimeout(() => { if (span) span.textContent = 'Salin Pesan WA'; }, 2000);
       }
     });
   }
@@ -7574,27 +7533,345 @@ if (document.readyState === 'loading') {
 }
 
 // ==========================================================================
-// GENERATOR FEISHU - MONITORING DOKUMEN KENDARAAN MODULE
+// GENERATOR FEISHU - MONITORING DOKUMEN KENDARAAN (EXCEL-STYLE SPREADSHEET)
 // ==========================================================================
 
-let feishuHoldData = [];
+let feishuExcelRows = []; // array of { awb: string, outlet: string, gateway: string, pic: string }
+let feishuPicMap = null;
 let feishuSelectedGreeting = 'Selamat pagi';
-let feishuSearchDebounce = null;
 
-// 1. Fetch HOLD Vehicles for Feishu Generator
+// 1. Preload / Ensure Entire 3,180 PIC Mapping in Client Memory (0ms Lookup)
+async function ensureFeishuPicMap() {
+  if (feishuPicMap && Object.keys(feishuPicMap).length > 0) return feishuPicMap;
+  try {
+    const res = await fetch('/api/kendaraan/pic-map', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      feishuPicMap = data.data || {};
+      window.feishuPicMap = feishuPicMap;
+    }
+  } catch (e) {
+    console.error('ensureFeishuPicMap error:', e);
+    feishuPicMap = feishuPicMap || {};
+  }
+  return feishuPicMap;
+}
+
+// 2. Resolve Gateway and PIC for a Row
+function resolveFeishuRowPic(row) {
+  const cleanOutlet = String(row.outlet || '').toUpperCase().trim();
+  if (!cleanOutlet || !feishuPicMap) {
+    row.gateway = '';
+    row.pic = '';
+    return;
+  }
+  const item = feishuPicMap[cleanOutlet];
+  if (item) {
+    row.gateway = item.nama_gateway || '';
+    row.pic = item.tagging_pic || 'PIC';
+  } else {
+    row.gateway = '';
+    row.pic = '';
+  }
+}
+
+// 3. Initialize Blank Rows (Default 5 rows like Excel)
+function initFeishuExcelRows() {
+  if (feishuExcelRows.length === 0) {
+    for (let i = 0; i < 5; i++) {
+      feishuExcelRows.push({ awb: '', outlet: '', gateway: '', pic: '' });
+    }
+  }
+  renderFeishuExcelTable();
+  updateFeishuStats();
+  generateFeishuPreviewText();
+}
+
+// 4. Update Stat Strip
+function updateFeishuStats() {
+  const totalEl = document.getElementById('feishuTotalAwb');
+  const mappedEl = document.getElementById('feishuMappedAwb');
+  const timeEl = document.getElementById('feishuTimestamp');
+  const dateEl = document.getElementById('feishuDateStr');
+  const countEl = document.getElementById('feishuTableCount');
+
+  const filledRows = feishuExcelRows.filter(r => r.awb && r.awb.trim().length > 0);
+  const total = filledRows.length;
+  const mapped = filledRows.filter(d => d.gateway).length;
+
+  if (totalEl) totalEl.textContent = `${total} Resi`;
+  if (mappedEl) mappedEl.textContent = `${mapped} / ${total}`;
+  if (countEl) countEl.textContent = `${total} Baris`;
+
+  const now = new Date();
+  if (timeEl) timeEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  if (dateEl) dateEl.textContent = now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// 5. Render Excel Grid Table
+function renderFeishuExcelTable() {
+  const tbody = document.getElementById('feishuExcelTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = feishuExcelRows.map((row, idx) => {
+    const awb = row.awb || '';
+    const outlet = row.outlet || '';
+    const gw = row.gateway || '';
+    const pic = row.pic || '';
+
+    let resultHtml = '<span class="cell-empty-dash">-</span>';
+    if (outlet) {
+      if (gw) {
+        resultHtml = `
+          <div class="excel-cell-result">
+            <span class="badge-gw-tag">${escKendaraanHtml(gw)}</span>
+            <span class="badge-pic-tag">@${escKendaraanHtml(pic || 'PIC')}</span>
+          </div>
+        `;
+      } else {
+        resultHtml = `<span style="color: #fb7185; font-size: 0.74rem;">Outlet belum terdaftar</span>`;
+      }
+    }
+
+    return `
+      <tr data-row-idx="${idx}">
+        <td>${idx + 1}</td>
+        <td>
+          <input type="text" class="excel-cell-input awb-cell" data-idx="${idx}" data-field="awb" value="${escKendaraanHtml(awb)}" placeholder="201807259055" />
+        </td>
+        <td>
+          <input type="text" class="excel-cell-input outlet-cell" data-idx="${idx}" data-field="outlet" value="${escKendaraanHtml(outlet)}" placeholder="JKT074A" />
+        </td>
+        <td>
+          <div id="resultCell_${idx}">${resultHtml}</div>
+        </td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-grid-row-del" onclick="deleteFeishuExcelRow(${idx})" title="Hapus baris ini">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 6. Delete Row
+window.deleteFeishuExcelRow = function(index) {
+  if (index >= 0 && index < feishuExcelRows.length) {
+    feishuExcelRows.splice(index, 1);
+    if (feishuExcelRows.length === 0) {
+      feishuExcelRows.push({ awb: '', outlet: '', gateway: '', pic: '' });
+    }
+    renderFeishuExcelTable();
+    updateFeishuStats();
+    generateFeishuPreviewText();
+  }
+};
+
+// 7. Add Rows (+1 / +5)
+function addFeishuExcelRow(count = 1) {
+  for (let i = 0; i < count; i++) {
+    feishuExcelRows.push({ awb: '', outlet: '', gateway: '', pic: '' });
+  }
+  renderFeishuExcelTable();
+  updateFeishuStats();
+
+  const lastInputs = document.querySelectorAll('#feishuExcelTableBody .awb-cell');
+  if (lastInputs.length > 0) {
+    lastInputs[lastInputs.length - count].focus();
+  }
+}
+
+// 8. Reset / Clear Table
+function clearFeishuExcelTable() {
+  feishuExcelRows = [];
+  for (let i = 0; i < 5; i++) {
+    feishuExcelRows.push({ awb: '', outlet: '', gateway: '', pic: '' });
+  }
+  renderFeishuExcelTable();
+  updateFeishuStats();
+  generateFeishuPreviewText();
+  showAppAlert('Tabel input direset.');
+}
+
+// 9. Handle Table Input Event Delegation
+function handleExcelTableInput(e) {
+  const target = e.target;
+  if (!target || !target.classList.contains('excel-cell-input')) return;
+
+  const idx = parseInt(target.getAttribute('data-idx'), 10);
+  const field = target.getAttribute('data-field');
+  if (isNaN(idx) || !feishuExcelRows[idx]) return;
+
+  const rawVal = target.value;
+  feishuExcelRows[idx][field] = field === 'outlet' ? rawVal.toUpperCase().trim() : rawVal.trim();
+
+  if (field === 'outlet') {
+    resolveFeishuRowPic(feishuExcelRows[idx]);
+    const resCell = document.getElementById(`resultCell_${idx}`);
+    if (resCell) {
+      const gw = feishuExcelRows[idx].gateway;
+      const pic = feishuExcelRows[idx].pic;
+      if (feishuExcelRows[idx].outlet) {
+        if (gw) {
+          resCell.innerHTML = `
+            <div class="excel-cell-result">
+              <span class="badge-gw-tag">${escKendaraanHtml(gw)}</span>
+              <span class="badge-pic-tag">@${escKendaraanHtml(pic || 'PIC')}</span>
+            </div>
+          `;
+        } else {
+          resCell.innerHTML = `<span style="color: #fb7185; font-size: 0.74rem;">Outlet belum terdaftar</span>`;
+        }
+      } else {
+        resCell.innerHTML = `<span class="cell-empty-dash">-</span>`;
+      }
+    }
+  }
+
+  updateFeishuStats();
+  generateFeishuPreviewText();
+}
+
+// 10. Handle Clipboard Paste (Direct Excel Paste onto Table)
+function handleExcelTablePaste(e) {
+  const clipboardData = e.clipboardData || window.clipboardData;
+  if (!clipboardData) return;
+  const pastedText = clipboardData.getData('text');
+  if (!pastedText) return;
+
+  if (pastedText.includes('\t') || pastedText.includes('\n')) {
+    e.preventDefault();
+    parseAndInsertExcelData(pastedText);
+  }
+}
+
+// 11. Parse Excel Text Data
+async function parseAndInsertExcelData(text) {
+  await ensureFeishuPicMap();
+
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+
+  feishuExcelRows = feishuExcelRows.filter(r => r.awb || r.outlet);
+
+  let addedCount = 0;
+  lines.forEach(line => {
+    const lower = line.toLowerCase();
+    if (lower.includes('nomor awb') || lower.includes('outlet / asal') || lower.includes('waybill')) {
+      return;
+    }
+
+    let awb = '';
+    let outlet = '';
+
+    if (line.includes('\t')) {
+      const parts = line.split('\t').map(p => p.trim());
+      awb = parts[0] || '';
+      outlet = (parts[1] || '').toUpperCase();
+    } else if (line.includes(',')) {
+      const parts = line.split(',').map(p => p.trim());
+      awb = parts[0] || '';
+      outlet = (parts[1] || '').toUpperCase();
+    } else if (line.includes(' ')) {
+      const parts = line.split(/\s+/).map(p => p.trim());
+      awb = parts[0] || '';
+      outlet = (parts[1] || '').toUpperCase();
+    } else {
+      awb = line.trim();
+    }
+
+    if (awb || outlet) {
+      const row = { awb, outlet, gateway: '', pic: '' };
+      resolveFeishuRowPic(row);
+      feishuExcelRows.push(row);
+      addedCount++;
+    }
+  });
+
+  while (feishuExcelRows.length < 5) {
+    feishuExcelRows.push({ awb: '', outlet: '', gateway: '', pic: '' });
+  }
+
+  renderFeishuExcelTable();
+  updateFeishuStats();
+  generateFeishuPreviewText();
+
+  showAppAlert(`Berhasil memasukkan ${addedCount} baris dari Excel!`);
+}
+
+// 12. Generate Live Preview Text for Feishu / WhatsApp
+function generateFeishuPreviewText() {
+  const preview = document.getElementById('feishuDynamicPreview');
+  if (!preview) return;
+
+  const validRows = feishuExcelRows.filter(r => r.awb && r.awb.trim().length > 0);
+
+  if (validRows.length === 0) {
+    preview.textContent = 'Belum ada data resi. Masukkan Nomor AWB & Outlet Asal pada tabel di sebelah kiri untuk menghasilkan format pesan otomatis.';
+    return;
+  }
+
+  let text = `${feishuSelectedGreeting} kak, tolong dibantu untuk kelengkapan dokumen kendaraan dengan awb berikut terimakasih :\n`;
+
+  validRows.forEach(row => {
+    const awb = row.awb.trim();
+    const outlet = (row.outlet || '').toUpperCase().trim();
+    const gw = row.gateway || '';
+    const pic = row.pic || 'PIC';
+
+    if (!outlet) {
+      text += `${awb}\n`;
+    } else {
+      const picFormatted = pic.startsWith('@') ? pic : `@${pic}`;
+      if (gw) {
+        text += `${awb} ${outlet} ${gw} ${picFormatted}\n`;
+      } else {
+        text += `${awb} ${outlet}\n`;
+      }
+    }
+  });
+
+  preview.textContent = text.trim();
+}
+
+// 13. Pull HOLD Units from Database
 async function fetchFeishuHoldList() {
   const btnPull = document.getElementById('btnPullFeishuHold');
   if (btnPull) btnPull.classList.add('is-loading');
 
   try {
+    await ensureFeishuPicMap();
     const res = await fetch('/api/kendaraan/feishu-hold-list', { credentials: 'include' });
     if (!res.ok) throw new Error('Gagal memuat data HOLD Feishu');
     const data = await res.json();
-    feishuHoldData = data.data || [];
+    const holdItems = data.data || [];
 
+    if (holdItems.length === 0) {
+      showAppAlert('Tidak ada unit kendaraan yang sedang berstatus HOLD.');
+      return;
+    }
+
+    feishuExcelRows = holdItems.map(item => {
+      const row = {
+        awb: item.awb || '',
+        outlet: (item.effective_outlet || item.kode_outlet || '').toUpperCase(),
+        gateway: item.effective_gateway || item.nama_gateway || '',
+        pic: item.effective_pic || item.tagging_pic || ''
+      };
+      if (row.outlet && (!row.gateway || !row.pic)) {
+        resolveFeishuRowPic(row);
+      }
+      return row;
+    });
+
+    while (feishuExcelRows.length < 5) {
+      feishuExcelRows.push({ awb: '', outlet: '', gateway: '', pic: '' });
+    }
+
+    renderFeishuExcelTable();
     updateFeishuStats();
-    renderFeishuTable();
     generateFeishuPreviewText();
+
+    showAppAlert(`Berhasil menarik ${holdItems.length} unit motor HOLD ke tabel.`);
   } catch (err) {
     console.error('fetchFeishuHoldList error:', err);
     showAppAlert(err.message, true);
@@ -7603,136 +7880,7 @@ async function fetchFeishuHoldList() {
   }
 }
 
-// 2. Update Feishu Stat Strip
-function updateFeishuStats() {
-  const totalEl = document.getElementById('feishuTotalAwb');
-  const mappedEl = document.getElementById('feishuMappedAwb');
-  const timeEl = document.getElementById('feishuTimestamp');
-  const dateEl = document.getElementById('feishuDateStr');
-  const countEl = document.getElementById('feishuTableCount');
-
-  const total = feishuHoldData.length;
-  const mapped = feishuHoldData.filter(d => (d.effective_gateway || d.nama_gateway)).length;
-
-  if (totalEl) totalEl.textContent = `${total} Resi`;
-  if (mappedEl) mappedEl.textContent = `${mapped} / ${total}`;
-  if (countEl) countEl.textContent = `${total} Resi`;
-
-  const now = new Date();
-  if (timeEl) timeEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  if (dateEl) dateEl.textContent = now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-// 3. Render Feishu Table
-function renderFeishuTable() {
-  const tbody = document.getElementById('feishuTableBody');
-  const emptyState = document.getElementById('feishuTableEmpty');
-  const searchInput = document.getElementById('feishuTableSearch');
-  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
-  if (!tbody) return;
-
-  let filtered = [...feishuHoldData];
-  if (searchVal) {
-    filtered = filtered.filter(item => {
-      const awb = String(item.awb || '').toLowerCase();
-      const outlet = String(item.effective_outlet || item.outlet || '').toLowerCase();
-      const gw = String(item.effective_gateway || item.nama_gateway || '').toLowerCase();
-      const pic = String(item.effective_pic || item.tagging_pic || '').toLowerCase();
-      return awb.includes(searchVal) || outlet.includes(searchVal) || gw.includes(searchVal) || pic.includes(searchVal);
-    });
-  }
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = '';
-    if (emptyState) emptyState.classList.remove('hidden');
-    return;
-  }
-
-  if (emptyState) emptyState.classList.add('hidden');
-
-  tbody.innerHTML = filtered.map((item, idx) => {
-    const awb = item.awb || '-';
-    const outlet = item.effective_outlet || item.outlet || '-';
-    const gw = item.effective_gateway || item.nama_gateway || '-';
-    const pic = item.effective_pic || item.tagging_pic || '-';
-    const phone = item.no_wa || item.pic_phone || '';
-
-    let waBtn = '<span style="color: #64748b; font-size: 0.75rem;">-</span>';
-    if (phone) {
-      const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '62');
-      const waMsg = encodeURIComponent(`Halo Kak ${pic}, tolong dibantu kelengkapan dokumen kendaraan resi ${awb} asal ${outlet} (${gw}) terimakasih.`);
-      waBtn = `<a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" rel="noopener noreferrer" class="wa-btn-link" title="Chat PIC Gateway">📱 Chat</a>`;
-    }
-
-    return `
-      <tr>
-        <td style="text-align: center; color: #94a3b8; font-size: 0.8rem;">${idx + 1}</td>
-        <td>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <strong style="color: #f8fafc; font-family: monospace; font-size: 0.88rem;">${escKendaraanHtml(awb)}</strong>
-            <button type="button" class="btn-copy-mini" onclick="navigator.clipboard.writeText('${escKendaraanHtml(awb)}'); showAppAlert('No AWB disalin!');" title="Salin AWB">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-            </button>
-          </div>
-        </td>
-        <td><strong style="color: #38bdf8;">${escKendaraanHtml(outlet)}</strong></td>
-        <td>
-          <div style="display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-weight: 600; color: #e2e8f0; font-size: 0.82rem;">${escKendaraanHtml(gw)}</span>
-            <span style="font-size: 0.75rem; color: #c084fc; font-weight: 600;">@${escKendaraanHtml(pic)}</span>
-          </div>
-        </td>
-        <td style="text-align: center;">${waBtn}</td>
-        <td style="text-align: center;">
-          <button type="button" class="btn-action-icon btn-delete" title="Hapus dari daftar tagihan" onclick="removeFeishuRow(${idx})">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
-
-// 4. Generate Live Preview Text for Feishu / WhatsApp
-function generateFeishuPreviewText() {
-  const preview = document.getElementById('feishuDynamicPreview');
-  if (!preview) return;
-
-  if (feishuHoldData.length === 0) {
-    preview.textContent = 'Belum ada data resi HOLD. Tarik unit dari monitoring atau paste nomor resi untuk membuat pesan otomatis.';
-    return;
-  }
-
-  let text = `${feishuSelectedGreeting} kak, tolong dibantu untuk kelengkapan dokumen kendaraan dengan awb berikut terimakasih :\n`;
-
-  feishuHoldData.forEach(item => {
-    const awb = item.awb || '';
-    const outlet = item.effective_outlet || item.outlet || '';
-    const gw = item.effective_gateway || item.nama_gateway || '';
-    const pic = item.effective_pic || item.tagging_pic || '';
-
-    const parts = [awb];
-    if (outlet && outlet !== '-') parts.push(outlet);
-    if (gw && gw !== '-') parts.push(gw);
-    if (pic && pic !== '-') parts.push(`@${pic}`);
-
-    text += parts.join(' ') + '\n';
-  });
-
-  preview.textContent = text.trim();
-}
-
-window.removeFeishuRow = function(index) {
-  if (index >= 0 && index < feishuHoldData.length) {
-    feishuHoldData.splice(index, 1);
-    updateFeishuStats();
-    renderFeishuTable();
-    generateFeishuPreviewText();
-  }
-};
-
-// 5. Batch Paste Modal Handling
+// 14. Batch Paste Modal Handling
 function openFeishuBatchModal() {
   const modal = document.getElementById('feishuBatchModal');
   const textarea = document.getElementById('feishuBatchTextarea');
@@ -7755,68 +7903,138 @@ function closeFeishuBatchModal() {
 async function submitFeishuBatchForm(e) {
   e.preventDefault();
   const textarea = document.getElementById('feishuBatchTextarea');
-  const btn = document.getElementById('submitFeishuBatchBtn');
   if (!textarea || !textarea.value.trim()) {
-    showAppAlert('Masukkan setidaknya satu nomor AWB.');
+    showAppAlert('Masukkan atau tempel setidaknya satu baris dari Excel.');
     return;
   }
 
-  const raw = textarea.value.trim();
-  const awbs = raw.split(/[\r\n,\t\s]+/).map(a => a.trim()).filter(Boolean);
+  await parseAndInsertExcelData(textarea.value.trim());
+  closeFeishuBatchModal();
+}
 
-  if (awbs.length === 0) {
-    showAppAlert('Nomor AWB tidak valid.');
+// 15. Feishu Send Confirmation Modal Handling (Review before sending!)
+function openFeishuConfirmModal() {
+  const preview = document.getElementById('feishuDynamicPreview');
+  const previewText = preview ? preview.textContent.trim() : '';
+
+  const validRows = feishuExcelRows.filter(r => r.awb && r.awb.trim().length > 0);
+  if (validRows.length === 0 || !previewText || previewText.startsWith('Belum ada data')) {
+    showAppAlert('Tidak ada pesan tagihan untuk dikirim. Masukkan nomor AWB terlebih dahulu.');
     return;
   }
 
-  if (btn) btn.disabled = true;
+  const modal = document.getElementById('feishuConfirmModal');
+  const textarea = document.getElementById('feishuConfirmTextarea');
+  const countBadge = document.getElementById('feishuConfirmResiCount');
 
-  try {
-    const res = await fetch('/api/kendaraan/feishu-batch-lookup', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ awb_list: awbs })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Gagal memproses daftar AWB');
-    }
+  if (textarea) textarea.value = previewText;
+  if (countBadge) countBadge.textContent = `${validRows.length} Resi Terlampir`;
 
-    // Merge or replace feishuHoldData
-    feishuHoldData = data.data || [];
-    closeFeishuBatchModal();
-    updateFeishuStats();
-    renderFeishuTable();
-    generateFeishuPreviewText();
-
-    showAppAlert(`Berhasil mencocokkan ${feishuHoldData.length} AWB dengan database outlet & gateway.`);
-  } catch (err) {
-    showAppAlert(err.message, true);
-  } finally {
-    if (btn) btn.disabled = false;
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => { if (textarea) textarea.focus(); }, 150);
   }
 }
 
-// 6. Event Listeners for Generator Feishu Module
+function closeFeishuConfirmModal() {
+  const modal = document.getElementById('feishuConfirmModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function executeSendFeishu() {
+  const textarea = document.getElementById('feishuConfirmTextarea');
+  const btn = document.getElementById('btnExecuteSendFeishu');
+  const textToSend = textarea ? textarea.value.trim() : '';
+
+  if (!textToSend) {
+    showAppAlert('Pesan tidak boleh kosong.');
+    return;
+  }
+
+  if (btn) btn.classList.add('is-loading');
+
+  try {
+    const res = await fetch('/api/kendaraan/push-feishu', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: textToSend })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
+    }
+
+    closeFeishuConfirmModal();
+    showAppAlert('Pesan berhasil terkirim ke Bot Feishu grup!');
+  } catch (err) {
+    showAppAlert(err.message, true);
+  } finally {
+    if (btn) btn.classList.remove('is-loading');
+  }
+}
+
+// 16. Event Listeners for Generator Feishu Module
 function initFeishuEventListeners() {
+  // Preload PIC Map
+  ensureFeishuPicMap().then(() => {
+    initFeishuExcelRows();
+  });
+
   // Pull button
   const btnPull = document.getElementById('btnPullFeishuHold');
   if (btnPull) btnPull.addEventListener('click', fetchFeishuHoldList);
 
-  // Batch paste button
+  // Add Row buttons
+  const btnAdd = document.getElementById('btnAddExcelRow');
+  if (btnAdd) btnAdd.addEventListener('click', () => addFeishuExcelRow(1));
+
+  const btnAddBottom = document.getElementById('btnAddExcelRowBottom');
+  if (btnAddBottom) btnAddBottom.addEventListener('click', () => addFeishuExcelRow(1));
+
+  const btnAdd5 = document.getElementById('btnAdd5ExcelRows');
+  if (btnAdd5) btnAdd5.addEventListener('click', () => addFeishuExcelRow(5));
+
+  // Reset / Clear button
+  const btnClear = document.getElementById('btnClearExcelTable');
+  if (btnClear) btnClear.addEventListener('click', clearFeishuExcelTable);
+
+  // Table Event Delegation (Input & Paste)
+  const excelTbody = document.getElementById('feishuExcelTableBody');
+  if (excelTbody) {
+    excelTbody.addEventListener('input', handleExcelTableInput);
+    excelTbody.addEventListener('paste', handleExcelTablePaste);
+  }
+
+  // Also support paste on table container
+  const tableWrap = document.querySelector('.feishu-excel-wrap');
+  if (tableWrap) {
+    tableWrap.addEventListener('paste', handleExcelTablePaste);
+  }
+
+  // Batch paste modal buttons
   const btnBatch = document.getElementById('btnOpenBatchAwbModal');
   if (btnBatch) btnBatch.addEventListener('click', openFeishuBatchModal);
 
-  // Close batch modal
   const closeBatchBtn = document.getElementById('closeFeishuBatchModalBtn');
   const cancelBatchBtn = document.getElementById('cancelFeishuBatchModalBtn');
   if (closeBatchBtn) closeBatchBtn.addEventListener('click', closeFeishuBatchModal);
   if (cancelBatchBtn) cancelBatchBtn.addEventListener('click', closeFeishuBatchModal);
 
-  // Submit batch form
   const batchForm = document.getElementById('feishuBatchForm');
   if (batchForm) batchForm.addEventListener('submit', submitFeishuBatchForm);
+
+  // Feishu Confirm Modal buttons
+  const closeConfirmBtn = document.getElementById('closeFeishuConfirmModalBtn');
+  const cancelConfirmBtn = document.getElementById('cancelFeishuConfirmBtn');
+  const doSendBtn = document.getElementById('btnExecuteSendFeishu');
+  if (closeConfirmBtn) closeConfirmBtn.addEventListener('click', closeFeishuConfirmModal);
+  if (cancelConfirmBtn) cancelConfirmBtn.addEventListener('click', closeFeishuConfirmModal);
+  if (doSendBtn) doSendBtn.addEventListener('click', executeSendFeishu);
 
   // Open Master Gateways from Feishu
   const btnGw = document.getElementById('btnOpenMasterGatewaysFromFeishu');
@@ -7846,42 +8064,10 @@ function initFeishuEventListeners() {
     });
   }
 
-  // Send to Feishu Bot
+  // Send to Feishu Bot (Opens Confirmation Modal first!)
   const btnBot = document.getElementById('btnSendToFeishuBot');
   if (btnBot) {
-    btnBot.addEventListener('click', async () => {
-      const preview = document.getElementById('feishuDynamicPreview');
-      if (!preview || !preview.textContent || feishuHoldData.length === 0) {
-        showAppAlert('Tidak ada pesan tagihan untuk dikirim.');
-        return;
-      }
-
-      btnBot.classList.add('is-loading');
-      try {
-        const res = await fetch('/api/kendaraan/push-feishu', {
-          method: 'POST',
-          credentials: 'include'
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
-        }
-        showAppAlert('Pesan berhasil terkirim ke Bot Feishu grup!');
-      } catch (err) {
-        showAppAlert(err.message, true);
-      } finally {
-        btnBot.classList.remove('is-loading');
-      }
-    });
-  }
-
-  // Table search
-  const searchInput = document.getElementById('feishuTableSearch');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      clearTimeout(feishuSearchDebounce);
-      feishuSearchDebounce = setTimeout(renderFeishuTable, 200);
-    });
+    btnBot.addEventListener('click', openFeishuConfirmModal);
   }
 }
 

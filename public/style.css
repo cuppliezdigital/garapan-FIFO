@@ -11379,4 +11379,242 @@ thead th input[type="checkbox"]:active {
   border-top: 1px dashed rgba(148, 163, 184, 0.15);
 }
 
+/* ============================================================
+   EXCEL-LIKE SPREADSHEET INPUT TABLE STYLES
+   ============================================================ */
+.feishu-excel-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-feishu-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.6);
+  color: #e2e8f0;
+  transition: all 0.15s ease;
+}
+
+.btn-feishu-mini:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-feishu-mini.btn-add-row {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.btn-feishu-mini.btn-add-row:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+}
+
+.btn-feishu-mini.btn-clear-all {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+.btn-feishu-mini.btn-clear-all:hover {
+  background: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.5);
+  color: #fda4af;
+}
+
+.excel-paste-hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  margin: 10px 14px 4px 14px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 8px;
+  color: #7dd3fc;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.excel-paste-hint-banner code {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #38bdf8;
+}
+
+.feishu-excel-wrap {
+  padding: 0 10px;
+}
+
+.feishu-excel-grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 6px;
+}
+
+.feishu-excel-grid thead th {
+  background: rgba(30, 41, 59, 0.95);
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  border-bottom: 2px solid rgba(148, 163, 184, 0.25);
+  border-right: 1px solid rgba(148, 163, 184, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.feishu-excel-grid thead th:first-child {
+  border-left: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.feishu-excel-grid tbody tr {
+  transition: background 0.1s ease;
+}
+
+.feishu-excel-grid tbody tr:hover {
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.feishu-excel-grid tbody td {
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-right: 1px solid rgba(148, 163, 184, 0.1);
+  vertical-align: middle;
+}
+
+.feishu-excel-grid tbody td:first-child {
+  border-left: 1px solid rgba(148, 163, 184, 0.1);
+  text-align: center;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.excel-cell-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84rem;
+  transition: all 0.15s ease;
+}
+
+.excel-cell-input:hover {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.excel-cell-input:focus {
+  outline: none;
+  background: #020617;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+}
+
+.excel-cell-input.outlet-cell {
+  text-transform: uppercase;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.excel-cell-input::placeholder {
+  color: #475569;
+  font-size: 0.78rem;
+}
+
+.excel-cell-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  min-height: 28px;
+}
+
+.badge-gw-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 6px;
+  color: #7dd3fc;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge-pic-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 6px;
+  color: #c084fc;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.cell-empty-dash {
+  color: #475569;
+  font-size: 0.8rem;
+}
+
+.btn-grid-row-del {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.15s ease;
+}
+
+.btn-grid-row-del:hover {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+.feishu-excel-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+
 

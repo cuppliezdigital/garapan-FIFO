@@ -23,5 +23,6 @@ router.put('/kendaraan/gateways/:id', authMiddleware, kendaraanController.update
 // Feishu Generator Dedicated Endpoints
 router.get('/kendaraan/feishu-hold-list', authMiddleware, kendaraanController.getFeishuHoldList);
 router.post('/kendaraan/feishu-batch-lookup', authMiddleware, kendaraanController.batchLookup);
+router.get('/kendaraan/pic-map', authMiddleware, kendaraanController.getPicMap);
 
 module.exports = router;

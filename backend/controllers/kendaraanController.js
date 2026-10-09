@@ -447,36 +447,40 @@ exports.syncFromGoogleSheet = async (req, res) => {
 // 7. Push Notification to Feishu Webhook Bot
 exports.pushToFeishu = async (req, res) => {
   try {
-    const [holdRows] = await db.query(`
-      SELECT 
-        k.awb,
-        k.tlc_tujuan,
-        k.tipe_kendaraan,
-        COALESCE(k.kode_outlet, h.outlet) as effective_outlet,
-        COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
-      FROM kendaraan_instock k
-      LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, h.outlet) = m.kode_outlet
-      LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
-      WHERE k.status_muat = 'hold' OR (k.tipe_kendaraan LIKE '%Motor%' AND k.status_dokumen = 'Tidak')
-      ORDER BY k.tanggal_input DESC
-    `);
+    let bodyText = req.body && req.body.text ? String(req.body.text).trim() : '';
 
-    if (holdRows.length === 0) {
-      return res.json({ success: true, message: 'Tidak ada unit kendaraan yang berstatus HOLD (Non-Dokumen).' });
+    if (!bodyText) {
+      const [holdRows] = await db.query(`
+        SELECT 
+          k.awb,
+          k.tlc_tujuan,
+          k.tipe_kendaraan,
+          COALESCE(k.kode_outlet, h.outlet) as effective_outlet,
+          COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
+          COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        FROM kendaraan_instock k
+        LEFT JOIN history h ON k.awb = h.waybill
+        LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, h.outlet) = m.kode_outlet
+        LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
+        WHERE k.status_muat = 'hold' OR (k.tipe_kendaraan LIKE '%Motor%' AND k.status_dokumen = 'Tidak')
+        ORDER BY k.tanggal_input DESC
+      `);
+
+      if (holdRows.length === 0) {
+        return res.json({ success: true, message: 'Tidak ada unit kendaraan yang berstatus HOLD (Non-Dokumen).' });
+      }
+
+      bodyText = `🚨 **UPDATE KENDARAAN HOLD (DOKUMEN TIDAK LENGKAP)**\n` +
+        `📅 Waktu: ${getIndonesianDate()} | Total: ${holdRows.length} Unit\n\n` +
+        `Tolong dibantu kelengkapan dokumen kendaraan berikut:\n`;
+
+      holdRows.forEach((item, idx) => {
+        const outlet = item.effective_outlet || '-';
+        const gw = item.effective_gateway || '-';
+        const pic = item.effective_pic ? ` (${item.effective_pic})` : '';
+        bodyText += `${idx + 1}. **${item.awb}** | ${item.tlc_tujuan} | ${outlet} | ${gw}${pic}\n`;
+      });
     }
-
-    let bodyText = `🚨 **UPDATE KENDARAAN HOLD (DOKUMEN TIDAK LENGKAP)**\n` +
-      `📅 Waktu: ${getIndonesianDate()} | Total: ${holdRows.length} Unit\n\n` +
-      `Tolong dibantu kelengkapan dokumen kendaraan berikut:\n`;
-
-    holdRows.forEach((item, idx) => {
-      const outlet = item.effective_outlet || '-';
-      const gw = item.effective_gateway || '-';
-      const pic = item.effective_pic ? ` (${item.effective_pic})` : '';
-      bodyText += `${idx + 1}. **${item.awb}** | ${item.tlc_tujuan} | ${outlet} | ${gw}${pic}\n`;
-    });
 
     const payload = JSON.stringify({
       msg_type: 'text',
@@ -504,12 +508,12 @@ exports.pushToFeishu = async (req, res) => {
         try {
           const json = JSON.parse(respData);
           if (json.StatusCode === 0 || json.code === 0) {
-            res.json({ success: true, message: `Berhasil mengirim ${holdRows.length} data HOLD ke grup Feishu!`, feishu_response: json });
+            res.json({ success: true, message: 'Pesan berhasil terkirim ke Bot Feishu!', feishu_response: json });
           } else {
             res.status(400).json({ error: 'Gagal kirim ke Feishu: ' + (json.msg || json.message || respData) });
           }
         } catch (e) {
-          res.json({ success: true, message: 'Notifikasi terkirim ke Feishu.' });
+          res.json({ success: true, message: 'Pesan berhasil terkirim ke Bot Feishu.' });
         }
       });
     });
@@ -704,5 +708,44 @@ exports.batchLookup = async (req, res) => {
     res.status(500).json({ error: 'Gagal melakukan batch lookup: ' + err.message });
   }
 };
+
+// 13. Get Entire Outlet to PIC Map (for instantaneous Excel-like client lookup)
+exports.getPicMap = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        m.kode_outlet,
+        m.nama_gateway,
+        COALESCE(m.tagging_pic, gl.tagging_pic) as tagging_pic,
+        m.display_gateway_pic
+      FROM master_pic_gateway m
+      LEFT JOIN master_gateway_list gl ON m.nama_gateway = gl.nama_gateway
+    `);
+
+    const map = {};
+    rows.forEach(r => {
+      if (r.kode_outlet) {
+        const cleanOutlet = String(r.kode_outlet).toUpperCase().trim();
+        const gw = r.nama_gateway || '';
+        const pic = r.tagging_pic || 'PIC';
+        map[cleanOutlet] = {
+          nama_gateway: gw,
+          tagging_pic: pic,
+          display: r.display_gateway_pic || (gw ? `${gw} @${pic}` : '')
+        };
+      }
+    });
+
+    res.json({
+      success: true,
+      count: Object.keys(map).length,
+      data: map
+    });
+  } catch (err) {
+    console.error('getPicMap error:', err);
+    res.status(500).json({ error: 'Gagal memuat mapping PIC: ' + err.message });
+  }
+};
+
 
 
