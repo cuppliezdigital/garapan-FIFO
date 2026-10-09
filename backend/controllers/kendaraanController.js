@@ -384,16 +384,16 @@ exports.delete = async (req, res) => {
 // 6. Realtime Sync from Google Sheet (AppSheet LOG_UPDATE)
 exports.syncFromGoogleSheet = async (req, res) => {
   try {
-    function fetchFollow(url) {
+    function fetchFollow(url, redirectCount = 0) {
       return new Promise((resolve, reject) => {
+        if (redirectCount > 5) return reject(new Error('Too many redirects'));
         https.get(url, (resp) => {
           if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
-            fetchFollow(resp.headers.location).then(resolve).catch(reject);
-          } else {
-            let data = '';
-            resp.on('data', c => data += c);
-            resp.on('end', () => resolve(data));
+            return resolve(fetchFollow(resp.headers.location, redirectCount + 1));
           }
+          let data = '';
+          resp.on('data', c => data += c);
+          resp.on('end', () => resolve(data));
         }).on('error', reject);
       });
     }
@@ -401,42 +401,91 @@ exports.syncFromGoogleSheet = async (req, res) => {
     const csvContent = await fetchFollow(GSHEET_LOG_UPDATE_URL);
     const lines = csvContent.split('\n').filter(l => l.trim().length > 0);
 
-    let synced = 0;
+    const sheetRows = [];
     for (let i = 1; i < lines.length; i++) {
       const row = parseCsvLine(lines[i]);
-      if (!row || !row[3]) continue;
+      const appsheetId = (row[0] || '').trim();
+      const awb = (row[3] || '').trim();
+      if (!awb) continue;
 
       const timestamp = parseCustomDate(row[1]);
-      const spotPetugas = row[2] || null;
-      const awb = row[3];
-      const tlcTujuan = (row[4] || 'LAINNYA').toUpperCase();
-      const tipeKendaraan = row[5] || 'Motor Bensin';
-      const statusSpl = row[6] || null;
-      const statusDokumen = row[7] || null;
+      const spotPetugas = (row[2] || '').trim() || null;
+      let tlcTujuan = (row[4] || 'LAINNYA').trim().toUpperCase();
+      if (tlcTujuan !== 'PNK' && tlcTujuan !== 'BDJ') tlcTujuan = 'LAINNYA';
+
+      const tipeKendaraan = (row[5] || 'Motor Bensin').trim();
+      const statusSpl = (row[6] || '').trim() || null;
+      const statusDokumen = (row[7] || '').trim() || null;
       const koli = parseInt(row[8], 10) || 1;
-      const keterangan = row[9] || null;
+      const keterangan = (row[9] || '').trim() || null;
 
       let statusMuat = 'belum_muat';
       if (tipeKendaraan.toLowerCase().includes('motor') && statusDokumen === 'Tidak') {
         statusMuat = 'hold';
       }
 
-      // Check if exists
-      const [existing] = await db.query('SELECT id, status_muat FROM kendaraan_instock WHERE awb = ? LIMIT 1', [awb]);
-      if (existing.length === 0) {
-        await db.query(`
-          INSERT INTO kendaraan_instock
-            (awb, tanggal_input, spot_petugas, tlc_tujuan, tipe_kendaraan, status_spl, status_dokumen, koli, keterangan, status_muat)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [awb, timestamp, spotPetugas, tlcTujuan, tipeKendaraan, statusSpl, statusDokumen, koli, keterangan, statusMuat]);
-        synced++;
-      }
+      sheetRows.push({
+        appsheetId,
+        awb,
+        timestamp,
+        spotPetugas,
+        tlcTujuan,
+        tipeKendaraan,
+        statusSpl,
+        statusDokumen,
+        koli,
+        keterangan,
+        statusMuat
+      });
     }
+
+    if (sheetRows.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada data yang ditemukan di sheet LOG_UPDATE Google Sheet.' });
+    }
+
+    // Full 1:1 synchronization with AppSheet / Google Sheet
+    await db.query('DELETE FROM kendaraan_instock');
+
+    for (const r of sheetRows) {
+      await db.query(`
+        INSERT INTO kendaraan_instock
+          (appsheet_id, awb, tanggal_input, spot_petugas, tlc_tujuan, tipe_kendaraan, status_spl, status_dokumen, koli, keterangan, status_muat)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        r.appsheetId,
+        r.awb,
+        r.timestamp,
+        r.spotPetugas,
+        r.tlcTujuan,
+        r.tipeKendaraan,
+        r.statusSpl,
+        r.statusDokumen,
+        r.koli,
+        r.keterangan,
+        r.statusMuat
+      ]);
+    }
+
+    // Auto-link outlet from history table where available
+    await db.query(`
+      UPDATE kendaraan_instock k
+      JOIN history h ON k.awb = h.waybill
+      SET k.kode_outlet = h.outlet
+      WHERE k.kode_outlet IS NULL OR k.kode_outlet = ''
+    `).catch(err => console.warn('History outlet link warning:', err.message));
+
+    // Auto-link gateway & PIC from master_pic_gateway where available
+    await db.query(`
+      UPDATE kendaraan_instock k
+      JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
+      SET k.nama_gateway = m.nama_gateway, k.tagging_pic = m.tagging_pic
+      WHERE k.nama_gateway IS NULL OR k.nama_gateway = ''
+    `).catch(err => console.warn('Master pic link warning:', err.message));
 
     res.json({
       success: true,
-      message: `Sinkronisasi sukses! ${synced} data baru ditambahkan dari Google Sheet.`,
-      new_records: synced
+      message: `Sinkronisasi sukses! ${sheetRows.length} unit kendaraan berhasil disinkronkan 1:1 dengan Google Sheet.`,
+      synced_count: sheetRows.length
     });
   } catch (err) {
     console.error('sync error:', err);
