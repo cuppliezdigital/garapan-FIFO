@@ -10,9 +10,9 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.5.0" />
+    <link rel="stylesheet" href="style.css?v=2.5.1" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.5.0" defer></script>
+    <script src="script.js?v=2.5.1" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -2920,8 +2920,7 @@
                 <th>KODE TLC</th>
                 <th>NAMA GATEWAY</th>
                 <th>AREA / WILAYAH</th>
-                <th>NAMA PIC</th>
-                <th>NO WHATSAPP</th>
+                <th>NAMA PIC GATEWAY</th>
                 <th style="text-align: center;">AKSI</th>
               </tr>
             </thead>
@@ -2958,16 +2957,12 @@
             </label>
             <label>
               <span>Nama PIC Gateway *</span>
-              <input type="text" id="editPicName" placeholder="Contoh: Yoga / Rian Cargo" required />
-            </label>
-            <label>
-              <span>Nomor WhatsApp *</span>
-              <input type="text" id="editPicPhone" placeholder="Contoh: 08123456789 / 628123456789" required />
+              <input type="text" id="editPicName" placeholder="Contoh: erasmushumanika@jtcargo / Yoga" required />
             </label>
           </div>
           <div class="form-actions">
             <button type="button" class="secondary-btn" id="cancelEditPicBtn">Batal</button>
-            <button type="submit" class="primary-btn" id="saveEditPicBtn">Simpan Kontak</button>
+            <button type="submit" class="primary-btn" id="saveEditPicBtn">Simpan PIC</button>
           </div>
         </form>
       </div>

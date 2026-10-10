@@ -153,6 +153,7 @@ async function initDatabase() {
     await require('./services/auditService').ensureAuditTable();
     await require('./services/logoService').ensureLogoTable();
     await require('./services/logoService').ensureBackgroundTable();
+    await require('./services/kendaraanInitService').ensureKendaraanTables();
     console.log('✅ Inisialisasi struktur database selesai.');
   } catch (err) {
     console.error('❌ Gagal inisialisasi database:', err.message);

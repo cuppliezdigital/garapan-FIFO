@@ -1,5 +1,6 @@
 const https = require('https');
 const db = require('../config/db');
+const { ensureKendaraanTables } = require('../services/kendaraanInitService');
 
 // Feishu Webhook Bot URL from Google Sheet
 const FEISHU_WEBHOOK_URL = process.env.FEISHU_KENDARAAN_WEBHOOK || 'https://open.feishu.cn/open-apis/bot/v2/hook/990b847e-226e-42dd-9a97-7064a5ab6b73';
@@ -45,6 +46,7 @@ function getIndonesianDate(d = new Date()) {
 // 1. Get Dashboard Summary & Broadcast Templates
 exports.getDashboard = async (req, res) => {
   try {
+    await ensureKendaraanTables();
     const [rows] = await db.query(`
       SELECT 
         k.*,
@@ -204,6 +206,7 @@ total keseluruhan : ${totalKeseluruhan} unit`;
 // 2. Get List of Vehicles
 exports.getList = async (req, res) => {
   try {
+    await ensureKendaraanTables();
     const { tujuan, tipe, status_dokumen, status_muat, search } = req.query;
 
     let query = `
@@ -384,6 +387,7 @@ exports.delete = async (req, res) => {
 // 5b. Clear All Kendaraan Instock
 exports.clearAll = async (req, res) => {
   try {
+    await ensureKendaraanTables();
     const [result] = await db.query('DELETE FROM kendaraan_instock');
     res.json({
       success: true,
@@ -400,6 +404,7 @@ exports.clearAll = async (req, res) => {
 // 6. Realtime Sync from Google Sheet (AppSheet LOG_UPDATE)
 exports.syncFromGoogleSheet = async (req, res) => {
   try {
+    await ensureKendaraanTables();
     function fetchFollow(url, redirectCount = 0) {
       return new Promise((resolve, reject) => {
         if (redirectCount > 5) return reject(new Error('Too many redirects'));
@@ -608,13 +613,21 @@ exports.getMasterGateways = async (req, res) => {
 // 9. Update Master Gateway PIC
 exports.updateGatewayPic = async (req, res) => {
   try {
+    await ensureKendaraanTables();
     const { id } = req.params;
-    const { tagging_pic, feishu_open_id } = req.body;
+    const { tagging_pic } = req.body;
+
+    const [gw] = await db.query('SELECT nama_gateway FROM master_gateway_list WHERE id = ?', [id]);
     await db.query(`
       UPDATE master_gateway_list
-      SET tagging_pic = ?, feishu_open_id = ?
+      SET tagging_pic = ?
       WHERE id = ?
-    `, [tagging_pic || null, feishu_open_id || null, id]);
+    `, [tagging_pic || null, id]);
+
+    if (gw && gw.length > 0 && gw[0].nama_gateway) {
+      await db.query('UPDATE master_pic_gateway SET tagging_pic = ? WHERE nama_gateway = ?', [tagging_pic || null, gw[0].nama_gateway]).catch(() => null);
+    }
+
     res.json({ success: true, message: 'PIC Gateway berhasil disimpan.' });
   } catch (err) {
     res.status(500).json({ error: 'Gagal update PIC Gateway: ' + err.message });

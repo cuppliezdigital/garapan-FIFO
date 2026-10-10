@@ -7342,9 +7342,8 @@ function renderMasterGatewaysTable() {
         <td><strong style="color: #f8fafc;">${escKendaraanHtml(g.nama_gateway || '-')}</strong></td>
         <td><span style="color: #94a3b8; font-size: 0.8rem;">${escKendaraanHtml(g.area || 'Nasional')}</span></td>
         <td><strong style="color: #cbd5e1;">${escKendaraanHtml(g.tagging_pic || '-')}</strong></td>
-        <td><span style="color: #94a3b8; font-size: 0.8rem;">${escKendaraanHtml(g.no_wa || '-')}</span></td>
         <td style="text-align: center;">
-          <button type="button" class="btn-kendaraan-action btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="openEditPicModal(${g.id}, '${escKendaraanHtml(g.nama_gateway)}', '${escKendaraanHtml(g.tagging_pic || '')}', '${escKendaraanHtml(g.no_wa || '')}')">
+          <button type="button" class="btn-kendaraan-action btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="openEditPicModal(${g.id}, '${escKendaraanHtml(g.nama_gateway)}', '${escKendaraanHtml(g.tagging_pic || '')}')">
             Edit PIC
           </button>
         </td>
@@ -7353,17 +7352,15 @@ function renderMasterGatewaysTable() {
   }).join('');
 }
 
-window.openEditPicModal = function(id, gatewayName, currentPic, currentPhone) {
+window.openEditPicModal = function(id, gatewayName, currentPic) {
   const modal = document.getElementById('editGatewayPicModal');
   const label = document.getElementById('editPicGatewayLabel');
   const nameInput = document.getElementById('editPicName');
-  const phoneInput = document.getElementById('editPicPhone');
   const idInput = document.getElementById('editPicGatewayCode');
 
   if (idInput) idInput.value = id;
   if (label) label.value = gatewayName;
   if (nameInput) nameInput.value = currentPic || '';
-  if (phoneInput) phoneInput.value = currentPhone || '';
 
   if (modal) {
     modal.classList.remove('hidden');
@@ -7383,14 +7380,13 @@ async function submitEditPicForm(e) {
   e.preventDefault();
   const id = document.getElementById('editPicGatewayCode').value;
   const name = document.getElementById('editPicName').value.trim();
-  const phone = document.getElementById('editPicPhone').value.trim();
 
   try {
     const res = await fetch(`/api/kendaraan/gateways/${id}`, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tagging_pic: name, feishu_open_id: phone })
+      body: JSON.stringify({ tagging_pic: name })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
