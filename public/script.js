@@ -5987,6 +5987,8 @@ bootstrapAuth();
       'Stasiun Berikutnya'
     ])).trim();
 
+    const outletPengiriman = String(getFieldValue(r, ['Outlet pengiriman', 'outlet pengiriman', 'asal kirim'])).trim();
+
     let rawWeight = getFieldValue(r, ['Berat', 'Total berat scan', 'berat', 'Perhitungan biaya berat']);
     let weight = parseFloat(rawWeight) || 0;
 
@@ -6010,6 +6012,7 @@ bootstrapAuth();
       destination,
       prevStop,
       nextStop,
+      outletPengiriman,
       weight,
       volWeight,
       koli,
@@ -6027,14 +6030,9 @@ bootstrapAuth();
     const wb = norm.waybill;
     const st = (norm.scanType || '').toLowerCase();
 
-    let isBongkar = false;
-    if (forcedType === 'bongkar') {
-      isBongkar = true;
-    } else if (forcedType === 'muat') {
-      isBongkar = false;
-    } else {
-      isBongkar = st.includes('bongkar');
-    }
+    const isMuat = forcedType === 'muat' || (!forcedType && (st.includes('kirim') || st.includes('muat')));
+    const isBongkar = forcedType === 'bongkar' || (!forcedType && st.includes('bongkar'));
+    const isSampai = !forcedType && (st.includes('sampai') || st.includes('tiba'));
 
     if (!waybillsMap.has(wb)) {
       waybillsMap.set(wb, {
@@ -6056,6 +6054,7 @@ bootstrapAuth();
         destination: '',
         asalBongkar: '',
         tujuanKirim: '',
+        outletPengiriman: norm.outletPengiriman || '',
         pemindai: norm.pemindai || '',
         hasMuatScan: false,
         hasBongkarScan: false
@@ -6070,25 +6069,41 @@ bootstrapAuth();
     if (norm.volWeight && !item.volWeight) item.volWeight = norm.volWeight;
     if (norm.koli > 1 && item.koli === 1) item.koli = norm.koli;
     if (norm.resiTugas && !item.resiTugas) item.resiTugas = norm.resiTugas;
+    if (norm.outletPengiriman && !item.outletPengiriman) item.outletPengiriman = norm.outletPengiriman;
 
-    if (isBongkar) {
-      item.hasBongkarScan = true;
-      if (!item.waktuBongkar || (norm.scanTime && norm.scanTime > item.waktuBongkar)) {
-        item.waktuBongkar = norm.scanTime;
-      }
-      if (norm.origin) item.gwBongkar = norm.origin;
-      if (norm.prevStop || norm.destination) item.asalBongkar = norm.prevStop || norm.destination;
-      if (norm.pemindai) item.petugasBongkar = norm.pemindai;
-      if (norm.resiTugas) item.resiTugas = norm.resiTugas;
-    } else {
+    if (isMuat) {
       item.hasMuatScan = true;
-      if (!item.waktuMuat || (norm.scanTime && norm.scanTime > item.waktuMuat)) {
+      // Waktu Muat: simpan waktu scan kirim (ambil yang paling awal bila ada duplicate kirim)
+      if (!item.waktuMuat || (norm.scanTime && norm.scanTime < item.waktuMuat)) {
         item.waktuMuat = norm.scanTime;
       }
       if (norm.origin) item.gwMuat = norm.origin;
       if (norm.nextStop || norm.destination) item.tujuanKirim = norm.nextStop || norm.destination;
       if (norm.pemindai) item.petugasMuat = norm.pemindai;
       if (norm.resiTugas) item.resiTugas = norm.resiTugas;
+    } else if (isBongkar) {
+      item.hasBongkarScan = true;
+      // Waktu Bongkar: simpan waktu scan bongkar mobil terbaru
+      if (!item.waktuBongkar || (norm.scanTime && norm.scanTime > item.waktuBongkar)) {
+        item.waktuBongkar = norm.scanTime;
+      }
+      if (norm.origin) item.gwBongkar = norm.origin;
+      if (norm.prevStop || norm.destination || norm.outletPengiriman) {
+        item.asalBongkar = norm.prevStop || norm.destination || norm.outletPengiriman;
+      }
+      if (norm.pemindai) item.petugasBongkar = norm.pemindai;
+      if (norm.resiTugas) item.resiTugas = norm.resiTugas;
+    } else if (isSampai) {
+      // Paket sampai GW adalah status kedatangan di tujuan (bongkar / arrival), bukan muat
+      if (!item.hasBongkarScan) {
+        item.hasBongkarScan = true;
+        if (!item.waktuBongkar) item.waktuBongkar = norm.scanTime;
+        if (norm.origin && !item.gwBongkar) item.gwBongkar = norm.origin;
+        if ((norm.prevStop || norm.destination || norm.outletPengiriman) && !item.asalBongkar) {
+          item.asalBongkar = norm.prevStop || norm.destination || norm.outletPengiriman;
+        }
+        if (norm.pemindai && !item.petugasBongkar) item.petugasBongkar = norm.pemindai;
+      }
     }
   }
 
@@ -6104,9 +6119,21 @@ bootstrapAuth();
     let totalLoadedWeight = 0;
 
     for (const item of waybillsMap.values()) {
-      // Route direction: origin (loading gateway) -> destination (unloading gateway)
-      const origin = item.gwMuat || item.asalBongkar || '—';
-      const destination = item.gwBongkar || item.tujuanKirim || '—';
+      // Route direction: origin (loading outlet / gateway) -> destination (unloading gateway)
+      let origin = item.gwMuat || item.asalBongkar || item.outletPengiriman || '—';
+      let destination = item.gwBongkar || item.tujuanKirim || '—';
+
+      // Anti-loop safety: Jika origin sama dengan destination padahal ada asal sebenarnya
+      if (origin === destination && origin !== '—') {
+        if (item.asalBongkar && item.asalBongkar !== destination) {
+          origin = item.asalBongkar;
+        } else if (item.outletPengiriman && item.outletPengiriman !== destination) {
+          origin = item.outletPengiriman;
+        } else if (item.tujuanKirim && item.tujuanKirim !== origin) {
+          destination = item.tujuanKirim;
+        }
+      }
+
       item.origin = origin;
       item.destination = destination;
 
@@ -6124,7 +6151,6 @@ bootstrapAuth();
         countMuat++;
         totalLoadedWeight += (item.weight || 0);
       } else if (item.hasBongkarScan && !item.hasMuatScan) {
-        // If it was only scanned for bongkar without prior scan kirim row, also count in total loaded
         countMuat++;
         totalLoadedWeight += (item.weight || 0);
       }
@@ -6138,7 +6164,7 @@ bootstrapAuth();
       }
     }
 
-    const totalLoaded = countMuat > 0 ? countMuat : countBongkar;
+    const totalLoaded = allList.length;
     const totalUnloaded = countBongkar;
 
     return {
