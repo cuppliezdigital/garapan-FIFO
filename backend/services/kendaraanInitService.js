@@ -240,19 +240,17 @@ async function enrichKendaraanOutlets(ids = null) {
     const awbs = emptyRows.map(r => r.awb);
     const outletMap = {};
 
-    for (const tbl of ['monitoring_stuck', 'monitoring_history', 'history']) {
-      try {
-        const [rows] = await db.query(
-          `SELECT waybill, outlet FROM ${tbl} WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`,
-          [awbs]
-        );
-        (rows || []).forEach(r => {
-          if (r.waybill && r.outlet && !outletMap[r.waybill]) {
-            outletMap[r.waybill] = r.outlet;
-          }
-        });
-      } catch (_) {}
-    }
+    const [stuckRes, histRes, hRes] = await Promise.all([
+      db.query(`SELECT waybill, outlet FROM monitoring_stuck WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`, [awbs]).catch(() => [[]]),
+      db.query(`SELECT waybill, outlet FROM monitoring_history WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`, [awbs]).catch(() => [[]]),
+      db.query(`SELECT waybill, outlet FROM history WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`, [awbs]).catch(() => [[]])
+    ]);
+
+    [...(stuckRes[0] || []), ...(histRes[0] || []), ...(hRes[0] || [])].forEach(r => {
+      if (r.waybill && r.outlet && !outletMap[r.waybill]) {
+        outletMap[r.waybill] = r.outlet;
+      }
+    });
 
     if (Object.keys(outletMap).length === 0) return;
 
@@ -262,17 +260,23 @@ async function enrichKendaraanOutlets(ids = null) {
       picMap[p.kode_outlet] = { nama_gateway: p.nama_gateway, tagging_pic: p.tagging_pic };
     });
 
+    const updatePromises = [];
     for (const r of emptyRows) {
       const outlet = outletMap[r.awb];
       if (outlet) {
         const gw = picMap[outlet] || {};
-        await db.query(
-          `UPDATE kendaraan_instock 
-           SET kode_outlet = ?, nama_gateway = COALESCE(nama_gateway, ?), tagging_pic = COALESCE(tagging_pic, ?) 
-           WHERE id = ?`,
-          [outlet, gw.nama_gateway || null, gw.tagging_pic || null, r.id]
+        updatePromises.push(
+          db.query(
+            `UPDATE kendaraan_instock 
+             SET kode_outlet = ?, nama_gateway = COALESCE(nama_gateway, ?), tagging_pic = COALESCE(tagging_pic, ?) 
+             WHERE id = ?`,
+            [outlet, gw.nama_gateway || null, gw.tagging_pic || null, r.id]
+          )
         );
       }
+    }
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
     }
   } catch (err) {
     console.warn('enrichKendaraanOutlets warning:', err.message);

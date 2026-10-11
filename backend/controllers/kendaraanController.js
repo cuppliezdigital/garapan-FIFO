@@ -1,7 +1,6 @@
 const https = require('https');
 const db = require('../config/db');
 const {
-  ensureKendaraanTables,
   enrichKendaraanOutlets,
   fetchFollow,
   GSHEET_LOG_UPDATE_URL,
@@ -20,113 +19,91 @@ function getIndonesianDate(d = new Date()) {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// 1. Get Dashboard Summary & Broadcast Templates
-exports.getDashboard = async (req, res) => {
-  try {
-    const [rows] = await db.query(`
-      SELECT 
-        k.*,
-        k.kode_outlet as effective_outlet,
-        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
-      FROM kendaraan_instock k
-      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
-      LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
-      ORDER BY k.tanggal_input DESC
-    `);
+function computeDashboardSummary(rows) {
+  let siapMuatPnkBdj = 0;
+  let totalMotorDokumen = 0;
+  let totalSpl = 0;
+  let totalMotorHold = 0;
 
-    // KPI Counters
-    let siapMuatPnkBdj = 0;
-    let totalMotorDokumen = 0;
-    let totalSpl = 0;
-    let totalMotorHold = 0;
+  const matrix = {
+    PNK: { motor_bensin_dok: 0, motor_listrik_dok: 0, total_motor_dok: 0, spl_on: 0, spl_off: 0, total_spl: 0, motor_bensin_nondok: 0, motor_listrik_nondok: 0, total_nondok: 0 },
+    BDJ: { motor_bensin_dok: 0, motor_listrik_dok: 0, total_motor_dok: 0, spl_on: 0, spl_off: 0, total_spl: 0, motor_bensin_nondok: 0, motor_listrik_nondok: 0, total_nondok: 0 },
+    LAINNYA: { motor_bensin_dok: 0, motor_listrik_dok: 0, total_motor_dok: 0, spl_on: 0, spl_off: 0, total_spl: 0, motor_bensin_nondok: 0, motor_listrik_nondok: 0, total_nondok: 0 }
+  };
 
-    // Breakdown Matriks PNK, BDJ, LAINNYA
-    const matrix = {
-      PNK: { motor_bensin_dok: 0, motor_listrik_dok: 0, total_motor_dok: 0, spl_on: 0, spl_off: 0, total_spl: 0, motor_bensin_nondok: 0, motor_listrik_nondok: 0, total_nondok: 0 },
-      BDJ: { motor_bensin_dok: 0, motor_listrik_dok: 0, total_motor_dok: 0, spl_on: 0, spl_off: 0, total_spl: 0, motor_bensin_nondok: 0, motor_listrik_nondok: 0, total_nondok: 0 },
-      LAINNYA: { motor_bensin_dok: 0, motor_listrik_dok: 0, total_motor_dok: 0, spl_on: 0, spl_off: 0, total_spl: 0, motor_bensin_nondok: 0, motor_listrik_nondok: 0, total_nondok: 0 }
-    };
+  const holdList = [];
 
-    const holdList = [];
+  rows.forEach(item => {
+    if (item.status_muat === 'sudah_muat') return;
 
-    rows.forEach(item => {
-      // Exclude already shipped
-      if (item.status_muat === 'sudah_muat') return;
+    let dest = (item.tlc_tujuan || 'LAINNYA').toUpperCase();
+    if (!matrix[dest]) dest = 'LAINNYA';
 
-      let dest = (item.tlc_tujuan || 'LAINNYA').toUpperCase();
-      if (!matrix[dest]) dest = 'LAINNYA';
+    const tipe = (item.tipe_kendaraan || '').toLowerCase();
+    const isMotorBensin = tipe.includes('bensin');
+    const isMotorListrik = tipe.includes('motor') && tipe.includes('listrik');
+    const isMotor = isMotorBensin || isMotorListrik || tipe.includes('motor');
+    const isSpl = tipe.includes('sepeda');
 
-      const tipe = (item.tipe_kendaraan || '').toLowerCase();
-      const isMotorBensin = tipe.includes('bensin');
-      const isMotorListrik = tipe.includes('motor') && tipe.includes('listrik');
-      const isMotor = isMotorBensin || isMotorListrik || tipe.includes('motor');
-      const isSpl = tipe.includes('sepeda');
+    const isDokLengkap = (item.status_dokumen || '').toLowerCase() === 'lengkap';
+    const isSplOn = (item.status_spl || '').toUpperCase() === 'ON';
 
-      const isDokLengkap = (item.status_dokumen || '').toLowerCase() === 'lengkap';
-      const isSplOn = (item.status_spl || '').toUpperCase() === 'ON';
-
-      if (isMotor) {
-        if (isDokLengkap) {
-          totalMotorDokumen++;
-          if (dest === 'PNK' || dest === 'BDJ') siapMuatPnkBdj++;
-
-          if (isMotorListrik) {
-            matrix[dest].motor_listrik_dok++;
-          } else {
-            matrix[dest].motor_bensin_dok++;
-          }
-          matrix[dest].total_motor_dok++;
-        } else {
-          // HOLD (Non-Dokumen)
-          totalMotorHold++;
-          if (isMotorListrik) {
-            matrix[dest].motor_listrik_nondok++;
-          } else {
-            matrix[dest].motor_bensin_nondok++;
-          }
-          matrix[dest].total_nondok++;
-          holdList.push(item);
-        }
-      } else if (isSpl) {
-        totalSpl++;
+    if (isMotor) {
+      if (isDokLengkap) {
+        totalMotorDokumen++;
         if (dest === 'PNK' || dest === 'BDJ') siapMuatPnkBdj++;
 
-        if (isSplOn) {
-          matrix[dest].spl_on++;
+        if (isMotorListrik) {
+          matrix[dest].motor_listrik_dok++;
         } else {
-          matrix[dest].spl_off++;
+          matrix[dest].motor_bensin_dok++;
         }
-        matrix[dest].total_spl++;
+        matrix[dest].total_motor_dok++;
+      } else {
+        totalMotorHold++;
+        if (isMotorListrik) {
+          matrix[dest].motor_listrik_nondok++;
+        } else {
+          matrix[dest].motor_bensin_nondok++;
+        }
+        matrix[dest].total_nondok++;
+        holdList.push(item);
       }
-    });
+    } else if (isSpl) {
+      totalSpl++;
+      if (dest === 'PNK' || dest === 'BDJ') siapMuatPnkBdj++;
 
-    // Summary Total row for matrix
-    const totalRow = {
-      motor_bensin_dok: matrix.PNK.motor_bensin_dok + matrix.BDJ.motor_bensin_dok + matrix.LAINNYA.motor_bensin_dok,
-      motor_listrik_dok: matrix.PNK.motor_listrik_dok + matrix.BDJ.motor_listrik_dok + matrix.LAINNYA.motor_listrik_dok,
-      total_motor_dok: matrix.PNK.total_motor_dok + matrix.BDJ.total_motor_dok + matrix.LAINNYA.total_motor_dok,
-      spl_on: matrix.PNK.spl_on + matrix.BDJ.spl_on + matrix.LAINNYA.spl_on,
-      spl_off: matrix.PNK.spl_off + matrix.BDJ.spl_off + matrix.LAINNYA.spl_off,
-      total_spl: matrix.PNK.total_spl + matrix.BDJ.total_spl + matrix.LAINNYA.total_spl,
-      motor_bensin_nondok: matrix.PNK.motor_bensin_nondok + matrix.BDJ.motor_bensin_nondok + matrix.LAINNYA.motor_bensin_nondok,
-      motor_listrik_nondok: matrix.PNK.motor_listrik_nondok + matrix.BDJ.motor_listrik_nondok + matrix.LAINNYA.motor_listrik_nondok,
-      total_nondok: matrix.PNK.total_nondok + matrix.BDJ.total_nondok + matrix.LAINNYA.total_nondok
-    };
+      if (isSplOn) {
+        matrix[dest].spl_on++;
+      } else {
+        matrix[dest].spl_off++;
+      }
+      matrix[dest].total_spl++;
+    }
+  });
 
-    // Broadcast WA Capacity Template
-    const todayStr = getIndonesianDate();
-    const pnkMotor = matrix.PNK.total_motor_dok;
-    const pnkSpl = matrix.PNK.total_spl;
-    const pnkTotal = pnkMotor + pnkSpl;
+  const totalRow = {
+    motor_bensin_dok: matrix.PNK.motor_bensin_dok + matrix.BDJ.motor_bensin_dok + matrix.LAINNYA.motor_bensin_dok,
+    motor_listrik_dok: matrix.PNK.motor_listrik_dok + matrix.BDJ.motor_listrik_dok + matrix.LAINNYA.motor_listrik_dok,
+    total_motor_dok: matrix.PNK.total_motor_dok + matrix.BDJ.total_motor_dok + matrix.LAINNYA.total_motor_dok,
+    spl_on: matrix.PNK.spl_on + matrix.BDJ.spl_on + matrix.LAINNYA.spl_on,
+    spl_off: matrix.PNK.spl_off + matrix.BDJ.spl_off + matrix.LAINNYA.spl_off,
+    total_spl: matrix.PNK.total_spl + matrix.BDJ.total_spl + matrix.LAINNYA.total_spl,
+    motor_bensin_nondok: matrix.PNK.motor_bensin_nondok + matrix.BDJ.motor_bensin_nondok + matrix.LAINNYA.motor_bensin_nondok,
+    motor_listrik_nondok: matrix.PNK.motor_listrik_nondok + matrix.BDJ.motor_listrik_nondok + matrix.LAINNYA.motor_listrik_nondok,
+    total_nondok: matrix.PNK.total_nondok + matrix.BDJ.total_nondok + matrix.LAINNYA.total_nondok
+  };
 
-    const bdjMotor = matrix.BDJ.total_motor_dok;
-    const bdjSpl = matrix.BDJ.total_spl;
-    const bdjTotal = bdjMotor + bdjSpl;
+  const todayStr = getIndonesianDate();
+  const pnkMotor = matrix.PNK.total_motor_dok;
+  const pnkSpl = matrix.PNK.total_spl;
+  const pnkTotal = pnkMotor + pnkSpl;
+  const bdjMotor = matrix.BDJ.total_motor_dok;
+  const bdjSpl = matrix.BDJ.total_spl;
+  const bdjTotal = bdjMotor + bdjSpl;
+  const totalKeseluruhan = pnkTotal + bdjTotal;
 
-    const totalKeseluruhan = pnkTotal + bdjTotal;
-
-    const capacityWaTemplate = 
+  const capacityWaTemplate = 
 `Selamat Siang team Update instock
 Update kendaraan PNK
 ${todayStr}
@@ -142,35 +119,55 @@ total : ${bdjTotal} unit
 
 total keseluruhan : ${totalKeseluruhan} unit`;
 
-    // Feishu / WA Tagihan Dokumen Template
-    let dokumenWaTemplate = `Selamat pagi kak, tolong dibantu untuk kelengkapan dokumen kendaraan dengan awb berikut terimakasih :\n`;
-    holdList.forEach(it => {
-      const outlet = it.effective_outlet || '';
-      const gw = it.effective_gateway ? ` ${it.effective_gateway}` : '';
-      const pic = it.effective_pic ? ` ${it.effective_pic}` : '';
-      dokumenWaTemplate += `${it.awb} ${outlet}${gw}${pic}\n`.replace(/\s+/g, ' ').trim() + '\n';
-    });
+  let dokumenWaTemplate = `Selamat pagi kak, tolong dibantu untuk kelengkapan dokumen kendaraan dengan awb berikut terimakasih :\n`;
+  holdList.forEach(it => {
+    const outlet = it.effective_outlet || '';
+    const gw = it.effective_gateway ? ` ${it.effective_gateway}` : '';
+    const pic = it.effective_pic ? ` ${it.effective_pic}` : '';
+    dokumenWaTemplate += `${it.awb} ${outlet}${gw}${pic}\n`.replace(/\s+/g, ' ').trim() + '\n';
+  });
 
+  return {
+    kpi: {
+      siap_muat_pnk_bdj: siapMuatPnkBdj,
+      total_motor_dokumen: totalMotorDokumen,
+      total_spl: totalSpl,
+      total_motor_hold: totalMotorHold,
+      total_aktif: rows.length
+    },
+    matrix: {
+      PNK: matrix.PNK,
+      BDJ: matrix.BDJ,
+      LAINNYA: matrix.LAINNYA,
+      TOTAL: totalRow
+    },
+    templates: {
+      capacity_wa: capacityWaTemplate,
+      dokumen_wa: dokumenWaTemplate.trim()
+    },
+    hold_list: holdList
+  };
+}
+
+// 1. Get Dashboard Summary & Broadcast Templates
+exports.getDashboard = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        k.*,
+        k.kode_outlet as effective_outlet,
+        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
+        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+      FROM kendaraan_instock k
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
+      LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
+      ORDER BY k.tanggal_input DESC
+    `);
+
+    const summary = computeDashboardSummary(rows);
     res.json({
       success: true,
-      kpi: {
-        siap_muat_pnk_bdj: siapMuatPnkBdj,
-        total_motor_dokumen: totalMotorDokumen,
-        total_spl: totalSpl,
-        total_motor_hold: totalMotorHold,
-        total_aktif: rows.length
-      },
-      matrix: {
-        PNK: matrix.PNK,
-        BDJ: matrix.BDJ,
-        LAINNYA: matrix.LAINNYA,
-        TOTAL: totalRow
-      },
-      templates: {
-        capacity_wa: capacityWaTemplate,
-        dokumen_wa: dokumenWaTemplate.trim()
-      },
-      hold_list: holdList
+      ...summary
     });
   } catch (err) {
     console.error('getDashboard error:', err);
@@ -289,10 +286,23 @@ exports.create = async (req, res) => {
       VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [cleanAwb, spotPetugas, cleanTlc, cleanTipe, status_spl || null, status_dokumen || null, cleanKoli, keterangan || null, finalOutlet, finalGateway, finalPic, statusMuat]);
 
+    const [inserted] = await db.query(`
+      SELECT 
+        k.*,
+        k.kode_outlet as effective_outlet,
+        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
+        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+      FROM kendaraan_instock k
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
+      LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
+      WHERE k.id = ?
+    `, [result.insertId]);
+
     res.json({
       success: true,
       message: 'Data kendaraan berhasil disimpan.',
-      id: result.insertId
+      id: result.insertId,
+      data: inserted[0]
     });
   } catch (err) {
     console.error('create error:', err);
@@ -347,7 +357,19 @@ exports.update = async (req, res) => {
       id
     ]);
 
-    res.json({ success: true, message: 'Data kendaraan berhasil diperbarui.' });
+    const [updated] = await db.query(`
+      SELECT 
+        k.*,
+        k.kode_outlet as effective_outlet,
+        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
+        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+      FROM kendaraan_instock k
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
+      LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
+      WHERE k.id = ?
+    `, [id]);
+
+    res.json({ success: true, message: 'Data kendaraan berhasil diperbarui.', data: updated[0] });
   } catch (err) {
     console.error('update error:', err);
     res.status(500).json({ error: 'Gagal memperbarui kendaraan: ' + err.message });
@@ -372,7 +394,6 @@ exports.delete = async (req, res) => {
 // 5b. Clear All Kendaraan Instock
 exports.clearAll = async (req, res) => {
   try {
-    await ensureKendaraanTables();
     const [result] = await db.query('DELETE FROM kendaraan_instock');
     res.json({
       success: true,
@@ -389,8 +410,6 @@ exports.clearAll = async (req, res) => {
 // 6. Realtime Sync from Google Sheet (AppSheet LOG_UPDATE)
 exports.syncFromGoogleSheet = async (req, res) => {
   try {
-    await ensureKendaraanTables();
-
     const csvContent = await fetchFollow(GSHEET_LOG_UPDATE_URL);
     const lines = csvContent.split('\n').filter(l => l.trim().length > 0);
 
@@ -462,10 +481,29 @@ exports.syncFromGoogleSheet = async (req, res) => {
     // Collation-safe outlet & gateway enrichment
     await enrichKendaraanOutlets();
 
+    // Query refreshed dataset to return in same response (eliminates multiple HTTP roundtrips)
+    const [refreshedRows] = await db.query(`
+      SELECT 
+        k.*,
+        k.kode_outlet as effective_outlet,
+        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
+        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+      FROM kendaraan_instock k
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
+      LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
+      ORDER BY k.tanggal_input DESC
+    `);
+
+    const summary = computeDashboardSummary(refreshedRows);
+
     res.json({
       success: true,
       message: `Sinkronisasi sukses! ${sheetRows.length} unit kendaraan berhasil disinkronkan 1:1 dengan Google Sheet.`,
-      synced_count: sheetRows.length
+      synced_count: sheetRows.length,
+      kpi: summary.kpi,
+      matrix: summary.matrix,
+      templates: summary.templates,
+      data: refreshedRows
     });
   } catch (err) {
     console.error('sync error:', err);
@@ -571,7 +609,6 @@ exports.getMasterGateways = async (req, res) => {
 // 9. Update Master Gateway PIC
 exports.updateGatewayPic = async (req, res) => {
   try {
-    await ensureKendaraanTables();
     const { id } = req.params;
     const { tagging_pic } = req.body;
 

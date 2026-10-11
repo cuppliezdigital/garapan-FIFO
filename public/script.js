@@ -7248,6 +7248,37 @@ function escKendaraanHtml(str) {
   })[m]);
 }
 
+function applyKendaraanDashboardData(data) {
+  if (!data) return;
+  const valSiapMuat = document.getElementById('valSiapMuatPnkBdj');
+  const valMotorDok = document.getElementById('valMotorDokumen');
+  const valTotalSpl = document.getElementById('valTotalSpl');
+  const valMotorHold = document.getElementById('valMotorHold');
+
+  if (valSiapMuat && data.kpi) valSiapMuat.textContent = data.kpi.siap_muat_pnk_bdj || 0;
+  if (valMotorDok && data.kpi) valMotorDok.textContent = data.kpi.total_motor_dokumen || 0;
+  if (valTotalSpl && data.kpi) valTotalSpl.textContent = data.kpi.total_spl || 0;
+  if (valMotorHold && data.kpi) valMotorHold.textContent = data.kpi.total_motor_hold || 0;
+
+  if (data.matrix) renderKendaraanMatrix(data.matrix);
+
+  const previewWa = document.getElementById('previewWaCapacity');
+  if (previewWa && data.templates?.capacity_wa) {
+    previewWa.textContent = data.templates.capacity_wa;
+  }
+
+  const previewDoc = document.getElementById('previewWaDokumen');
+  if (previewDoc && data.templates?.dokumen_wa) {
+    previewDoc.textContent = data.templates.dokumen_wa;
+  }
+
+  const dateHeader = document.getElementById('kendaraanMatrixDate');
+  if (dateHeader) {
+    const now = new Date();
+    dateHeader.innerHTML = `Tanggal Laporan: <strong>${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>`;
+  }
+}
+
 // 1. Fetch & Render Dashboard & KPIs
 async function fetchKendaraanDashboard() {
   try {
@@ -7264,36 +7295,7 @@ async function fetchKendaraanDashboard() {
     const data = await res.json();
     if (!data.success) return;
 
-    // Update KPI Cards
-    const valSiapMuat = document.getElementById('valSiapMuatPnkBdj');
-    const valMotorDok = document.getElementById('valMotorDokumen');
-    const valTotalSpl = document.getElementById('valTotalSpl');
-    const valMotorHold = document.getElementById('valMotorHold');
-
-    if (valSiapMuat) valSiapMuat.textContent = data.kpi.siap_muat_pnk_bdj || 0;
-    if (valMotorDok) valMotorDok.textContent = data.kpi.total_motor_dokumen || 0;
-    if (valTotalSpl) valTotalSpl.textContent = data.kpi.total_spl || 0;
-    if (valMotorHold) valMotorHold.textContent = data.kpi.total_motor_hold || 0;
-
-    // Render Matrix Table
-    renderKendaraanMatrix(data.matrix);
-
-    // Previews for Copy
-    const previewWa = document.getElementById('previewWaCapacity');
-    if (previewWa && data.templates?.capacity_wa) {
-      previewWa.textContent = data.templates.capacity_wa;
-    }
-
-    const previewDoc = document.getElementById('previewWaDokumen');
-    if (previewDoc && data.templates?.dokumen_wa) {
-      previewDoc.textContent = data.templates.dokumen_wa;
-    }
-
-    const dateHeader = document.getElementById('kendaraanMatrixDate');
-    if (dateHeader) {
-      const now = new Date();
-      dateHeader.innerHTML = `Tanggal Laporan: <strong>${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>`;
-    }
+    applyKendaraanDashboardData(data);
   } catch (err) {
     console.error('fetchKendaraanDashboard error:', err);
   }
@@ -7550,7 +7552,10 @@ function renderKendaraanTable() {
 // 6. Google Sheet Sync Handler
 async function syncKendaraanFromGoogleSheet() {
   const btn = document.getElementById('btnSyncKendaraanGSheet');
-  if (btn) btn.classList.add('is-loading');
+  if (btn) {
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+  }
 
   try {
     const token = getToken();
@@ -7568,13 +7573,24 @@ async function syncKendaraanFromGoogleSheet() {
       throw new Error(data.error || 'Gagal menyinkronkan data dari Google Sheet');
     }
 
-    await fetchKendaraanDashboard();
-    await fetchKendaraanList();
+    if (data.kpi && data.matrix) {
+      applyKendaraanDashboardData(data);
+    }
+    if (data.data) {
+      kendaraanListData = data.data;
+      renderKendaraanTable();
+    } else {
+      await Promise.all([fetchKendaraanDashboard(), fetchKendaraanList()]);
+    }
+
     showAppAlert(`Sinkronisasi Berhasil! ${data.synced_count || 0} unit kendaraan aktif berhasil ditarik dari AppSheet Google Sheet.`);
   } catch (err) {
     showAppAlert(err.message, true);
   } finally {
-    if (btn) btn.classList.remove('is-loading');
+    if (btn) {
+      btn.classList.remove('is-loading');
+      btn.disabled = false;
+    }
   }
 }
 
@@ -7701,9 +7717,14 @@ window.deleteKendaraanById = async function(id, awb) {
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal menghapus unit');
     }
-    await fetchKendaraanDashboard();
-    await fetchKendaraanList();
+
+    // Optimistic removal from table
+    if (Array.isArray(kendaraanListData)) {
+      kendaraanListData = kendaraanListData.filter(x => String(x.id) !== String(id));
+      renderKendaraanTable();
+    }
     showAppAlert(`Unit ${awb} berhasil dihapus.`);
+    Promise.all([fetchKendaraanDashboard(), fetchKendaraanList()]).catch(() => null);
   } catch (err) {
     showAppAlert(err.message, true);
   }
@@ -7735,9 +7756,11 @@ async function clearAllKendaraan() {
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal menghapus semua data kendaraan');
     }
-    await fetchKendaraanDashboard();
-    await fetchKendaraanList();
+
+    kendaraanListData = [];
+    renderKendaraanTable();
     showAppAlert(data.message || 'Semua data kendaraan instock berhasil dihapus.');
+    Promise.all([fetchKendaraanDashboard(), fetchKendaraanList()]).catch(() => null);
   } catch (err) {
     console.error('clearAllKendaraan error:', err);
     showAppAlert(err.message, true);
@@ -7750,6 +7773,10 @@ window.clearAllKendaraan = clearAllKendaraan;
 // 9. Save Kendaraan (Create or Update)
 async function submitKendaraanForm(e) {
   e.preventDefault();
+  const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn ? submitBtn.innerHTML : 'Simpan';
+
   const id = document.getElementById('kendaraanId').value;
   const awb = document.getElementById('kendaraanAwb').value.trim();
   const tlc = document.getElementById('kendaraanTujuan').value;
@@ -7770,6 +7797,12 @@ async function submitKendaraanForm(e) {
     koli: parseInt(koli, 10) || 1,
     keterangan
   };
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('is-loading');
+    submitBtn.innerHTML = 'Menyimpan...';
+  }
 
   try {
     const token = getToken();
@@ -7805,11 +7838,29 @@ async function submitKendaraanForm(e) {
     }
 
     closeKendaraanModal();
-    await fetchKendaraanDashboard();
-    await fetchKendaraanList();
-    showAppAlert('Data unit kendaraan berhasil disimpan.');
+    showAppAlert(id ? 'Data unit kendaraan berhasil diperbarui.' : 'Data unit kendaraan berhasil disimpan.');
+
+    // Optimistic table update
+    if (data.data && Array.isArray(kendaraanListData)) {
+      if (id) {
+        const idx = kendaraanListData.findIndex(x => String(x.id) === String(id));
+        if (idx !== -1) kendaraanListData[idx] = data.data;
+      } else {
+        kendaraanListData.unshift(data.data);
+      }
+      renderKendaraanTable();
+    }
+
+    // Refresh dashboard in background
+    Promise.all([fetchKendaraanDashboard(), fetchKendaraanList()]).catch(() => null);
   } catch (err) {
     showAppAlert(err.message, true);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('is-loading');
+      submitBtn.innerHTML = originalText;
+    }
   }
 }
 
