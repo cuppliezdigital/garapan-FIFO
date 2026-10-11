@@ -10,9 +10,9 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.5.1" />
+    <link rel="stylesheet" href="style.css?v=2.5.2" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.5.1" defer></script>
+    <script src="script.js?v=2.5.2" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -1712,19 +1712,8 @@
                 <!-- 4. TABEL DAFTAR AWB BELUM SCAN BONGKAR -->
                 <div class="table-wrap reconcile-table-wrap">
                   <table class="reconcile-table" id="reconcileTable">
-                    <thead>
-                      <tr>
-                        <th style="width: 45px;">No</th>
-                        <th style="width: 170px;">Kode Waybill</th>
-                        <th style="width: 130px;">Status Scan</th>
-                        <th style="min-width: 260px; max-width: 380px;">Nama Barang &amp; Deskripsi</th>
-                        <th style="width: 130px;">Berat &amp; Koli</th>
-                        <th style="width: 120px;">Dimensi / Vol</th>
-                        <th style="width: 160px;">Rute Pengiriman</th>
-                        <th style="width: 140px;">Waktu Muat</th>
-                        <th style="width: 130px;">Petugas Muat</th>
-                        <th style="width: 130px;">Resi Tugas</th>
-                      </tr>
+                    <thead id="reconcileTableHead">
+                      <!-- Rendered dynamically based on active tab -->
                     </thead>
                     <tbody id="reconcileTableBody">
                       <!-- BARIS DATA RENDER DINAMIS -->
@@ -1738,7 +1727,37 @@
                   <div id="reconcileNoMatchState" class="reconcile-empty-card hidden">
                     <div class="empty-icon-wrap">🔎</div>
                     <h4>Tidak Ada Data yang Cocok dengan Filter</h4>
-                    <p>Coba sesuaikan kata kunci pencarian, rentang toleransi berat, atau reset filter Anda.</p>
+                    <p>Coba sesuaikan kata kunci pencarian atau reset filter Anda.</p>
+                  </div>
+                </div>
+
+                <!-- 5. PAGINASI BARIS HASIL REKONSILIASI -->
+                <div class="reconcile-pagination-bar" id="reconcilePaginationBar">
+                  <div class="pagination-left">
+                    <label for="reconcilePageSize" class="page-size-label">
+                      <span>Baris per halaman:</span>
+                      <select id="reconcilePageSize" class="reconcile-page-select">
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="300">300</option>
+                        <option value="all">Semua</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="pagination-center">
+                    <span id="reconcilePageInfo" class="page-info-text">
+                      Halaman <strong id="reconcileCurrentPage">1</strong> dari <strong id="reconcileTotalPages">1</strong> (<span id="reconcileTotalRows">0</span> data)
+                    </span>
+                  </div>
+                  <div class="pagination-right">
+                    <button type="button" class="btn-page-nav" id="reconcilePrevPage" disabled title="Halaman Sebelumnya">
+                      ‹ Sebelumnya
+                    </button>
+                    <button type="button" class="btn-page-nav" id="reconcileNextPage" title="Halaman Berikutnya">
+                      Berikutnya ›
+                    </button>
                   </div>
                 </div>
               </div>

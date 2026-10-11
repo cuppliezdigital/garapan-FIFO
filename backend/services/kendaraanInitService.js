@@ -96,3 +96,4 @@ async function ensureKendaraanTables() {
 }
 
 module.exports = { ensureKendaraanTables };
+

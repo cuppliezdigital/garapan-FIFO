@@ -5794,6 +5794,7 @@ bootstrapAuth();
   const btnResetFilters = document.getElementById('btnResetFilters');
 
   // Table & Action DOM
+  const tableHead = document.getElementById('reconcileTableHead');
   const tableBody = document.getElementById('reconcileTableBody');
   const visibleCountEl = document.getElementById('visibleCount');
   const totalUnmatchedCountEl = document.getElementById('totalUnmatchedCount');
@@ -5805,6 +5806,22 @@ bootstrapAuth();
   const btnExportExcel = document.getElementById('btnExportExcel');
   const btnRestart = document.getElementById('btnRestartReconcile');
 
+  // Pagination DOM
+  const paginationBar = document.getElementById('reconcilePaginationBar');
+  const pageSizeSelect = document.getElementById('reconcilePageSize');
+  const pageInfoCurrent = document.getElementById('reconcileCurrentPage');
+  const pageInfoTotal = document.getElementById('reconcileTotalPages');
+  const pageInfoRows = document.getElementById('reconcileTotalRows');
+  const btnPrevPage = document.getElementById('reconcilePrevPage');
+  const btnNextPage = document.getElementById('reconcileNextPage');
+
+  // Filter, Sorting & Pagination State
+  let currentFilteredList = [];
+  let reconcileSortColumn = 'waybill';
+  let reconcileSortDir = 'asc';
+  let reconcilePageSize = 20;
+  let reconcileCurrentPage = 1;
+
   // 1. Tab Switching (Single vs Multi file)
   if (tabSingle && tabMulti) {
     tabSingle.addEventListener('click', () => switchMode('single'));
@@ -5813,6 +5830,7 @@ bootstrapAuth();
 
   function switchMode(mode) {
     currentReconcileMode = mode;
+    reconcileCurrentPage = 1;
     if (mode === 'single') {
       tabSingle.classList.add('active');
       tabSingle.setAttribute('aria-selected', 'true');
@@ -5826,6 +5844,7 @@ bootstrapAuth();
         renderResults(false);
       } else {
         if (resultsSection) resultsSection.classList.add('hidden');
+        if (paginationBar) paginationBar.classList.add('hidden');
       }
     } else {
       tabMulti.classList.add('active');
@@ -5840,6 +5859,7 @@ bootstrapAuth();
         renderResults(false);
       } else {
         if (resultsSection) resultsSection.classList.add('hidden');
+        if (paginationBar) paginationBar.classList.add('hidden');
       }
     }
   }
@@ -5862,6 +5882,7 @@ bootstrapAuth();
 
   function setKpiFilter(filter) {
     activeKpiFilter = filter;
+    reconcileCurrentPage = 1;
     updateKpiCardsVisual();
     applyFiltersAndRenderTable();
   }
@@ -5942,12 +5963,28 @@ bootstrapAuth();
     const waybill = String(getFieldValue(r, ['Kode Waybill', 'nomor waybill utama', 'Waybill', 'waybill', 'No Waybill', 'resi', 'AWB'])).trim();
     const scanType = String(getFieldValue(r, ['jenis scan', 'Jenis Scan', 'scan_type', 'tipe scan'])).trim();
     const scanTime = String(getFieldValue(r, ['waktu scan', 'Waktu Scan', 'waktu unggah', 'scan_time'])).trim();
-    const origin = String(getFieldValue(r, ['outlet pemindai', 'Outlet Pemindai', 'Outlet pengiriman', 'asal', 'Asal'])).trim();
+    const origin = String(getFieldValue(r, ['outlet pemindai', 'Outlet Pemindai', 'Outlet pengiriman', 'asal', 'Asal', 'Stasiun'])).trim();
     const destination = String(getFieldValue(r, [
       'Perhentian sebelumnya atau perhentian berikutnya next',
       'Pemberhentian sebelumnya/berikutnya',
+      'Pemberhentian berikutnya',
+      'Perhentian berikutnya',
+      'Stasiun Berikutnya',
       'tujuan',
-      'Tujuan'
+      'Tujuan',
+      'Outlet penerima'
+    ])).trim();
+
+    const prevStop = String(getFieldValue(r, [
+      'Pemberhentian sebelumnya',
+      'Perhentian sebelumnya',
+      'Stasiun Sebelumnya'
+    ])).trim();
+
+    const nextStop = String(getFieldValue(r, [
+      'Pemberhentian berikutnya',
+      'Perhentian berikutnya',
+      'Stasiun Berikutnya'
     ])).trim();
 
     let rawWeight = getFieldValue(r, ['Berat', 'Total berat scan', 'berat', 'Perhitungan biaya berat']);
@@ -5963,11 +6000,7 @@ bootstrapAuth();
     const namaBarang = String(getFieldValue(r, ['Nama Barang', 'nama barang', 'Deskripsi', 'deskripsi barang yang disimpan di gudang', 'Komoditas'])).trim();
     const kemasan = String(getFieldValue(r, ['jenis kemasan', 'kemasan', 'Packaging'])).trim();
     const pemindai = String(getFieldValue(r, ['pemindai', 'Pemindai', 'petugas', 'nomor staf scan'])).trim();
-    const resiTugas = String(getFieldValue(r, ['Nomor resi tugas', 'resi tugas', 'segel mobil'])).trim();
-
-    const panjang = getFieldValue(r, ['panjang']);
-    const lebar = getFieldValue(r, ['lebar']);
-    const tinggi = getFieldValue(r, ['tinggi']);
+    const resiTugas = String(getFieldValue(r, ['Nomor resi tugas', 'resi tugas', 'segel mobil', 'No Tugas'])).trim();
 
     return {
       waybill,
@@ -5975,6 +6008,8 @@ bootstrapAuth();
       scanTime,
       origin,
       destination,
+      prevStop,
+      nextStop,
       weight,
       volWeight,
       koli,
@@ -5982,9 +6017,139 @@ bootstrapAuth();
       kemasan,
       pemindai,
       resiTugas,
-      dimensi: panjang && lebar && tinggi ? `${panjang}x${lebar}x${tinggi} cm` : '',
-      status: 'belum_bongkar',
       raw: r
+    };
+  }
+
+  // Unified Waybill Builder
+  function buildOrUpdateWaybill(waybillsMap, norm, forcedType = null) {
+    if (!norm || !norm.waybill) return;
+    const wb = norm.waybill;
+    const st = (norm.scanType || '').toLowerCase();
+
+    let isBongkar = false;
+    if (forcedType === 'bongkar') {
+      isBongkar = true;
+    } else if (forcedType === 'muat') {
+      isBongkar = false;
+    } else {
+      isBongkar = st.includes('bongkar');
+    }
+
+    if (!waybillsMap.has(wb)) {
+      waybillsMap.set(wb, {
+        waybill: wb,
+        status: 'belum_bongkar',
+        namaBarang: norm.namaBarang || '',
+        kemasan: norm.kemasan || '',
+        weight: norm.weight || 0,
+        volWeight: norm.volWeight || 0,
+        koli: norm.koli || 1,
+        resiTugas: norm.resiTugas || '',
+        waktuMuat: '',
+        gwMuat: '',
+        petugasMuat: '',
+        waktuBongkar: '',
+        gwBongkar: '',
+        petugasBongkar: '',
+        origin: '',
+        destination: '',
+        asalBongkar: '',
+        tujuanKirim: '',
+        pemindai: norm.pemindai || '',
+        hasMuatScan: false,
+        hasBongkarScan: false
+      });
+    }
+
+    const item = waybillsMap.get(wb);
+
+    if (norm.namaBarang && !item.namaBarang) item.namaBarang = norm.namaBarang;
+    if (norm.kemasan && !item.kemasan) item.kemasan = norm.kemasan;
+    if (norm.weight && !item.weight) item.weight = norm.weight;
+    if (norm.volWeight && !item.volWeight) item.volWeight = norm.volWeight;
+    if (norm.koli > 1 && item.koli === 1) item.koli = norm.koli;
+    if (norm.resiTugas && !item.resiTugas) item.resiTugas = norm.resiTugas;
+
+    if (isBongkar) {
+      item.hasBongkarScan = true;
+      if (!item.waktuBongkar || (norm.scanTime && norm.scanTime > item.waktuBongkar)) {
+        item.waktuBongkar = norm.scanTime;
+      }
+      if (norm.origin) item.gwBongkar = norm.origin;
+      if (norm.prevStop || norm.destination) item.asalBongkar = norm.prevStop || norm.destination;
+      if (norm.pemindai) item.petugasBongkar = norm.pemindai;
+      if (norm.resiTugas) item.resiTugas = norm.resiTugas;
+    } else {
+      item.hasMuatScan = true;
+      if (!item.waktuMuat || (norm.scanTime && norm.scanTime > item.waktuMuat)) {
+        item.waktuMuat = norm.scanTime;
+      }
+      if (norm.origin) item.gwMuat = norm.origin;
+      if (norm.nextStop || norm.destination) item.tujuanKirim = norm.nextStop || norm.destination;
+      if (norm.pemindai) item.petugasMuat = norm.pemindai;
+      if (norm.resiTugas) item.resiTugas = norm.resiTugas;
+    }
+  }
+
+  // Finalize reconciled dataset
+  function finalizeReconciliation(waybillsMap) {
+    const allList = [];
+    const matchedList = [];
+    const unmatchedList = [];
+    const origins = new Set();
+    const destinations = new Set();
+    let countMuat = 0;
+    let countBongkar = 0;
+    let totalLoadedWeight = 0;
+
+    for (const item of waybillsMap.values()) {
+      // Route direction: origin (loading gateway) -> destination (unloading gateway)
+      const origin = item.gwMuat || item.asalBongkar || '—';
+      const destination = item.gwBongkar || item.tujuanKirim || '—';
+      item.origin = origin;
+      item.destination = destination;
+
+      if (origin && origin !== '—') origins.add(origin);
+      if (destination && destination !== '—') destinations.add(destination);
+
+      if (item.hasBongkarScan) {
+        item.status = 'sudah_bongkar';
+        countBongkar++;
+      } else {
+        item.status = 'belum_bongkar';
+      }
+
+      if (item.hasMuatScan || !item.hasBongkarScan) {
+        countMuat++;
+        totalLoadedWeight += (item.weight || 0);
+      } else if (item.hasBongkarScan && !item.hasMuatScan) {
+        // If it was only scanned for bongkar without prior scan kirim row, also count in total loaded
+        countMuat++;
+        totalLoadedWeight += (item.weight || 0);
+      }
+
+      allList.push(item);
+
+      if (item.status === 'sudah_bongkar') {
+        matchedList.push(item);
+      } else {
+        unmatchedList.push(item);
+      }
+    }
+
+    const totalLoaded = countMuat > 0 ? countMuat : countBongkar;
+    const totalUnloaded = countBongkar;
+
+    return {
+      totalLoaded,
+      totalLoadedWeight,
+      totalUnloaded,
+      allList,
+      matchedList,
+      unmatchedList,
+      origins,
+      destinations
     };
   }
 
@@ -6049,78 +6214,19 @@ bootstrapAuth();
 
       showLoading('Menganalisis ' + rawRows.length.toLocaleString('id-ID') + ' baris...', 'Memilah scan muat vs scan bongkar...');
 
-      const loadedMap = new Map();
-      const unloadedMap = new Map();
-      const origins = new Set();
-      const destinations = new Set();
+      const waybillsMap = new Map();
 
       for (const r of rawRows) {
         const item = normalizeRow(r);
         if (!item.waybill) continue;
-
-        const st = item.scanType.toLowerCase();
-
-        if (st.includes('bongkar')) {
-          unloadedMap.set(item.waybill, item);
-        } else if (st.includes('kirim') || st.includes('muat')) {
-          if (!loadedMap.has(item.waybill)) {
-            loadedMap.set(item.waybill, item);
-          } else {
-            const existing = loadedMap.get(item.waybill);
-            if (!existing.namaBarang && item.namaBarang) existing.namaBarang = item.namaBarang;
-            if (!existing.weight && item.weight) existing.weight = item.weight;
-          }
-        } else {
-          if (!loadedMap.has(item.waybill)) {
-            loadedMap.set(item.waybill, item);
-          }
-        }
+        buildOrUpdateWaybill(waybillsMap, item);
       }
 
-      const allList = [];
-      const matchedList = [];
-      const unmatchedList = [];
-      let totalLoadedWeight = 0;
-
-      for (const [wb, item] of loadedMap.entries()) {
-        totalLoadedWeight += (item.weight || 0);
-        if (item.origin) origins.add(item.origin);
-        if (item.destination) destinations.add(item.destination);
-
-        const isUnloaded = unloadedMap.has(wb);
-        item.status = isUnloaded ? 'sudah_bongkar' : 'belum_bongkar';
-        
-        allList.push(item);
-
-        if (isUnloaded) {
-          matchedList.push(item);
-        } else {
-          unmatchedList.push(item);
-        }
-      }
-
-      // Also if there are extra unloaded waybills not in loadedMap, add them to matchedList
-      for (const [wb, item] of unloadedMap.entries()) {
-        if (!loadedMap.has(wb)) {
-          item.status = 'sudah_bongkar';
-          matchedList.push(item);
-          allList.push(item);
-        }
-      }
-
-      reconcileDataMode1 = {
-        totalLoaded: loadedMap.size,
-        totalLoadedWeight,
-        totalUnloaded: unloadedMap.size,
-        allList,
-        matchedList,
-        unmatchedList,
-        origins,
-        destinations
-      };
+      reconcileDataMode1 = finalizeReconciliation(waybillsMap);
       reconcileDataState = reconcileDataMode1;
 
       activeKpiFilter = 'missing'; // Default view: Belum Bongkar
+      reconcileCurrentPage = 1;
       hideLoading();
       renderResults(true);
 
@@ -6226,86 +6332,39 @@ bootstrapAuth();
     try {
       showLoading('Membaca semua file Muat & Bongkar...', 'Menggabungkan data transitan...');
 
-      const loadedMap = new Map();
-      const unloadedMap = new Map();
-      const origins = new Set();
-      const destinations = new Set();
+      const waybillsMap = new Map();
 
       // 1. Process all Muat files
       for (let i = 0; i < multiUploadedFiles.muat.length; i++) {
         const file = multiUploadedFiles.muat[i];
-        showLoading(`Membaca file Muat (${i + 1}/${multiUploadedFiles.muat.length}): ${file.name}...`, 'Menguraikan data...');
+        showLoading(`Membaca file Muat (${i + 1}/${multiUploadedFiles.muat.length}): ${file.name}...`, 'Menguraikan data muat...');
         const rows = await parseFileRows(file);
         for (const r of rows) {
           const item = normalizeRow(r);
           if (!item.waybill) continue;
-          if (!loadedMap.has(item.waybill)) {
-            loadedMap.set(item.waybill, item);
-          } else {
-            const prev = loadedMap.get(item.waybill);
-            if (item.scanTime && (!prev.scanTime || item.scanTime > prev.scanTime)) {
-              loadedMap.set(item.waybill, item);
-            }
-          }
+          buildOrUpdateWaybill(waybillsMap, item, 'muat');
         }
       }
 
       // 2. Process all Bongkar files
       for (let i = 0; i < multiUploadedFiles.bongkar.length; i++) {
         const file = multiUploadedFiles.bongkar[i];
-        showLoading(`Membaca file Bongkar (${i + 1}/${multiUploadedFiles.bongkar.length}): ${file.name}...`, 'Menguraikan data...');
+        showLoading(`Membaca file Bongkar (${i + 1}/${multiUploadedFiles.bongkar.length}): ${file.name}...`, 'Menguraikan data bongkar...');
         const rows = await parseFileRows(file);
         for (const r of rows) {
           const item = normalizeRow(r);
           if (!item.waybill) continue;
-          unloadedMap.set(item.waybill, item);
+          buildOrUpdateWaybill(waybillsMap, item, 'bongkar');
         }
       }
 
       showLoading('Mencocokkan selisih transitan...', 'Menghitung hasil rekonsiliasi...');
 
-      const allList = [];
-      const matchedList = [];
-      const unmatchedList = [];
-      let totalLoadedWeight = 0;
-
-      for (const [wb, item] of loadedMap.entries()) {
-        totalLoadedWeight += (item.weight || 0);
-        if (item.origin) origins.add(item.origin);
-        if (item.destination) destinations.add(item.destination);
-
-        const isUnloaded = unloadedMap.has(wb);
-        item.status = isUnloaded ? 'sudah_bongkar' : 'belum_bongkar';
-        allList.push(item);
-
-        if (isUnloaded) {
-          matchedList.push(item);
-        } else {
-          unmatchedList.push(item);
-        }
-      }
-
-      for (const [wb, item] of unloadedMap.entries()) {
-        if (!loadedMap.has(wb)) {
-          item.status = 'sudah_bongkar';
-          matchedList.push(item);
-          allList.push(item);
-        }
-      }
-
-      reconcileDataMode2 = {
-        totalLoaded: loadedMap.size,
-        totalLoadedWeight,
-        totalUnloaded: unloadedMap.size,
-        allList,
-        matchedList,
-        unmatchedList,
-        origins,
-        destinations
-      };
+      reconcileDataMode2 = finalizeReconciliation(waybillsMap);
       reconcileDataState = reconcileDataMode2;
 
       activeKpiFilter = 'missing';
+      reconcileCurrentPage = 1;
       hideLoading();
       renderResults(true);
 
@@ -6378,11 +6437,12 @@ bootstrapAuth();
     }
   }
 
-  // 7. Filter Controls & Non-AWB Hunter
+  // 7. Filter Controls
   if (filterKeyword) {
     filterKeyword.addEventListener('input', () => {
       filterState.keyword = filterKeyword.value.trim().toLowerCase();
       if (btnClearKeyword) btnClearKeyword.classList.toggle('hidden', !filterState.keyword);
+      reconcileCurrentPage = 1;
       applyFiltersAndRenderTable();
     });
   }
@@ -6392,6 +6452,7 @@ bootstrapAuth();
       if (filterKeyword) filterKeyword.value = '';
       filterState.keyword = '';
       btnClearKeyword.classList.add('hidden');
+      reconcileCurrentPage = 1;
       applyFiltersAndRenderTable();
     });
   }
@@ -6399,6 +6460,7 @@ bootstrapAuth();
   if (filterOrigin) {
     filterOrigin.addEventListener('change', () => {
       filterState.origin = filterOrigin.value;
+      reconcileCurrentPage = 1;
       applyFiltersAndRenderTable();
     });
   }
@@ -6406,6 +6468,7 @@ bootstrapAuth();
   if (filterDestination) {
     filterDestination.addEventListener('change', () => {
       filterState.destination = filterDestination.value;
+      reconcileCurrentPage = 1;
       applyFiltersAndRenderTable();
     });
   }
@@ -6424,6 +6487,7 @@ bootstrapAuth();
     if (btnClearKeyword) btnClearKeyword.classList.add('hidden');
     if (filterOrigin) filterOrigin.value = '';
     if (filterDestination) filterDestination.value = '';
+    reconcileCurrentPage = 1;
   }
 
   function resetFilterValuesAndApply() {
@@ -6431,11 +6495,98 @@ bootstrapAuth();
     applyFiltersAndRenderTable();
   }
 
+  // Helper to render dynamic thead based on active tab and sort state
+  function renderTableHead() {
+    if (!tableHead) return;
+
+    const makeTh = (colKey, label, extraStyle = '') => {
+      const isSorted = reconcileSortColumn === colKey;
+      const icon = isSorted ? (reconcileSortDir === 'asc' ? '▲' : '▼') : '↕';
+      const activeClass = isSorted ? 'sort-active' : '';
+      return `
+        <th class="sortable-th ${activeClass}" data-sort="${colKey}" style="${extraStyle}" title="Klik untuk mengurutkan ${label}">
+          <div class="th-content">
+            <span>${label}</span>
+            <span class="sort-icon">${icon}</span>
+          </div>
+        </th>
+      `;
+    };
+
+    let headersHtml = '';
+
+    if (activeKpiFilter === 'missing') {
+      // TAB: BELUM SCAN BONGKAR
+      headersHtml = `
+        <tr>
+          <th style="width: 48px; text-align: center;">No</th>
+          ${makeTh('waybill', 'Kode Waybill')}
+          <th style="width: 140px;">Status</th>
+          <th>Nama Barang &amp; Kemasan</th>
+          ${makeTh('weight', 'Berat (Koli)')}
+          ${makeTh('route', 'Rute Pengiriman')}
+          ${makeTh('waktuMuat', 'Waktu Muat')}
+          ${makeTh('gwMuat', 'GW Asal (Muat)')}
+          <th style="min-width: 130px;">Petugas Muat</th>
+          ${makeTh('resiTugas', 'Nomor Resi Tugas')}
+        </tr>
+      `;
+    } else if (activeKpiFilter === 'matched') {
+      // TAB: SUDAH SCAN BONGKAR
+      headersHtml = `
+        <tr>
+          <th style="width: 48px; text-align: center;">No</th>
+          ${makeTh('waybill', 'Kode Waybill')}
+          <th style="width: 140px;">Status</th>
+          <th>Nama Barang &amp; Kemasan</th>
+          ${makeTh('weight', 'Berat (Koli)')}
+          ${makeTh('route', 'Rute Pengiriman')}
+          ${makeTh('waktuBongkar', 'Waktu Bongkar')}
+          ${makeTh('gwBongkar', 'GW Bongkar')}
+          <th style="min-width: 130px;">Petugas Bongkar</th>
+          ${makeTh('resiTugas', 'Nomor Resi Tugas')}
+        </tr>
+      `;
+    } else {
+      // TAB: TOTAL DIMUAT (ALL)
+      headersHtml = `
+        <tr>
+          <th style="width: 45px; text-align: center;">No</th>
+          ${makeTh('waybill', 'Kode Waybill')}
+          <th style="width: 130px;">Status</th>
+          <th>Nama Barang &amp; Kemasan</th>
+          ${makeTh('weight', 'Berat (Koli)')}
+          ${makeTh('route', 'Rute Pengiriman')}
+          ${makeTh('waktuMuat', 'Waktu Muat')}
+          ${makeTh('waktuBongkar', 'Waktu Bongkar')}
+          ${makeTh('gwMuat', 'GW Pemindai')}
+          ${makeTh('resiTugas', 'Nomor Resi Tugas')}
+        </tr>
+      `;
+    }
+
+    tableHead.innerHTML = headersHtml;
+
+    // Attach click listeners for sorting
+    tableHead.querySelectorAll('.sortable-th').forEach((th) => {
+      th.addEventListener('click', () => {
+        const sortKey = th.getAttribute('data-sort');
+        if (!sortKey) return;
+        if (reconcileSortColumn === sortKey) {
+          reconcileSortDir = reconcileSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          reconcileSortColumn = sortKey;
+          reconcileSortDir = (sortKey === 'waktuMuat' || sortKey === 'waktuBongkar') ? 'desc' : 'asc';
+        }
+        applyFiltersAndRenderTable();
+      });
+    });
+  }
+
   // 8. Filter Execution and Table Rendering
   function applyFiltersAndRenderTable() {
     if (!tableBody) return;
 
-    // Pick base list based on active KPI filter card
     let baseList = [];
     let filterTitle = 'AWB';
 
@@ -6454,29 +6605,84 @@ bootstrapAuth();
       // Keyword filter
       if (filterState.keyword) {
         const kw = filterState.keyword;
-        const wbMatch = item.waybill.toLowerCase().includes(kw);
-        const nameMatch = item.namaBarang.toLowerCase().includes(kw);
-        const originMatch = item.origin.toLowerCase().includes(kw);
-        const destMatch = item.destination.toLowerCase().includes(kw);
-        const picMatch = item.pemindai.toLowerCase().includes(kw);
-        const resiTugasMatch = item.resiTugas.toLowerCase().includes(kw);
-        if (!wbMatch && !nameMatch && !originMatch && !destMatch && !picMatch && !resiTugasMatch) {
+        const wbMatch = item.waybill && item.waybill.toLowerCase().includes(kw);
+        const nameMatch = item.namaBarang && item.namaBarang.toLowerCase().includes(kw);
+        const originMatch = item.origin && item.origin.toLowerCase().includes(kw);
+        const destMatch = item.destination && item.destination.toLowerCase().includes(kw);
+        const gwMuatMatch = item.gwMuat && item.gwMuat.toLowerCase().includes(kw);
+        const gwBongkarMatch = item.gwBongkar && item.gwBongkar.toLowerCase().includes(kw);
+        const picMatch = (item.petugasMuat && item.petugasMuat.toLowerCase().includes(kw)) ||
+                         (item.petugasBongkar && item.petugasBongkar.toLowerCase().includes(kw)) ||
+                         (item.pemindai && item.pemindai.toLowerCase().includes(kw));
+        const resiTugasMatch = item.resiTugas && item.resiTugas.toLowerCase().includes(kw);
+        if (!wbMatch && !nameMatch && !originMatch && !destMatch && !gwMuatMatch && !gwBongkarMatch && !picMatch && !resiTugasMatch) {
           return false;
         }
       }
 
       // Origin filter
-      if (filterState.origin && item.origin !== filterState.origin) {
+      if (filterState.origin && item.origin !== filterState.origin && item.gwMuat !== filterState.origin) {
         return false;
       }
 
       // Destination filter
-      if (filterState.destination && item.destination !== filterState.destination) {
+      if (filterState.destination && item.destination !== filterState.destination && item.gwBongkar !== filterState.destination) {
         return false;
       }
 
       return true;
     });
+
+    currentFilteredList = filtered;
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let valA, valB;
+      switch (reconcileSortColumn) {
+        case 'waybill':
+          valA = a.waybill || '';
+          valB = b.waybill || '';
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'weight':
+          valA = a.weight || 0;
+          valB = b.weight || 0;
+          return reconcileSortDir === 'asc' ? valA - valB : valB - valA;
+        case 'route':
+          valA = `${a.origin || ''} ${a.destination || ''}`;
+          valB = `${b.origin || ''} ${b.destination || ''}`;
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'waktuMuat':
+          valA = a.waktuMuat || '';
+          valB = b.waktuMuat || '';
+          if (!valA && !valB) return 0;
+          if (!valA) return 1;
+          if (!valB) return -1;
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'waktuBongkar':
+          valA = a.waktuBongkar || '';
+          valB = b.waktuBongkar || '';
+          if (!valA && !valB) return 0;
+          if (!valA) return 1;
+          if (!valB) return -1;
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'gwMuat':
+          valA = a.gwMuat || a.origin || '';
+          valB = b.gwMuat || b.origin || '';
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'gwBongkar':
+          valA = a.gwBongkar || a.destination || '';
+          valB = b.gwBongkar || b.destination || '';
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'resiTugas':
+          valA = a.resiTugas || '';
+          valB = b.resiTugas || '';
+          return reconcileSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        default:
+          return 0;
+      }
+    });
+
+    renderTableHead();
 
     if (resultsCountBadge) {
       resultsCountBadge.innerHTML = `Menampilkan <strong id="visibleCount">${filtered.length.toLocaleString('id-ID')}</strong> dari <strong id="totalUnmatchedCount">${baseList.length.toLocaleString('id-ID')}</strong> ${filterTitle}`;
@@ -6487,27 +6693,109 @@ bootstrapAuth();
     if (baseList.length === 0) {
       if (emptyState) emptyState.classList.remove('hidden');
       if (noMatchState) noMatchState.classList.add('hidden');
+      if (paginationBar) paginationBar.classList.add('hidden');
       return;
     }
 
     if (filtered.length === 0) {
       if (emptyState) emptyState.classList.add('hidden');
       if (noMatchState) noMatchState.classList.remove('hidden');
+      if (paginationBar) paginationBar.classList.add('hidden');
       return;
     }
 
     if (emptyState) emptyState.classList.add('hidden');
     if (noMatchState) noMatchState.classList.add('hidden');
 
+    // Pagination calculations
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / reconcilePageSize));
+
+    if (reconcileCurrentPage > totalPages) {
+      reconcileCurrentPage = totalPages;
+    }
+    if (reconcileCurrentPage < 1) {
+      reconcileCurrentPage = 1;
+    }
+
+    const startIdx = (reconcileCurrentPage - 1) * reconcilePageSize;
+    const endIdx = startIdx + reconcilePageSize;
+    const pageItems = filtered.slice(startIdx, endIdx);
+
+    if (paginationBar) {
+      paginationBar.classList.remove('hidden');
+    }
+    if (pageInfoCurrent) pageInfoCurrent.textContent = reconcileCurrentPage;
+    if (pageInfoTotal) pageInfoTotal.textContent = totalPages;
+    if (pageInfoRows) pageInfoRows.textContent = totalItems.toLocaleString('id-ID');
+    if (btnPrevPage) btnPrevPage.disabled = (reconcileCurrentPage <= 1);
+    if (btnNextPage) btnNextPage.disabled = (reconcileCurrentPage >= totalPages);
+
     const fragment = document.createDocumentFragment();
 
-    filtered.forEach((item, index) => {
+    pageItems.forEach((item, index) => {
       const tr = document.createElement('tr');
       const estPerKoli = item.koli > 1 && item.weight > 0 ? (item.weight / item.koli).toFixed(1) : null;
       const isBelumBongkar = item.status === 'belum_bongkar';
 
+      let dynamicCols = '';
+      if (activeKpiFilter === 'missing') {
+        const scanTimePart = item.waktuMuat ? item.waktuMuat.split(' ') : ['—', ''];
+        dynamicCols = `
+          <td>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #e2e8f0;">${scanTimePart[1] || scanTimePart[0]}</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">${scanTimePart[1] ? scanTimePart[0] : ''}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.82rem; color: #38bdf8; font-weight: 600;">${escapeHtml(item.gwMuat || item.origin || '—')}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.82rem; color: #f1f5f9; font-weight: 500;">${escapeHtml(item.petugasMuat || item.pemindai || '—')}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.76rem; font-family: monospace; color: #94a3b8;">${escapeHtml(item.resiTugas || '—')}</div>
+          </td>
+        `;
+      } else if (activeKpiFilter === 'matched') {
+        const scanTimePart = item.waktuBongkar ? item.waktuBongkar.split(' ') : ['—', ''];
+        dynamicCols = `
+          <td>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #e2e8f0;">${scanTimePart[1] || scanTimePart[0]}</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">${scanTimePart[1] ? scanTimePart[0] : ''}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.82rem; color: #10b981; font-weight: 600;">${escapeHtml(item.gwBongkar || item.destination || '—')}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.82rem; color: #f1f5f9; font-weight: 500;">${escapeHtml(item.petugasBongkar || item.pemindai || '—')}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.76rem; font-family: monospace; color: #94a3b8;">${escapeHtml(item.resiTugas || '—')}</div>
+          </td>
+        `;
+      } else {
+        const muatPart = item.waktuMuat ? item.waktuMuat.split(' ') : ['—', ''];
+        const bongkarPart = item.waktuBongkar ? item.waktuBongkar.split(' ') : ['—', ''];
+        dynamicCols = `
+          <td>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #e2e8f0;">${muatPart[1] || muatPart[0]}</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">${muatPart[1] ? muatPart[0] : ''}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.8rem; font-weight: 600; color: ${item.waktuBongkar ? '#10b981' : '#64748b'};">${bongkarPart[1] || bongkarPart[0]}</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">${bongkarPart[1] ? bongkarPart[0] : ''}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.8rem; color: #cbd5e1;">${escapeHtml(item.gwMuat || item.gwBongkar || item.origin || '—')}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.76rem; font-family: monospace; color: #94a3b8;">${escapeHtml(item.resiTugas || '—')}</div>
+          </td>
+        `;
+      }
+
       tr.innerHTML = `
-        <td style="color: #94a3b8; font-size: 0.8rem; text-align: center;">${index + 1}</td>
+        <td style="color: #94a3b8; font-size: 0.8rem; text-align: center;">${startIdx + index + 1}</td>
         <td>
           <div class="reconcile-waybill-cell">
             <span class="reconcile-waybill-code">${item.waybill}</span>
@@ -6542,20 +6830,7 @@ bootstrapAuth();
             <span>${escapeHtml(item.destination || '?')}</span>
           </div>
         </td>
-        <td>
-          <div style="font-size: 0.8rem; color: #cbd5e1;">${item.dimensi || '—'}</div>
-          ${item.volWeight ? `<div style="font-size: 0.72rem; color: #94a3b8;">${item.volWeight.toFixed(2)} Vol kg</div>` : ''}
-        </td>
-        <td>
-          <div style="font-size: 0.8rem; font-weight: 600; color: #e2e8f0;">${item.scanTime ? item.scanTime.split(' ')[1] || item.scanTime : '—'}</div>
-          <div style="font-size: 0.72rem; color: #94a3b8;">${item.scanTime ? item.scanTime.split(' ')[0] : ''}</div>
-        </td>
-        <td>
-          <div style="font-size: 0.82rem; color: #f1f5f9; font-weight: 500;">${escapeHtml(item.pemindai || '—')}</div>
-        </td>
-        <td>
-          <div style="font-size: 0.76rem; font-family: monospace; color: #94a3b8;">${escapeHtml(item.resiTugas || '—')}</div>
-        </td>
+        ${dynamicCols}
       `;
 
       fragment.appendChild(tr);
@@ -6563,7 +6838,7 @@ bootstrapAuth();
 
     tableBody.appendChild(fragment);
 
-    // Setup Copy Waybill Buttons
+    // Setup Copy Waybill Buttons on rendered rows
     tableBody.querySelectorAll('.btn-copy-waybill').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -6590,6 +6865,35 @@ bootstrapAuth();
     });
   }
 
+  // Setup Pagination Event Listeners
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener('change', () => {
+      const val = pageSizeSelect.value;
+      reconcilePageSize = val === 'all' ? 999999 : (parseInt(val, 10) || 20);
+      reconcileCurrentPage = 1;
+      applyFiltersAndRenderTable();
+    });
+  }
+
+  if (btnPrevPage) {
+    btnPrevPage.addEventListener('click', () => {
+      if (reconcileCurrentPage > 1) {
+        reconcileCurrentPage--;
+        applyFiltersAndRenderTable();
+      }
+    });
+  }
+
+  if (btnNextPage) {
+    btnNextPage.addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(currentFilteredList.length / reconcilePageSize));
+      if (reconcileCurrentPage < totalPages) {
+        reconcileCurrentPage++;
+        applyFiltersAndRenderTable();
+      }
+    });
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -6600,28 +6904,32 @@ bootstrapAuth();
       .replace(/'/g, '&#039;');
   }
 
-  // 9. Copy All Filtered Waybills
+  // 9. Copy Filtered Waybills (Rule: If search/filter active, copy only search results. If empty, copy all in tab)
   if (btnCopyAll) {
     btnCopyAll.addEventListener('click', () => {
-      let currentItems = [];
+      let baseList = [];
       if (activeKpiFilter === 'missing') {
-        currentItems = reconcileDataState.unmatchedList || [];
+        baseList = reconcileDataState.unmatchedList || [];
       } else if (activeKpiFilter === 'matched') {
-        currentItems = reconcileDataState.matchedList || [];
+        baseList = reconcileDataState.matchedList || [];
       } else {
-        currentItems = reconcileDataState.allList || [];
+        baseList = reconcileDataState.allList || [];
       }
 
-      if (!currentItems.length) {
-        alert('Tidak ada resi untuk disalin.');
+      const hasActiveFilter = Boolean(filterState.keyword || filterState.origin || filterState.destination);
+      const itemsToCopy = hasActiveFilter ? currentFilteredList : baseList;
+
+      if (!itemsToCopy || !itemsToCopy.length) {
+        alert(hasActiveFilter ? 'Tidak ada resi dari hasil pencarian/filter untuk disalin.' : 'Tidak ada resi untuk disalin.');
         return;
       }
 
-      const waybillText = currentItems.map((it) => it.waybill).join('\n');
+      const waybillText = itemsToCopy.map((it) => it.waybill).filter(Boolean).join('\n');
       navigator.clipboard.writeText(waybillText).then(() => {
         if (btnCopyAllText) {
           const orig = btnCopyAllText.textContent;
-          btnCopyAllText.textContent = `Tersalin ${currentItems.length} Resi! ✓`;
+          const label = hasActiveFilter ? `Tersalin ${itemsToCopy.length} Resi Filter! ✓` : `Tersalin ${itemsToCopy.length} Resi! ✓`;
+          btnCopyAllText.textContent = label;
           setTimeout(() => {
             btnCopyAllText.textContent = orig;
           }, 2000);
@@ -6630,31 +6938,34 @@ bootstrapAuth();
     });
   }
 
-  // 10. Export to Excel using SheetJS (Exports current active tab data)
+  // 10. Export to Excel using SheetJS (Exports current filtered data, matching active tab columns)
   if (btnExportExcel) {
     btnExportExcel.addEventListener('click', exportFilteredToExcel);
   }
 
   function exportFilteredToExcel() {
-    let items = [];
+    let baseList = [];
     let sheetName = 'Belum Scan Bongkar';
     let filePrefix = 'REKONSILIASI_BELUM_BONGKAR';
 
     if (activeKpiFilter === 'missing') {
-      items = reconcileDataState.unmatchedList || [];
+      baseList = reconcileDataState.unmatchedList || [];
       sheetName = 'Belum Scan Bongkar';
       filePrefix = 'REKONSILIASI_BELUM_BONGKAR';
     } else if (activeKpiFilter === 'matched') {
-      items = reconcileDataState.matchedList || [];
+      baseList = reconcileDataState.matchedList || [];
       sheetName = 'Sudah Scan Bongkar';
       filePrefix = 'REKONSILIASI_SUDAH_BONGKAR';
     } else {
-      items = reconcileDataState.allList || [];
+      baseList = reconcileDataState.allList || [];
       sheetName = 'Semua Muatan';
       filePrefix = 'REKONSILIASI_SEMUA_DATA';
     }
 
-    if (!items.length) {
+    const hasActiveFilter = Boolean(filterState.keyword || filterState.origin || filterState.destination);
+    const items = hasActiveFilter ? currentFilteredList : baseList;
+
+    if (!items || !items.length) {
       alert('Tidak ada data untuk diekspor.');
       return;
     }
@@ -6664,43 +6975,110 @@ bootstrapAuth();
       return;
     }
 
-    const exportRows = items.map((item, idx) => ({
-      'No': idx + 1,
-      'Kode Waybill': item.waybill,
-      'Status': item.status === 'sudah_bongkar' ? 'Sudah Bongkar' : 'Belum Bongkar',
-      'Nama Barang': item.namaBarang || '',
-      'Jenis Kemasan': item.kemasan || '',
-      'Berat (Kg)': item.weight || 0,
-      'Jumlah Koli': item.koli || 1,
-      'Estimasi Berat/Koli (Kg)': item.koli > 1 && item.weight > 0 ? parseFloat((item.weight / item.koli).toFixed(2)) : item.weight || 0,
-      'Dimensi (P x L x T)': item.dimensi || '',
-      'Berat Volumetrik (Kg)': item.volWeight || 0,
-      'Asal Muat': item.origin || '',
-      'Tujuan': item.destination || '',
-      'Waktu Scan Muat': item.scanTime || '',
-      'Petugas Pemindai': item.pemindai || '',
-      'Nomor Resi Tugas': item.resiTugas || ''
-    }));
+    let exportRows = [];
+    let colWidths = [];
+
+    if (activeKpiFilter === 'missing') {
+      exportRows = items.map((item, idx) => ({
+        'No': idx + 1,
+        'Kode Waybill': item.waybill,
+        'Status': 'Belum Bongkar',
+        'Nama Barang': item.namaBarang || '',
+        'Jenis Kemasan': item.kemasan || '',
+        'Berat (Kg)': item.weight || 0,
+        'Jumlah Koli': item.koli || 1,
+        'Estimasi Berat/Koli (Kg)': item.koli > 1 && item.weight > 0 ? parseFloat((item.weight / item.koli).toFixed(2)) : item.weight || 0,
+        'GW Asal (Muat)': item.gwMuat || item.origin || '',
+        'Tujuan': item.destination || '',
+        'Waktu Scan Muat': item.waktuMuat || '',
+        'Petugas Muat': item.petugasMuat || item.pemindai || '',
+        'Nomor Resi Tugas': item.resiTugas || ''
+      }));
+
+      colWidths = [
+        { wch: 6 },  // No
+        { wch: 18 }, // Kode Waybill
+        { wch: 16 }, // Status
+        { wch: 35 }, // Nama Barang
+        { wch: 15 }, // Kemasan
+        { wch: 12 }, // Berat
+        { wch: 12 }, // Koli
+        { wch: 22 }, // Est Berat/koli
+        { wch: 18 }, // GW Asal (Muat)
+        { wch: 18 }, // Tujuan
+        { wch: 20 }, // Waktu Scan Muat
+        { wch: 20 }, // Petugas Muat
+        { wch: 22 }  // Resi Tugas
+      ];
+    } else if (activeKpiFilter === 'matched') {
+      exportRows = items.map((item, idx) => ({
+        'No': idx + 1,
+        'Kode Waybill': item.waybill,
+        'Status': 'Sudah Bongkar',
+        'Nama Barang': item.namaBarang || '',
+        'Jenis Kemasan': item.kemasan || '',
+        'Berat (Kg)': item.weight || 0,
+        'Jumlah Koli': item.koli || 1,
+        'Estimasi Berat/Koli (Kg)': item.koli > 1 && item.weight > 0 ? parseFloat((item.weight / item.koli).toFixed(2)) : item.weight || 0,
+        'Asal': item.origin || '',
+        'GW Bongkar': item.gwBongkar || item.destination || '',
+        'Waktu Scan Bongkar': item.waktuBongkar || '',
+        'Petugas Bongkar': item.petugasBongkar || item.pemindai || '',
+        'Nomor Resi Tugas': item.resiTugas || ''
+      }));
+
+      colWidths = [
+        { wch: 6 },  // No
+        { wch: 18 }, // Kode Waybill
+        { wch: 16 }, // Status
+        { wch: 35 }, // Nama Barang
+        { wch: 15 }, // Kemasan
+        { wch: 12 }, // Berat
+        { wch: 12 }, // Koli
+        { wch: 22 }, // Est Berat/koli
+        { wch: 18 }, // Asal
+        { wch: 18 }, // GW Bongkar
+        { wch: 20 }, // Waktu Scan Bongkar
+        { wch: 20 }, // Petugas Bongkar
+        { wch: 22 }  // Resi Tugas
+      ];
+    } else {
+      exportRows = items.map((item, idx) => ({
+        'No': idx + 1,
+        'Kode Waybill': item.waybill,
+        'Status': item.status === 'sudah_bongkar' ? 'Sudah Bongkar' : 'Belum Bongkar',
+        'Nama Barang': item.namaBarang || '',
+        'Jenis Kemasan': item.kemasan || '',
+        'Berat (Kg)': item.weight || 0,
+        'Jumlah Koli': item.koli || 1,
+        'Estimasi Berat/Koli (Kg)': item.koli > 1 && item.weight > 0 ? parseFloat((item.weight / item.koli).toFixed(2)) : item.weight || 0,
+        'Asal': item.origin || '',
+        'Tujuan': item.destination || '',
+        'Waktu Scan Muat': item.waktuMuat || '',
+        'Waktu Scan Bongkar': item.waktuBongkar || '',
+        'GW Pemindai': item.gwMuat || item.gwBongkar || item.origin || '',
+        'Nomor Resi Tugas': item.resiTugas || ''
+      }));
+
+      colWidths = [
+        { wch: 6 },  // No
+        { wch: 18 }, // Kode Waybill
+        { wch: 16 }, // Status
+        { wch: 35 }, // Nama Barang
+        { wch: 15 }, // Kemasan
+        { wch: 12 }, // Berat
+        { wch: 12 }, // Koli
+        { wch: 22 }, // Est Berat/koli
+        { wch: 18 }, // Asal
+        { wch: 18 }, // Tujuan
+        { wch: 20 }, // Waktu Scan Muat
+        { wch: 20 }, // Waktu Scan Bongkar
+        { wch: 20 }, // GW Pemindai
+        { wch: 22 }  // Resi Tugas
+      ];
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(exportRows);
-
-    const colWidths = [
-      { wch: 6 },  // No
-      { wch: 18 }, // Kode Waybill
-      { wch: 16 }, // Status
-      { wch: 35 }, // Nama Barang
-      { wch: 15 }, // Kemasan
-      { wch: 12 }, // Berat
-      { wch: 12 }, // Koli
-      { wch: 22 }, // Est Berat/koli
-      { wch: 20 }, // Dimensi
-      { wch: 20 }, // Volumetrik
-      { wch: 16 }, // Asal
-      { wch: 16 }, // Tujuan
-      { wch: 20 }, // Waktu
-      { wch: 20 }, // Petugas
-      { wch: 22 }  // Resi Tugas
-    ];
     worksheet['!cols'] = colWidths;
 
     const workbook = XLSX.utils.book_new();
@@ -6709,7 +7087,8 @@ bootstrapAuth();
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-    const fileName = `${filePrefix}_${dateStr}_${timeStr}.xlsx`;
+    const filterSuffix = hasActiveFilter ? '_FILTERED' : '';
+    const fileName = `${filePrefix}${filterSuffix}_${dateStr}_${timeStr}.xlsx`;
 
     XLSX.writeFile(workbook, fileName);
   }
@@ -6720,6 +7099,7 @@ bootstrapAuth();
       const modeName = currentReconcileMode === 'single' ? '1 File Resi Tugas' : 'Multi-File Transitan';
       if (confirm(`Mulai rekonsiliasi baru untuk mode ${modeName}? Data pada mode ini akan direset.`)) {
         if (resultsSection) resultsSection.classList.add('hidden');
+        if (paginationBar) paginationBar.classList.add('hidden');
         if (currentReconcileMode === 'single') {
           if (inputSingle) inputSingle.value = '';
           reconcileDataMode1 = null;
@@ -6742,6 +7122,8 @@ bootstrapAuth();
           origins: new Set(),
           destinations: new Set()
         };
+        currentFilteredList = [];
+        reconcileCurrentPage = 1;
         resetFilterValues();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
