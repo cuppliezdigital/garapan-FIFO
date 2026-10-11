@@ -374,6 +374,9 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!id || id === 'undefined' || isNaN(Number(id))) {
+      return res.status(400).json({ error: 'ID kendaraan tidak valid.' });
+    }
     await db.query('DELETE FROM kendaraan_instock WHERE id = ?', [id]);
     res.json({ success: true, message: 'Data kendaraan berhasil dihapus.' });
   } catch (err) {
