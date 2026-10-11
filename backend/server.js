@@ -9,6 +9,7 @@ const monitoringRoutes = require('./routes/monitoringRoutes');
 const authRoutes = require('./routes/authRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const kendaraanRoutes = require('./routes/kendaraanRoutes');
+const jfsRoutes = require('./routes/jfsRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -101,6 +102,7 @@ app.use('/api', (req, res, next) => {
 app.use('/api', monitoringRoutes);
 app.use('/api', auditRoutes);
 app.use('/api', kendaraanRoutes);
+app.use('/api/jfs', jfsRoutes);
 app.use('/api/auth', authRoutes);
 
 const publicDir = path.join(__dirname, '../public');
@@ -154,6 +156,7 @@ async function initDatabase() {
     await require('./services/logoService').ensureLogoTable();
     await require('./services/logoService').ensureBackgroundTable();
     await require('./services/kendaraanInitService').ensureKendaraanTables();
+    await require('./services/jfsService').initJfs();
     console.log('✅ Inisialisasi struktur database selesai.');
   } catch (err) {
     console.error('❌ Gagal inisialisasi database:', err.message);
