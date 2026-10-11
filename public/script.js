@@ -231,7 +231,11 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   }
 }
 
+let advanceTabsInitialized = false;
 function initAdvanceTabs() {
+  if (advanceTabsInitialized) return;
+  advanceTabsInitialized = true;
+
   document.querySelectorAll('.advance-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.getAttribute('data-advance-tab');
@@ -7991,7 +7995,11 @@ async function submitEditPicForm(e) {
 }
 
 // 12. Setup Event Listeners for Kendaraan Module
+let kendaraanListenersInitialized = false;
 function initKendaraanEventListeners() {
+  if (kendaraanListenersInitialized) return;
+  kendaraanListenersInitialized = true;
+
   // Sync Button
   const btnSync = document.getElementById('btnSyncKendaraanGSheet');
   if (btnSync) btnSync.addEventListener('click', syncKendaraanFromGoogleSheet);
@@ -8630,7 +8638,11 @@ async function executeSendFeishu() {
 }
 
 // 16. Event Listeners for Generator Feishu Module
+let feishuListenersInitialized = false;
 function initFeishuEventListeners() {
+  if (feishuListenersInitialized) return;
+  feishuListenersInitialized = true;
+
   // Preload PIC Map
   ensureFeishuPicMap().then(() => {
     initFeishuExcelRows();
