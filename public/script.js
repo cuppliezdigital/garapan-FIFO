@@ -8710,7 +8710,7 @@ function initFeishuEventListeners() {
         navigator.clipboard.writeText(preview.textContent);
         const span = document.getElementById('btnCopyFeishuMessageText');
         if (span) span.textContent = 'Tersalin ke Clipboard! ✅';
-        setTimeout(() => { if (span) span.textContent = '📋 Salin Pesan WhatsApp'; }, 2000);
+        setTimeout(() => { if (span) span.textContent = 'Salin Pesan WhatsApp'; }, 2000);
       }
     });
   }
