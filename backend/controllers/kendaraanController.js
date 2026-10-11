@@ -1,39 +1,16 @@
 const https = require('https');
 const db = require('../config/db');
-const { ensureKendaraanTables } = require('../services/kendaraanInitService');
+const {
+  ensureKendaraanTables,
+  enrichKendaraanOutlets,
+  fetchFollow,
+  GSHEET_LOG_UPDATE_URL,
+  parseCsvLine,
+  parseCustomDate
+} = require('../services/kendaraanInitService');
 
 // Feishu Webhook Bot URL from Google Sheet
 const FEISHU_WEBHOOK_URL = process.env.FEISHU_KENDARAAN_WEBHOOK || 'https://open.feishu.cn/open-apis/bot/v2/hook/990b847e-226e-42dd-9a97-7064a5ab6b73';
-const GSHEET_LOG_UPDATE_URL = 'https://docs.google.com/spreadsheets/d/1D3X7nGt90xKdY_BBa2i5-8DyKEvAHUHgS0CeAGHcGE0/export?format=csv&gid=2';
-
-function parseCsvLine(text) {
-  const result = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      inQuotes = !inQuotes;
-    } else if (c === ',' && !inQuotes) {
-      result.push(cur.trim());
-      cur = '';
-    } else {
-      cur += c;
-    }
-  }
-  result.push(cur.trim());
-  return result;
-}
-
-function parseCustomDate(str) {
-  if (!str) return new Date();
-  const parts = str.split(' ');
-  if (parts.length < 2) return new Date();
-  const [d, m, y] = parts[0].split('/').map(Number);
-  const [hh, mm, ss] = parts[1].replace(/\./g, ':').split(':').map(Number);
-  const date = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0);
-  return isNaN(date.getTime()) ? new Date() : date;
-}
 
 function getIndonesianDate(d = new Date()) {
   const months = [
@@ -49,14 +26,11 @@ exports.getDashboard = async (req, res) => {
     const [rows] = await db.query(`
       SELECT 
         k.*,
-        COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
-        COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
+        k.kode_outlet as effective_outlet,
+        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
         COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
       FROM kendaraan_instock k
-      LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
-      LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
-      LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
       ORDER BY k.tanggal_input DESC
     `);
@@ -212,14 +186,11 @@ exports.getList = async (req, res) => {
     let query = `
       SELECT 
         k.*,
-        COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
-        COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
+        k.kode_outlet as effective_outlet,
+        COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
         COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
       FROM kendaraan_instock k
-      LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
-      LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
-      LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
       WHERE 1=1
     `;
@@ -419,19 +390,6 @@ exports.clearAll = async (req, res) => {
 exports.syncFromGoogleSheet = async (req, res) => {
   try {
     await ensureKendaraanTables();
-    function fetchFollow(url, redirectCount = 0) {
-      return new Promise((resolve, reject) => {
-        if (redirectCount > 5) return reject(new Error('Too many redirects'));
-        https.get(url, (resp) => {
-          if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
-            return resolve(fetchFollow(resp.headers.location, redirectCount + 1));
-          }
-          let data = '';
-          resp.on('data', c => data += c);
-          resp.on('end', () => resolve(data));
-        }).on('error', reject);
-      });
-    }
 
     const csvContent = await fetchFollow(GSHEET_LOG_UPDATE_URL);
     const lines = csvContent.split('\n').filter(l => l.trim().length > 0);
@@ -501,35 +459,8 @@ exports.syncFromGoogleSheet = async (req, res) => {
       VALUES ?
     `, [insertValues]);
 
-    // Auto-link outlet from monitoring & history tables where available
-    await db.query(`
-      UPDATE kendaraan_instock k
-      JOIN monitoring_stuck ms ON k.awb = ms.waybill
-      SET k.kode_outlet = ms.outlet
-      WHERE (k.kode_outlet IS NULL OR k.kode_outlet = '') AND ms.outlet IS NOT NULL AND ms.outlet != ''
-    `).catch(() => null);
-
-    await db.query(`
-      UPDATE kendaraan_instock k
-      JOIN monitoring_history mh ON k.awb = mh.waybill
-      SET k.kode_outlet = mh.outlet
-      WHERE (k.kode_outlet IS NULL OR k.kode_outlet = '') AND mh.outlet IS NOT NULL AND mh.outlet != ''
-    `).catch(() => null);
-
-    await db.query(`
-      UPDATE kendaraan_instock k
-      JOIN history h ON k.awb = h.waybill
-      SET k.kode_outlet = h.outlet
-      WHERE (k.kode_outlet IS NULL OR k.kode_outlet = '') AND h.outlet IS NOT NULL AND h.outlet != ''
-    `).catch(() => null);
-
-    // Auto-link gateway & PIC from master_pic_gateway where available
-    await db.query(`
-      UPDATE kendaraan_instock k
-      JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
-      SET k.nama_gateway = m.nama_gateway, k.tagging_pic = m.tagging_pic
-      WHERE k.nama_gateway IS NULL OR k.nama_gateway = ''
-    `).catch(err => console.warn('Master pic link warning:', err.message));
+    // Collation-safe outlet & gateway enrichment
+    await enrichKendaraanOutlets();
 
     res.json({
       success: true,
@@ -553,14 +484,11 @@ exports.pushToFeishu = async (req, res) => {
           k.awb,
           k.tlc_tujuan,
           k.tipe_kendaraan,
-          COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
-          COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
+          k.kode_outlet as effective_outlet,
+          COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
           COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
         FROM kendaraan_instock k
-        LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
-        LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
-        LEFT JOIN history h ON k.awb = h.waybill
-        LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
+        LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
         LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
         WHERE k.status_muat = 'hold' OR (k.tipe_kendaraan LIKE '%Motor%' AND k.status_dokumen = 'Tidak')
         ORDER BY k.tanggal_input DESC
@@ -736,14 +664,11 @@ exports.getFeishuHoldList = async (req, res) => {
         k.status_dokumen,
         k.tanggal_input,
         k.keterangan,
-        COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
+        k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
         COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
       FROM kendaraan_instock k
-      LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
-      LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
-      LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
+      LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
       WHERE (k.tipe_kendaraan LIKE '%Motor%' AND k.status_dokumen != 'Lengkap') OR k.status_muat = 'hold'
       ORDER BY k.tanggal_input DESC

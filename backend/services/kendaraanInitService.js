@@ -50,7 +50,7 @@ function fetchFollow(url, redirectCount = 0) {
 
 async function ensureKendaraanTables() {
   try {
-    // 0. history table (for backwards compatibility across environments)
+    // 0. history table
     await db.query(`
       CREATE TABLE IF NOT EXISTS history (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -65,7 +65,7 @@ async function ensureKendaraanTables() {
         updated_by VARCHAR(100) NULL,
         waktu_dipindah DATETIME DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_history_waybill (waybill)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
     // 1. kendaraan_instock table
@@ -93,7 +93,7 @@ async function ensureKendaraanTables() {
         INDEX idx_status_muat (status_muat),
         INDEX idx_status_dokumen (status_dokumen),
         INDEX idx_appsheet_id (appsheet_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
     // 2. master_gateway_list table
@@ -105,7 +105,7 @@ async function ensureKendaraanTables() {
         feishu_open_id VARCHAR(100) DEFAULT NULL,
         created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_nama_gateway (nama_gateway)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
     // 3. master_pic_gateway table
@@ -121,8 +121,16 @@ async function ensureKendaraanTables() {
         UNIQUE KEY uq_kode_outlet (kode_outlet),
         INDEX idx_kode_outlet (kode_outlet),
         INDEX idx_nama_gateway (nama_gateway)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
+    // Harmonize table collations to prevent collation conflicts
+    try {
+      await db.query(`ALTER TABLE kendaraan_instock CONVERT TO CHARACTER SET utf8mb4`);
+      await db.query(`ALTER TABLE master_gateway_list CONVERT TO CHARACTER SET utf8mb4`);
+      await db.query(`ALTER TABLE master_pic_gateway CONVERT TO CHARACTER SET utf8mb4`);
+      await db.query(`ALTER TABLE history CONVERT TO CHARACTER SET utf8mb4`);
+    } catch (_) {}
 
     // 4. Seed master tables if empty
     const seedPath = path.join(__dirname, '../data/kendaraan_master_seed.json');
@@ -207,9 +215,10 @@ async function ensureKendaraanTables() {
             VALUES ?
           `, [sheetRows]);
           console.log(`✅ Berhasil inisialisasi awal ${sheetRows.length} unit kendaraan dari Google Sheet.`);
+          await enrichKendaraanOutlets();
         }
       } catch (syncErr) {
-        console.warn('⚠️ Gagal auto-sync awal kendaraan (akan dicoba saat user klik tombol sync):', syncErr.message);
+        console.warn('⚠️ Gagal auto-sync awal kendaraan:', syncErr.message);
       }
     }
   } catch (err) {
@@ -217,4 +226,65 @@ async function ensureKendaraanTables() {
   }
 }
 
-module.exports = { ensureKendaraanTables };
+async function enrichKendaraanOutlets(ids = null) {
+  try {
+    let whereClause = "(kode_outlet IS NULL OR kode_outlet = '')";
+    let params = [];
+    if (ids && ids.length > 0) {
+      whereClause += " AND id IN (?)";
+      params.push(ids);
+    }
+    const [emptyRows] = await db.query(`SELECT id, awb FROM kendaraan_instock WHERE ${whereClause}`, params);
+    if (!emptyRows || emptyRows.length === 0) return;
+
+    const awbs = emptyRows.map(r => r.awb);
+    const outletMap = {};
+
+    for (const tbl of ['monitoring_stuck', 'monitoring_history', 'history']) {
+      try {
+        const [rows] = await db.query(
+          `SELECT waybill, outlet FROM ${tbl} WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`,
+          [awbs]
+        );
+        (rows || []).forEach(r => {
+          if (r.waybill && r.outlet && !outletMap[r.waybill]) {
+            outletMap[r.waybill] = r.outlet;
+          }
+        });
+      } catch (_) {}
+    }
+
+    if (Object.keys(outletMap).length === 0) return;
+
+    const [masterPics] = await db.query('SELECT kode_outlet, nama_gateway, tagging_pic FROM master_pic_gateway');
+    const picMap = {};
+    (masterPics || []).forEach(p => {
+      picMap[p.kode_outlet] = { nama_gateway: p.nama_gateway, tagging_pic: p.tagging_pic };
+    });
+
+    for (const r of emptyRows) {
+      const outlet = outletMap[r.awb];
+      if (outlet) {
+        const gw = picMap[outlet] || {};
+        await db.query(
+          `UPDATE kendaraan_instock 
+           SET kode_outlet = ?, nama_gateway = COALESCE(nama_gateway, ?), tagging_pic = COALESCE(tagging_pic, ?) 
+           WHERE id = ?`,
+          [outlet, gw.nama_gateway || null, gw.tagging_pic || null, r.id]
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('enrichKendaraanOutlets warning:', err.message);
+  }
+}
+
+module.exports = {
+  ensureKendaraanTables,
+  enrichKendaraanOutlets,
+  fetchFollow,
+  GSHEET_LOG_UPDATE_URL,
+  parseCsvLine,
+  parseCustomDate
+};
+
