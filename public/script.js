@@ -674,7 +674,10 @@ async function loginUser(username, password) {
     setCurrentPermissions([]);
   }
 
-  window.location.hash = '#/monitoring';
+  const currentHash = (window.location.hash || '').replace(/^#\/?/, '').trim();
+  if (!currentHash) {
+    window.location.hash = '#/monitoring';
+  }
   setAuthState();
 }
 

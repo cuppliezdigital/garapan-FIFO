@@ -49,12 +49,14 @@ exports.getDashboard = async (req, res) => {
     const [rows] = await db.query(`
       SELECT 
         k.*,
-        COALESCE(k.kode_outlet, h.outlet) as effective_outlet,
+        COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
         COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
       FROM kendaraan_instock k
+      LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
+      LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
       LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, h.outlet) = m.kode_outlet
+      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
       ORDER BY k.tanggal_input DESC
     `);
@@ -210,12 +212,14 @@ exports.getList = async (req, res) => {
     let query = `
       SELECT 
         k.*,
-        COALESCE(k.kode_outlet, h.outlet) as effective_outlet,
+        COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
         COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
       FROM kendaraan_instock k
+      LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
+      LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
       LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, h.outlet) = m.kode_outlet
+      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
       WHERE 1=1
     `;
@@ -277,11 +281,20 @@ exports.create = async (req, res) => {
     let finalPic = null;
 
     if (!finalOutlet) {
-      // Find from history
-      const [hist] = await db.query('SELECT outlet FROM history WHERE waybill = ? LIMIT 1', [cleanAwb]);
-      if (hist && hist.length > 0 && hist[0].outlet) {
-        finalOutlet = hist[0].outlet;
-      }
+      // Find from monitoring_stuck, monitoring_history, or history
+      try {
+        const [hist] = await db.query(`
+          SELECT outlet FROM monitoring_stuck WHERE waybill = ?
+          UNION ALL
+          SELECT outlet FROM monitoring_history WHERE waybill = ?
+          UNION ALL
+          SELECT outlet FROM history WHERE waybill = ?
+          LIMIT 1
+        `, [cleanAwb, cleanAwb, cleanAwb]);
+        if (hist && hist.length > 0 && hist[0].outlet) {
+          finalOutlet = hist[0].outlet;
+        }
+      } catch (_) {}
     }
 
     if (finalOutlet) {
@@ -488,13 +501,27 @@ exports.syncFromGoogleSheet = async (req, res) => {
       VALUES ?
     `, [insertValues]);
 
-    // Auto-link outlet from history table where available
+    // Auto-link outlet from monitoring & history tables where available
+    await db.query(`
+      UPDATE kendaraan_instock k
+      JOIN monitoring_stuck ms ON k.awb = ms.waybill
+      SET k.kode_outlet = ms.outlet
+      WHERE (k.kode_outlet IS NULL OR k.kode_outlet = '') AND ms.outlet IS NOT NULL AND ms.outlet != ''
+    `).catch(() => null);
+
+    await db.query(`
+      UPDATE kendaraan_instock k
+      JOIN monitoring_history mh ON k.awb = mh.waybill
+      SET k.kode_outlet = mh.outlet
+      WHERE (k.kode_outlet IS NULL OR k.kode_outlet = '') AND mh.outlet IS NOT NULL AND mh.outlet != ''
+    `).catch(() => null);
+
     await db.query(`
       UPDATE kendaraan_instock k
       JOIN history h ON k.awb = h.waybill
       SET k.kode_outlet = h.outlet
-      WHERE k.kode_outlet IS NULL OR k.kode_outlet = ''
-    `).catch(err => console.warn('History outlet link warning:', err.message));
+      WHERE (k.kode_outlet IS NULL OR k.kode_outlet = '') AND h.outlet IS NOT NULL AND h.outlet != ''
+    `).catch(() => null);
 
     // Auto-link gateway & PIC from master_pic_gateway where available
     await db.query(`
@@ -526,12 +553,14 @@ exports.pushToFeishu = async (req, res) => {
           k.awb,
           k.tlc_tujuan,
           k.tipe_kendaraan,
-          COALESCE(k.kode_outlet, h.outlet) as effective_outlet,
+          COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
           COALESCE(k.nama_gateway, m.nama_gateway) as effective_gateway,
           COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
         FROM kendaraan_instock k
+        LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
+        LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
         LEFT JOIN history h ON k.awb = h.waybill
-        LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, h.outlet) = m.kode_outlet
+        LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
         LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
         WHERE k.status_muat = 'hold' OR (k.tipe_kendaraan LIKE '%Motor%' AND k.status_dokumen = 'Tidak')
         ORDER BY k.tanggal_input DESC
@@ -641,13 +670,23 @@ exports.lookup = async (req, res) => {
     const { query } = req.params;
     const cleanQ = String(query).trim();
 
-    // 1. Try finding outlet from history by waybill
+    // 1. Try finding outlet from monitoring or history by waybill
     let outlet = null;
-    const [hist] = await db.query('SELECT outlet FROM history WHERE waybill = ? LIMIT 1', [cleanQ]);
-    if (hist && hist.length > 0 && hist[0].outlet) {
-      outlet = hist[0].outlet;
-    } else {
-      // Maybe cleanQ is already an outlet code
+    try {
+      const [hist] = await db.query(`
+        SELECT outlet FROM monitoring_stuck WHERE waybill = ?
+        UNION ALL
+        SELECT outlet FROM monitoring_history WHERE waybill = ?
+        UNION ALL
+        SELECT outlet FROM history WHERE waybill = ?
+        LIMIT 1
+      `, [cleanQ, cleanQ, cleanQ]);
+      if (hist && hist.length > 0 && hist[0].outlet) {
+        outlet = hist[0].outlet;
+      } else {
+        outlet = cleanQ;
+      }
+    } catch (_) {
       outlet = cleanQ;
     }
 
@@ -697,12 +736,14 @@ exports.getFeishuHoldList = async (req, res) => {
         k.status_dokumen,
         k.tanggal_input,
         k.keterangan,
-        COALESCE(k.kode_outlet, h.outlet) as effective_outlet,
+        COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
         COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
       FROM kendaraan_instock k
+      LEFT JOIN monitoring_stuck ms ON k.awb = ms.waybill
+      LEFT JOIN monitoring_history mh ON k.awb = mh.waybill
       LEFT JOIN history h ON k.awb = h.waybill
-      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, h.outlet) = m.kode_outlet
+      LEFT JOIN master_pic_gateway m ON COALESCE(k.kode_outlet, ms.outlet, mh.outlet, h.outlet) = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
       WHERE (k.tipe_kendaraan LIKE '%Motor%' AND k.status_dokumen != 'Lengkap') OR k.status_muat = 'hold'
       ORDER BY k.tanggal_input DESC
@@ -732,11 +773,18 @@ exports.batchLookup = async (req, res) => {
       return res.status(400).json({ error: 'Tidak ada nomor AWB yang valid.' });
     }
 
-    // 1. Fetch outlets from history
-    const [historyRows] = await db.query(
-      `SELECT waybill, outlet FROM history WHERE waybill IN (?)`,
-      [cleanAwbs]
-    );
+    // 1. Fetch outlets from monitoring tables or history
+    let historyRows = [];
+    try {
+      const [rows] = await db.query(`
+        SELECT waybill, outlet FROM monitoring_stuck WHERE waybill IN (?)
+        UNION ALL
+        SELECT waybill, outlet FROM monitoring_history WHERE waybill IN (?)
+        UNION ALL
+        SELECT waybill, outlet FROM history WHERE waybill IN (?)
+      `, [cleanAwbs, cleanAwbs, cleanAwbs]);
+      historyRows = rows || [];
+    } catch (_) {}
 
     const awbToOutlet = {};
     const outletsSet = new Set();

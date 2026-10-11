@@ -1,9 +1,73 @@
 const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+
+const GSHEET_LOG_UPDATE_URL = 'https://docs.google.com/spreadsheets/d/1D3X7nGt90xKdY_BBa2i5-8DyKEvAHUHgS0CeAGHcGE0/export?format=csv&gid=2';
+
+function parseCsvLine(text) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      inQuotes = !inQuotes;
+    } else if (c === ',' && !inQuotes) {
+      result.push(cur.trim());
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function parseCustomDate(str) {
+  if (!str) return new Date();
+  const parts = str.split(' ');
+  if (parts.length < 2) return new Date();
+  const [d, m, y] = parts[0].split('/').map(Number);
+  const [hh, mm, ss] = parts[1].replace(/\./g, ':').split(':').map(Number);
+  const date = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0);
+  return isNaN(date.getTime()) ? new Date() : date;
+}
+
+function fetchFollow(url, redirectCount = 0) {
+  return new Promise((resolve, reject) => {
+    if (redirectCount > 5) return reject(new Error('Too many redirects'));
+    https.get(url, (resp) => {
+      if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
+        return resolve(fetchFollow(resp.headers.location, redirectCount + 1));
+      }
+      let data = '';
+      resp.on('data', c => data += c);
+      resp.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+}
 
 async function ensureKendaraanTables() {
   try {
+    // 0. history table (for backwards compatibility across environments)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        waybill VARCHAR(150) NOT NULL,
+        tanggal DATE NULL,
+        outlet VARCHAR(150) NULL,
+        stuck VARCHAR(100) NULL,
+        tlc VARCHAR(100) NULL,
+        status VARCHAR(50) NULL,
+        aksi VARCHAR(150) NULL,
+        nama_barang TEXT NULL,
+        updated_by VARCHAR(100) NULL,
+        waktu_dipindah DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_history_waybill (waybill)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     // 1. kendaraan_instock table
     await db.query(`
       CREATE TABLE IF NOT EXISTS kendaraan_instock (
@@ -90,10 +154,67 @@ async function ensureKendaraanTables() {
         }
       }
     }
+
+    // 5. Auto-seed kendaraan_instock from Google Sheet if table is empty (e.g., initial cloud deploy)
+    const [kCount] = await db.query('SELECT COUNT(*) as c FROM kendaraan_instock');
+    if (kCount[0].c === 0) {
+      console.log('🌱 Table kendaraan_instock kosong. Memulai inisialisasi sync otomatis dari Google Sheet...');
+      try {
+        const csvContent = await fetchFollow(GSHEET_LOG_UPDATE_URL);
+        const lines = csvContent.split('\n').filter(l => l.trim().length > 0);
+        const sheetRows = [];
+        for (let i = 1; i < lines.length; i++) {
+          const row = parseCsvLine(lines[i]);
+          const appsheetId = (row[0] || '').trim();
+          const awb = (row[3] || '').trim();
+          if (!awb) continue;
+
+          const timestamp = parseCustomDate(row[1]);
+          const spotPetugas = (row[2] || '').trim() || null;
+          let tlcTujuan = (row[4] || 'LAINNYA').trim().toUpperCase();
+          if (tlcTujuan !== 'PNK' && tlcTujuan !== 'BDJ') tlcTujuan = 'LAINNYA';
+
+          const tipeKendaraan = (row[5] || 'Motor Bensin').trim();
+          const statusSpl = (row[6] || '').trim() || null;
+          const statusDokumen = (row[7] || '').trim() || null;
+          const koli = parseInt(row[8], 10) || 1;
+          const keterangan = (row[9] || '').trim() || null;
+
+          let statusMuat = 'belum_muat';
+          if (tipeKendaraan.toLowerCase().includes('motor') && statusDokumen === 'Tidak') {
+            statusMuat = 'hold';
+          }
+
+          sheetRows.push([
+            appsheetId,
+            awb,
+            timestamp,
+            spotPetugas,
+            tlcTujuan,
+            tipeKendaraan,
+            statusSpl,
+            statusDokumen,
+            koli,
+            keterangan,
+            statusMuat
+          ]);
+        }
+
+        if (sheetRows.length > 0) {
+          await db.query(`
+            INSERT INTO kendaraan_instock
+              (appsheet_id, awb, tanggal_input, spot_petugas, tlc_tujuan, tipe_kendaraan, status_spl, status_dokumen, koli, keterangan, status_muat)
+            VALUES ?
+          `, [sheetRows]);
+          console.log(`✅ Berhasil inisialisasi awal ${sheetRows.length} unit kendaraan dari Google Sheet.`);
+        }
+      } catch (syncErr) {
+        console.warn('⚠️ Gagal auto-sync awal kendaraan (akan dicoba saat user klik tombol sync):', syncErr.message);
+      }
+    }
   } catch (err) {
     console.error('❌ Gagal ensureKendaraanTables:', err.message);
   }
 }
 
 module.exports = { ensureKendaraanTables };
-
