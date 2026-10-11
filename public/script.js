@@ -174,9 +174,7 @@ const pageEyebrow = document.getElementById('pageEyebrow');
 
 const viewPages = {
   monitoring: document.getElementById('viewMonitoring'),
-  reconcile: document.getElementById('viewReconcile'),
-  kendaraan: document.getElementById('viewKendaraan'),
-  'generator-feishu': document.getElementById('viewFeishuDoc'),
+  advance: document.getElementById('viewAdvance'),
   archive: document.getElementById('viewArchive'),
   history: document.getElementById('viewHistory'),
   users: document.getElementById('viewUsers'),
@@ -187,9 +185,7 @@ const viewPages = {
 
 const navLinks = {
   monitoring: document.getElementById('navMonitoring'),
-  reconcile: document.getElementById('navReconcile'),
-  kendaraan: document.getElementById('navKendaraan'),
-  'generator-feishu': document.getElementById('navFeishuDoc'),
+  advance: document.getElementById('navAdvance'),
   archive: document.getElementById('navArchive'),
   history: document.getElementById('navHistory'),
   users: document.getElementById('navUsers'),
@@ -197,6 +193,52 @@ const navLinks = {
   audit: document.getElementById('navAudit'),
   settings: document.getElementById('navSettings'),
 };
+
+let currentAdvanceTab = 'reconcile';
+
+function switchAdvanceTab(tabName, updateUrl = true) {
+  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu'];
+  const tab = validTabs.includes(tabName) ? tabName : 'reconcile';
+  currentAdvanceTab = tab;
+
+  // Update button active state
+  document.querySelectorAll('.advance-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-advance-tab') === tab);
+  });
+
+  // Update pane visibility
+  const paneReconcile = document.getElementById('viewReconcile');
+  const paneKendaraan = document.getElementById('viewKendaraan');
+  const paneFeishu = document.getElementById('viewFeishuDoc');
+
+  if (paneReconcile) paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
+  if (paneKendaraan) paneKendaraan.classList.toggle('hidden', tab !== 'kendaraan');
+  if (paneFeishu) paneFeishu.classList.toggle('hidden', tab !== 'generator-feishu');
+
+  if (updateUrl) {
+    history.replaceState(null, '', `#/advance?tab=${tab}`);
+  }
+
+  // Auto-fetch data for active tab
+  if (tab === 'kendaraan') {
+    fetchKendaraanDashboard();
+    fetchKendaraanList();
+  } else if (tab === 'generator-feishu') {
+    ensureFeishuPicMap();
+    if (typeof feishuExcelRows !== 'undefined' && feishuExcelRows.length === 0) {
+      initFeishuExcelRows();
+    }
+  }
+}
+
+function initAdvanceTabs() {
+  document.querySelectorAll('.advance-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-advance-tab');
+      if (tab) switchAdvanceTab(tab, true);
+    });
+  });
+}
 
 function openMobileSidebar() {
   if (appSidebar) appSidebar.classList.add('is-open');
@@ -210,13 +252,30 @@ function closeMobileSidebar() {
 
 function handleHashRoute() {
   const rawHash = (window.location.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
-  const activeRoute = rawHash || 'monitoring';
+  const baseRoute = rawHash.split('?')[0] || 'monitoring';
+  const queryStr = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+  const urlParams = new URLSearchParams(queryStr);
+
+  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu'];
+  let target = baseRoute;
+  let advanceSubTab = 'reconcile';
+
+  if (advanceSubTabs.includes(baseRoute)) {
+    target = 'advance';
+    advanceSubTab = baseRoute;
+  } else if (baseRoute === 'advance') {
+    target = 'advance';
+    const tabParam = urlParams.get('tab');
+    if (tabParam && advanceSubTabs.includes(tabParam)) {
+      advanceSubTab = tabParam;
+    } else {
+      advanceSubTab = currentAdvanceTab || 'reconcile';
+    }
+  }
 
   const routeConfig = {
     monitoring: { title: 'FIFO Dashboard', eyebrow: 'Monitoring System' },
-    reconcile: { title: 'Rekonsiliasi Muat-Bongkar', eyebrow: 'Pemeriksaan Selisih & Non-AWB' },
-    kendaraan: { title: 'Monitoring Kendaraan & Capacity', eyebrow: 'Capacity Report & Otomasi Gateway' },
-    'generator-feishu': { title: 'Generator Feishu - Dokumen', eyebrow: 'Otomasi Tagihan & WhatsApp Dinamis' },
+    advance: { title: 'Advance Operations', eyebrow: 'Pusat Rekonsiliasi, Kendaraan & Generator' },
     archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
     history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
     users: { title: 'Manajemen User', eyebrow: 'Administrasi Sistem' },
@@ -225,15 +284,15 @@ function handleHashRoute() {
     settings: { title: 'Pengaturan', eyebrow: 'Konfigurasi & Branding' },
   };
 
-  const target = routeConfig[activeRoute] ? activeRoute : 'monitoring';
-  const meta = routeConfig[target];
+  const finalTarget = routeConfig[target] ? target : 'monitoring';
+  const meta = routeConfig[finalTarget];
 
   if (pageTitle) pageTitle.textContent = meta.title;
   if (pageEyebrow) pageEyebrow.textContent = meta.eyebrow;
 
   Object.entries(viewPages).forEach(([key, element]) => {
     if (!element) return;
-    if (key === target) {
+    if (key === finalTarget) {
       element.classList.remove('hidden');
       element.classList.add('active');
     } else {
@@ -244,7 +303,7 @@ function handleHashRoute() {
 
   Object.entries(navLinks).forEach(([key, link]) => {
     if (!link) return;
-    link.classList.toggle('active', key === target);
+    link.classList.toggle('active', key === finalTarget);
   });
 
   // Fetch data sesuai view yang aktif hanya jika user sudah login
@@ -253,37 +312,29 @@ function handleHashRoute() {
     return;
   }
 
-  if (target === 'reconcile') {
+  if (finalTarget === 'advance') {
     const userRole = (authUser && authUser.role) ? authUser.role : (getCurrentUser().role || '');
     if (userRole !== 'super_admin' && userRole !== 'admin') {
+      showAppAlert('Akses Ditolak: Menu Advance hanya dapat diakses oleh Admin dan GM.', true);
       window.location.hash = '#/monitoring';
       return;
     }
-  }
-
-  if (target === 'monitoring') {
+    switchAdvanceTab(advanceSubTab, false);
+  } else if (finalTarget === 'monitoring') {
     if (!monitoringData.length) fetchMonitoring();
-  } else if (target === 'kendaraan') {
-    fetchKendaraanDashboard();
-    fetchKendaraanList();
-  } else if (target === 'generator-feishu') {
-    ensureFeishuPicMap();
-    if (feishuExcelRows.length === 0) {
-      initFeishuExcelRows();
-    }
-  } else if (target === 'archive') {
+  } else if (finalTarget === 'archive') {
     fetchMonitoringArchive();
-  } else if (target === 'history') {
+  } else if (finalTarget === 'history') {
     fetchMonitoringHistory();
-  } else if (target === 'users') {
+  } else if (finalTarget === 'users') {
     fetchUsers();
-  } else if (target === 'permissions') {
+  } else if (finalTarget === 'permissions') {
     fetchPermissionCatalog();
     fetchConfigUsers();
     if (selectedConfigUserId) loadConfigForUser(selectedConfigUserId);
-  } else if (target === 'audit') {
+  } else if (finalTarget === 'audit') {
     fetchAuditLogs();
-  } else if (target === 'settings') {
+  } else if (finalTarget === 'settings') {
     loadLogo();
     loadBackground();
   }
@@ -349,6 +400,8 @@ if (isFileProtocol) {
 }
 
 function getToken() {
+  const jwt = sessionStorage.getItem('monitoring_jwt');
+  if (jwt) return jwt;
   return authUser ? 'cookie-session' : null;
 }
 
@@ -409,7 +462,7 @@ function applyUIPermissions() {
   const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user', 'restore_updated', 'delete_selected'];
   const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
 
-  toggle(navLinks.reconcile, role === 'super_admin' || role === 'admin');
+  toggle(navLinks.advance, role === 'super_admin' || role === 'admin');
   toggle(navLinks.users, canManageUsers);
   toggle(navLinks.history, canViewHistory);
   toggle(navLinks.permissions, canAccessConfig || canCreateUser);
@@ -546,6 +599,7 @@ function logout(message = null) {
 
   authUser = null;
   sessionStorage.removeItem('monitoring_user');
+  sessionStorage.removeItem('monitoring_jwt');
   window.location.hash = '#/monitoring';
   fetch('/api/auth/logout', {
     method: 'POST',
@@ -601,12 +655,18 @@ async function loginUser(username, password) {
 
   authUser = data.user;
   sessionStorage.setItem('monitoring_user', JSON.stringify(data.user));
+  if (data.token) {
+    sessionStorage.setItem('monitoring_jwt', data.token);
+  }
 
   try {
-    const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+    const token = data.token || getToken();
+    const meHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    const meResponse = await fetch('/api/auth/me', { credentials: 'include', headers: meHeaders });
     if (meResponse.ok) {
       const meData = await meResponse.json();
       setCurrentPermissions(meData.permissions || []);
+      if (meData.token) sessionStorage.setItem('monitoring_jwt', meData.token);
     } else {
       setCurrentPermissions([]);
     }
@@ -620,21 +680,28 @@ async function loginUser(username, password) {
 
 async function bootstrapAuth() {
   try {
-    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    const token = getToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await fetch('/api/auth/me', { credentials: 'include', headers });
     if (!response.ok) {
       authUser = null;
       sessionStorage.removeItem('monitoring_user');
+      sessionStorage.removeItem('monitoring_jwt');
       showLoginView();
       return;
     }
     const data = await response.json();
     authUser = data.user;
     sessionStorage.setItem('monitoring_user', JSON.stringify(authUser));
+    if (data.token) {
+      sessionStorage.setItem('monitoring_jwt', data.token);
+    }
     setCurrentPermissions(data.permissions || []);
     setAuthState();
   } catch (err) {
     authUser = null;
     sessionStorage.removeItem('monitoring_user');
+    sessionStorage.removeItem('monitoring_jwt');
     showLoginView();
   }
 }
@@ -7181,7 +7248,15 @@ function escKendaraanHtml(str) {
 // 1. Fetch & Render Dashboard & KPIs
 async function fetchKendaraanDashboard() {
   try {
-    const res = await fetch('/api/kendaraan/dashboard', { credentials: 'include' });
+    const token = getToken();
+    const res = await fetch('/api/kendaraan/dashboard', {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     if (!res.ok) throw new Error('Gagal memuat dashboard kendaraan');
     const data = await res.json();
     if (!data.success) return;
@@ -7260,6 +7335,7 @@ function renderKendaraanMatrix(matrix) {
 // 3. Fetch Vehicles List & Filter
 async function fetchKendaraanList() {
   try {
+    const token = getToken();
     const searchInput = document.getElementById('kendaraanSearchInput');
     const searchVal = searchInput ? searchInput.value.trim() : '';
     
@@ -7268,7 +7344,14 @@ async function fetchKendaraanList() {
       url += `search=${encodeURIComponent(searchVal)}&`;
     }
 
-    const res = await fetch(url, { credentials: 'include' });
+    const res = await fetch(url, {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     if (!res.ok) throw new Error('Gagal memuat list kendaraan');
     const data = await res.json();
     kendaraanListData = data.data || [];
@@ -7467,18 +7550,24 @@ async function syncKendaraanFromGoogleSheet() {
   if (btn) btn.classList.add('is-loading');
 
   try {
+    const token = getToken();
     const res = await fetch('/api/kendaraan/sync-sheet', {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal menyinkronkan data dari Google Sheet');
     }
 
-    showAppAlert(`Sinkronisasi Berhasil! ${data.synced_count || 0} unit kendaraan aktif berhasil ditarik dari AppSheet Google Sheet.`);
     await fetchKendaraanDashboard();
     await fetchKendaraanList();
+    showAppAlert(`Sinkronisasi Berhasil! ${data.synced_count || 0} unit kendaraan aktif berhasil ditarik dari AppSheet Google Sheet.`);
   } catch (err) {
     showAppAlert(err.message, true);
   } finally {
@@ -7595,17 +7684,23 @@ window.deleteKendaraanById = async function(id, awb) {
   if (!confirm(`Hapus unit kendaraan dengan No AWB ${awb}?`)) return;
 
   try {
+    const token = getToken();
     const res = await fetch(`/api/kendaraan/${id}`, {
       method: 'DELETE',
-      credentials: 'include'
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal menghapus unit');
     }
-    showAppAlert(`Unit ${awb} berhasil dihapus.`);
     await fetchKendaraanDashboard();
     await fetchKendaraanList();
+    showAppAlert(`Unit ${awb} berhasil dihapus.`);
   } catch (err) {
     showAppAlert(err.message, true);
   }
@@ -7623,17 +7718,23 @@ async function clearAllKendaraan() {
   if (btn) btn.classList.add('is-loading');
 
   try {
+    const token = getToken();
     const res = await fetch('/api/kendaraan/clear-all', {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal menghapus semua data kendaraan');
     }
-    showAppAlert(data.message || 'Semua data kendaraan instock berhasil dihapus.');
     await fetchKendaraanDashboard();
     await fetchKendaraanList();
+    showAppAlert(data.message || 'Semua data kendaraan instock berhasil dihapus.');
   } catch (err) {
     console.error('clearAllKendaraan error:', err);
     showAppAlert(err.message, true);
@@ -7668,21 +7769,31 @@ async function submitKendaraanForm(e) {
   };
 
   try {
+    const token = getToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
     let res;
     if (id) {
       res = await fetch(`/api/kendaraan/${id}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
     } else {
       res = await fetch('/api/kendaraan', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
+    }
+
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
     }
 
     const data = await res.json();
@@ -7691,9 +7802,9 @@ async function submitKendaraanForm(e) {
     }
 
     closeKendaraanModal();
-    showAppAlert('Data unit kendaraan berhasil disimpan.');
     await fetchKendaraanDashboard();
     await fetchKendaraanList();
+    showAppAlert('Data unit kendaraan berhasil disimpan.');
   } catch (err) {
     showAppAlert(err.message, true);
   }
@@ -7708,7 +7819,15 @@ async function openMasterGatewaysModal() {
   }
 
   try {
-    const res = await fetch('/api/kendaraan/gateways', { credentials: 'include' });
+    const token = getToken();
+    const res = await fetch('/api/kendaraan/gateways', {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     const data = await res.json();
     masterGatewaysData = data.data || [];
     renderMasterGatewaysTable();
@@ -7790,12 +7909,20 @@ async function submitEditPicForm(e) {
   const name = document.getElementById('editPicName').value.trim();
 
   try {
+    const token = getToken();
     const res = await fetch(`/api/kendaraan/gateways/${id}`, {
       method: 'PUT',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({ tagging_pic: name })
     });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal menyimpan PIC');
@@ -7988,7 +8115,11 @@ let feishuSelectedGreeting = 'Selamat pagi';
 async function ensureFeishuPicMap() {
   if (feishuPicMap && Object.keys(feishuPicMap).length > 0) return feishuPicMap;
   try {
-    const res = await fetch('/api/kendaraan/pic-map', { credentials: 'include' });
+    const token = getToken();
+    const res = await fetch('/api/kendaraan/pic-map', {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
     if (res.ok) {
       const data = await res.json();
       feishuPicMap = data.data || {};
@@ -8284,7 +8415,15 @@ async function fetchFeishuHoldList(isManual = false) {
 
   try {
     await ensureFeishuPicMap();
-    const res = await fetch('/api/kendaraan/feishu-hold-list', { credentials: 'include' });
+    const token = getToken();
+    const res = await fetch('/api/kendaraan/feishu-hold-list', {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     if (!res.ok) throw new Error('Gagal memuat data HOLD Feishu');
     const data = await res.json();
     const holdItems = data.data || [];
@@ -8408,12 +8547,20 @@ async function executeSendFeishu() {
   if (btn) btn.classList.add('is-loading');
 
   try {
+    const token = getToken();
     const res = await fetch('/api/kendaraan/push-feishu', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({ text: textToSend })
     });
+    if (res.status === 401) {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
@@ -8522,9 +8669,13 @@ function initFeishuEventListeners() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initFeishuEventListeners);
+  document.addEventListener('DOMContentLoaded', () => {
+    initFeishuEventListeners();
+    initAdvanceTabs();
+  });
 } else {
   initFeishuEventListeners();
+  initAdvanceTabs();
 }
 
 

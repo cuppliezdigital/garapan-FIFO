@@ -46,7 +46,6 @@ function getIndonesianDate(d = new Date()) {
 // 1. Get Dashboard Summary & Broadcast Templates
 exports.getDashboard = async (req, res) => {
   try {
-    await ensureKendaraanTables();
     const [rows] = await db.query(`
       SELECT 
         k.*,
@@ -206,7 +205,6 @@ total keseluruhan : ${totalKeseluruhan} unit`;
 // 2. Get List of Vehicles
 exports.getList = async (req, res) => {
   try {
-    await ensureKendaraanTables();
     const { tujuan, tipe, status_dokumen, status_muat, search } = req.query;
 
     let query = `
@@ -299,7 +297,7 @@ exports.create = async (req, res) => {
       statusMuat = 'hold';
     }
 
-    const spotPetugas = req.user ? (req.user.username || req.user.email) : 'Web App';
+    const spotPetugas = req.user ? (req.user.full_name || req.user.username || 'Admin') : 'Web App';
 
     const [result] = await db.query(`
       INSERT INTO kendaraan_instock
@@ -467,25 +465,25 @@ exports.syncFromGoogleSheet = async (req, res) => {
     // Full 1:1 synchronization with AppSheet / Google Sheet
     await db.query('DELETE FROM kendaraan_instock');
 
-    for (const r of sheetRows) {
-      await db.query(`
-        INSERT INTO kendaraan_instock
-          (appsheet_id, awb, tanggal_input, spot_petugas, tlc_tujuan, tipe_kendaraan, status_spl, status_dokumen, koli, keterangan, status_muat)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        r.appsheetId,
-        r.awb,
-        r.timestamp,
-        r.spotPetugas,
-        r.tlcTujuan,
-        r.tipeKendaraan,
-        r.statusSpl,
-        r.statusDokumen,
-        r.koli,
-        r.keterangan,
-        r.statusMuat
-      ]);
-    }
+    const insertValues = sheetRows.map(r => [
+      r.appsheetId,
+      r.awb,
+      r.timestamp,
+      r.spotPetugas,
+      r.tlcTujuan,
+      r.tipeKendaraan,
+      r.statusSpl,
+      r.statusDokumen,
+      r.koli,
+      r.keterangan,
+      r.statusMuat
+    ]);
+
+    await db.query(`
+      INSERT INTO kendaraan_instock
+        (appsheet_id, awb, tanggal_input, spot_petugas, tlc_tujuan, tipe_kendaraan, status_spl, status_dokumen, koli, keterangan, status_muat)
+      VALUES ?
+    `, [insertValues]);
 
     // Auto-link outlet from history table where available
     await db.query(`

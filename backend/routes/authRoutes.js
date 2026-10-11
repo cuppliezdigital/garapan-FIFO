@@ -54,7 +54,7 @@ router.get('/me', authMiddleware, (req, res) => {
     const secure = isHttps ? '; Secure' : '';
     res.setHeader('Set-Cookie', `monitoring_session=${encodeURIComponent(req.token)}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax${secure}`);
   }
-  res.json({ user: req.user, permissions: req.permissions || [] });
+  res.json({ user: req.user, permissions: req.permissions || [], token: req.token });
 });
 
 module.exports = router;

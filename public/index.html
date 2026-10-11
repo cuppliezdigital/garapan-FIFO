@@ -10,9 +10,9 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.5.3" />
+    <link rel="stylesheet" href="style.css?v=2.6.0" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.5.3" defer></script>
+    <script src="script.js?v=2.6.0" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -211,39 +211,17 @@
             </span>
             <span class="nav-text">Monitoring Data</span>
           </a>
-          <a href="#/reconcile" class="nav-link" id="navReconcile">
+          <!-- MENU ADVANCE (HANYA UNTUK ROLE ADMIN-GM & ADMIN) -->
+          <a href="#/advance" class="nav-link" id="navAdvance">
             <span class="nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                <path d="M11 8v6"/>
-                <path d="M8 11h6"/>
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
               </svg>
             </span>
-            <span class="nav-text">Rekonsiliasi Muat-Bongkar</span>
-            <span class="nav-pda-tag" style="background: rgba(14, 165, 233, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35);">BARU</span>
-          </a>
-          <a href="#/kendaraan" class="nav-link" id="navKendaraan">
-            <span class="nav-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="1" y="3" width="15" height="13"/>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-                <circle cx="5.5" cy="18.5" r="2.5"/>
-                <circle cx="18.5" cy="18.5" r="2.5"/>
-              </svg>
-            </span>
-            <span class="nav-text">Monitoring Kendaraan</span>
-            <span class="nav-pda-tag" style="background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.35);">CAPACITY</span>
-          </a>
-          <a href="#/generator-feishu" class="nav-link" id="navFeishuDoc">
-            <span class="nav-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m22 2-7 20-4-9-9-4Z"/>
-                <path d="M22 2 11 13"/>
-              </svg>
-            </span>
-            <span class="nav-text">Generator Feishu</span>
-            <span class="nav-pda-tag" style="background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35);">TAGIHAN</span>
+            <span class="nav-text">Advance</span>
+            <span class="nav-pda-tag" style="background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.35);">PRO</span>
           </a>
           <a href="#/archive" class="nav-link" id="navArchive">
             <span class="nav-icon">
@@ -1429,8 +1407,70 @@
             </section>
           </div>
 
-          <!-- VIEW 8: REKONSILIASI MUAT - BONGKAR & INVESTIGASI NON-AWB -->
-          <div id="viewReconcile" class="view-page hidden">
+          <!-- ============================================================== -->
+          <!-- VIEW ADVANCE: MENU INDUK ADVANCE TOOLS (GM & ADMIN ONLY)       -->
+          <!-- ============================================================== -->
+          <div id="viewAdvance" class="view-page hidden">
+            <!-- SUB-NAVIGATION BAR ADVANCE -->
+            <div class="advance-subnav-bar">
+              <div class="advance-subnav-header">
+                <div class="advance-subnav-title-group">
+                  <div class="advance-subnav-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                      <polyline points="2 17 12 22 22 17"/>
+                      <polyline points="2 12 12 17 22 12"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="advance-subnav-title">Advance Operations &amp; Intelligence</h3>
+                    <p class="advance-subnav-desc">Pusat kendali rekonsiliasi manifest scan, instock kendaraan &amp; capacity, serta otomasi tagihan dokumen Feishu.</p>
+                  </div>
+                </div>
+                <div class="advance-role-pill">
+                  <span class="pulse-dot"></span>
+                  <span>KHUSUS ROLE ADMIN-GM &amp; ADMIN</span>
+                </div>
+              </div>
+
+              <div class="advance-tabs-container">
+                <button type="button" class="advance-tab-btn active" data-advance-tab="reconcile" id="tabBtnAdvanceReconcile">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="11" cy="11" r="7"/>
+                      <path d="m21 21-4.3-4.3"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Rekonsiliasi Muat-Bongkar</span>
+                  <span class="advance-tab-pill pill-blue">Scan Manifest</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="kendaraan" id="tabBtnAdvanceKendaraan">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <rect x="1" y="3" width="15" height="13"/>
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 8"/>
+                      <circle cx="5.5" cy="18.5" r="2.5"/>
+                      <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Monitoring Kendaraan</span>
+                  <span class="advance-tab-pill pill-green">Capacity</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="generator-feishu" id="tabBtnAdvanceFeishu">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="m22 2-7 20-4-9-9-4Z"/>
+                      <path d="M22 2 11 13"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Generator Feishu</span>
+                  <span class="advance-tab-pill pill-purple">Tagihan Dokumen</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB PANE 1: REKONSILIASI -->
+            <div id="viewReconcile" class="advance-pane active">
             <section class="panel reconcile-panel">
               <div class="reconcile-header">
                 <div class="reconcile-header-titles">
@@ -1764,8 +1804,8 @@
             </section>
           </div>
 
-          <!-- VIEW 9: MONITORING INSTOCK KENDARAAN & CAPACITY REPORT -->
-          <div id="viewKendaraan" class="view-page hidden">
+            <!-- TAB PANE 2: MONITORING KENDARAAN -->
+            <div id="viewKendaraan" class="advance-pane hidden">
             <section class="panel kendaraan-panel">
               <!-- HEADER SECTION -->
               <div class="kendaraan-header">
@@ -1987,10 +2027,8 @@
             </section>
           </div>
 
-          <!-- ============================================================== -->
-          <!-- VIEW: GENERATOR FEISHU - MONITORING DOKUMEN KENDARAAN          -->
-          <!-- ============================================================== -->
-          <div id="viewFeishuDoc" class="view-page hidden">
+            <!-- TAB PANE 3: GENERATOR FEISHU -->
+            <div id="viewFeishuDoc" class="advance-pane hidden">
             <section class="panel feishu-panel">
               <!-- HEADER SECTION -->
               <div class="feishu-header">
@@ -2167,6 +2205,8 @@
                 </div>
               </div>
             </section>
+          </div>
+          <!-- AKHIR VIEW ADVANCE -->
           </div>
         </main>
       </div>
