@@ -1850,15 +1850,15 @@ if (loginForm) {
 }
 
 if (showRegisterBtn) {
-  showRegisterBtn.addEventListener('click', openRegisterModal);
+  showRegisterBtn.addEventListener('click', () => openRegisterModal());
 }
 
 if (closeRegisterModalBtn) {
-  closeRegisterModalBtn.addEventListener('click', closeRegisterModal);
+  closeRegisterModalBtn.addEventListener('click', () => closeRegisterModal());
 }
 
 if (cancelRegisterBtn) {
-  cancelRegisterBtn.addEventListener('click', closeRegisterModal);
+  cancelRegisterBtn.addEventListener('click', () => closeRegisterModal());
 }
 
 if (registerModal) {
@@ -2033,11 +2033,11 @@ document.addEventListener('click', (e) => {
 });
 
 if (statusFilter) {
-  statusFilter.addEventListener('change', applyFilters);
+  statusFilter.addEventListener('change', () => applyFilters());
 }
 
 if (resetFilterBtn) {
-  resetFilterBtn.addEventListener('click', resetAllMonitoringFilters);
+  resetFilterBtn.addEventListener('click', () => resetAllMonitoringFilters());
 }
 
 if (tlcChipsContainer) {
@@ -2638,11 +2638,11 @@ if (addBtn) {
 }
 
 if (closeModalBtn) {
-  closeModalBtn.addEventListener('click', closeModal);
+  closeModalBtn.addEventListener('click', () => closeModal());
 }
 
 if (cancelBtn) {
-  cancelBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', () => closeModal());
 }
 
 if (monitoringModal) {
@@ -2909,7 +2909,7 @@ if (bulkActionSelect) {
 }
 
 if (bulkActionManual) {
-  bulkActionManual.addEventListener('input', refreshBulkActionButtonState);
+  bulkActionManual.addEventListener('input', () => refreshBulkActionButtonState());
 }
 
 if (monitoringPagination) {
