@@ -53,6 +53,50 @@ exports.saveConfig = async (req, res) => {
   }
 };
 
+// In-memory cache for order details to make unmasking lightning-fast & prevent repeat requests
+const detailCache = new Map();
+const MAX_CACHE_SIZE = 5000;
+
+// Worker pool concurrency helper
+async function mapConcurrent(items, limit, fn) {
+  const results = new Array(items.length);
+  let index = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const i = index++;
+      try {
+        results[i] = await fn(items[i], i);
+      } catch (e) {
+        results[i] = null;
+      }
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+// Copy unmasked data from detail into listing record
+function applyDetailToRecord(record, detail) {
+  if (!detail || !record) return;
+  if (detail.senderName) record.senderName = detail.senderName;
+  if (detail.receiverName) record.receiverName = detail.receiverName;
+  if (detail.senderDetailedAddress) record.senderDetailedAddress = detail.senderDetailedAddress;
+  if (detail.receiverDetailedAddress) record.receiverDetailedAddress = detail.receiverDetailedAddress;
+  if (detail.senderMobilePhone || detail.senderTelphone) {
+    record.senderMobile = detail.senderMobilePhone || detail.senderTelphone;
+  }
+  if (detail.receiverMobilePhone || detail.receiverTelphone) {
+    record.receiverMobile = detail.receiverMobilePhone || detail.receiverTelphone;
+  }
+  if (detail.goodsTypeName && !record.goodsTypeName) record.goodsTypeName = detail.goodsTypeName;
+  if (detail.goodsName && (!record.goodsName || record.goodsName === '-')) record.goodsName = detail.goodsName;
+  if (detail.packageLength) record.packageLength = detail.packageLength;
+  if (detail.packageWide) record.packageWide = detail.packageWide;
+  if (detail.packageHigh) record.packageHigh = detail.packageHigh;
+  if (detail.goodsValue) record.goodsValue = detail.goodsValue;
+  record._isUnmasked = true;
+}
+
 // Helper: HTTP Request to JFS Gateway
 function makeJfsPtoRequest(path, method, postData, token) {
   return new Promise((resolve, reject) => {
@@ -92,6 +136,12 @@ function makeJfsPtoRequest(path, method, postData, token) {
         }
         try {
           const json = JSON.parse(body);
+          if (json.code === 405) {
+            return reject(new Error('Sesi akun JFS kedaluwarsa: Akun telah login di perangkat lain (Code 405). Silakan perbarui token di menu PTO.'));
+          }
+          if (json.code === 401) {
+            return reject(new Error('Sesi token PTO telah kedaluwarsa (Code 401). Silakan perbarui token di menu PTO.'));
+          }
           resolve(json);
         } catch (e) {
           reject(new Error('Gagal membaca response JSON dari JFS PTO: ' + e.message));
@@ -114,7 +164,7 @@ function makeJfsPtoRequest(path, method, postData, token) {
   });
 }
 
-// 3. Query Orders (Pelacakan Total Order)
+// 3. Query Orders (Pelacakan Total Order) - Auto Unmasks Sender, Receiver & Detailed Address
 exports.queryOrders = async (req, res) => {
   try {
     const {
@@ -166,6 +216,18 @@ exports.queryOrders = async (req, res) => {
     const postData = JSON.stringify(payload);
     const result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
 
+    if (result.code === 405) {
+      return res.status(401).json({
+        error: 'Sesi akun JFS kedaluwarsa (Akun telah login di perangkat lain). Silakan buka JFS dan perbarui authtoken melalui tombol "Atur Token PTO".',
+        code: 405
+      });
+    }
+    if (result.code === 401) {
+      return res.status(401).json({
+        error: 'Sesi token PTO tidak valid atau telah habis masa berlakunya (HTTP 401). Silakan perbarui authtoken melalui tombol "Atur Token PTO".',
+        code: 401
+      });
+    }
     if (result.code !== 1 && result.code !== 200 && result.succ !== true) {
       return res.status(400).json({
         error: result.msg || result.message || 'Gagal mengambil data dari JFS PTO',
@@ -175,6 +237,38 @@ exports.queryOrders = async (req, res) => {
 
     const records = result?.data?.records || [];
     const total = result?.data?.total || records.length;
+
+    // Fast parallel unmasking: replace masked asterisks ('h*t', 'm*、') with full clear text
+    if (records.length > 0) {
+      const toFetch = [];
+      for (const r of records) {
+        if (!r || !r.id) continue;
+        if (detailCache.has(r.id)) {
+          applyDetailToRecord(r, detailCache.get(r.id));
+        } else {
+          toFetch.push(r);
+        }
+      }
+
+      if (toFetch.length > 0) {
+        // Run concurrent detail requests (pool size: 15)
+        await mapConcurrent(toFetch, 15, async (r) => {
+          try {
+            const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token);
+            if (detailRes && detailRes.data && typeof detailRes.data === 'object') {
+              detailCache.set(r.id, detailRes.data);
+              if (detailCache.size > MAX_CACHE_SIZE) {
+                const firstKey = detailCache.keys().next().value;
+                detailCache.delete(firstKey);
+              }
+              applyDetailToRecord(r, detailRes.data);
+            }
+          } catch (e) {
+            // Silently ignore individual detail errors so list still loads smoothly
+          }
+        });
+      }
+    }
 
     res.json({
       success: true,
@@ -197,6 +291,16 @@ exports.getOrderDetail = async (req, res) => {
     if (!id) {
       return res.status(400).json({ error: 'Order ID wajib disertakan' });
     }
+
+    // Check memory cache first
+    if (detailCache.has(id)) {
+      return res.json({
+        success: true,
+        data: detailCache.get(id),
+        fromCache: true
+      });
+    }
+
     const token = await getPtoToken();
     const result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token);
 
@@ -207,12 +311,16 @@ exports.getOrderDetail = async (req, res) => {
       });
     }
 
+    const detailData = result.data || {};
+    detailCache.set(id, detailData);
+
     res.json({
       success: true,
-      data: result.data || {}
+      data: detailData
     });
   } catch (err) {
     console.error('getOrderDetail error:', err);
     res.status(500).json({ error: 'Gagal memuat detail order: ' + err.message });
   }
 };
+

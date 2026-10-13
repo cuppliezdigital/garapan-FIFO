@@ -11,3 +11,4 @@ router.get('/config', authMiddleware, requireAdminOrGm, ptoController.getConfig)
 router.post('/config', authMiddleware, requireAdminOrGm, ptoController.saveConfig);
 
 module.exports = router;
+

@@ -182,8 +182,11 @@ async function executePtoQuery(targetPage = 1) {
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
               <p style="font-weight: 700; font-size: 0.95rem; margin-top: 8px;">Gagal Menarik Data PTO</p>
-              <span style="font-size: 0.82rem; color: #fda4af;">${escPtoHtml(err.message)}</span>
-              <button type="button" class="btn-inline-retry" onclick="executePtoQuery(${targetPage})" style="margin-top: 10px;">Coba Lagi</button>
+              <span style="font-size: 0.82rem; color: #fda4af; max-width: 600px; display: inline-block; line-height: 1.4;">${escPtoHtml(err.message)}</span>
+              <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap;">
+                ${(err.message && (err.message.includes('405') || err.message.includes('401') || err.message.toLowerCase().includes('token') || err.message.toLowerCase().includes('sesi'))) ? '<button type="button" class="btn-pto-config" onclick="openPtoConfigModal()" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 0.82rem; background: #2563eb; color: #fff; border-radius: 6px; border: 1px solid #3b82f6; cursor: pointer; font-weight: 600;">🔑 Atur Token PTO Baru</button>' : ''}
+                <button type="button" class="btn-inline-retry" onclick="executePtoQuery(${targetPage})" style="margin-top: 0;">Coba Lagi</button>
+              </div>
             </div>
           </td>
         </tr>
@@ -838,3 +841,4 @@ if (document.readyState === 'loading') {
 } else {
   // Ready
 }
+
