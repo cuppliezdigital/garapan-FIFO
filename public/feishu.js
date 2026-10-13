@@ -407,80 +407,6 @@ async function submitFeishuBatchForm(e) {
   closeFeishuBatchModal();
 }
 
-// 15. Feishu Send Confirmation Modal Handling (Review before sending!)
-function openFeishuConfirmModal() {
-  const preview = document.getElementById('feishuDynamicPreview');
-  const previewText = preview ? preview.textContent.trim() : '';
-
-  const validRows = feishuExcelRows.filter(r => r.awb && r.awb.trim().length > 0);
-  if (validRows.length === 0 || !previewText || previewText.startsWith('Belum ada data')) {
-    showAppAlert('Tidak ada pesan tagihan untuk dikirim. Masukkan nomor AWB terlebih dahulu.');
-    return;
-  }
-
-  const modal = document.getElementById('feishuConfirmModal');
-  const textarea = document.getElementById('feishuConfirmTextarea');
-  const countBadge = document.getElementById('feishuConfirmResiCount');
-
-  if (textarea) textarea.value = previewText;
-  if (countBadge) countBadge.textContent = `${validRows.length} Resi Terlampir`;
-
-  if (modal) {
-    modal.classList.remove('hidden');
-    modal.setAttribute('aria-hidden', 'false');
-    setTimeout(() => { if (textarea) textarea.focus(); }, 150);
-  }
-}
-
-function closeFeishuConfirmModal() {
-  const modal = document.getElementById('feishuConfirmModal');
-  if (modal) {
-    modal.classList.add('hidden');
-    modal.setAttribute('aria-hidden', 'true');
-  }
-}
-
-async function executeSendFeishu() {
-  const textarea = document.getElementById('feishuConfirmTextarea');
-  const btn = document.getElementById('btnExecuteSendFeishu');
-  const textToSend = textarea ? textarea.value.trim() : '';
-
-  if (!textToSend) {
-    showAppAlert('Pesan tidak boleh kosong.');
-    return;
-  }
-
-  if (btn) btn.classList.add('is-loading');
-
-  try {
-    const token = getToken();
-    const res = await fetch('/api/kendaraan/push-feishu', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ text: textToSend })
-    });
-    if (res.status === 401) {
-      logout('Sesi telah berakhir. Silakan login kembali.');
-      return;
-    }
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Gagal mengirim ke grup Feishu');
-    }
-
-    closeFeishuConfirmModal();
-    showAppAlert('Pesan berhasil terkirim ke Bot Feishu grup!');
-  } catch (err) {
-    showAppAlert(err.message, true);
-  } finally {
-    if (btn) btn.classList.remove('is-loading');
-  }
-}
-
 // 16. Event Listeners for Generator Feishu Module
 let feishuListenersInitialized = false;
 function initFeishuEventListeners() {
@@ -535,14 +461,6 @@ function initFeishuEventListeners() {
   const batchForm = document.getElementById('feishuBatchForm');
   if (batchForm) batchForm.addEventListener('submit', submitFeishuBatchForm);
 
-  // Feishu Confirm Modal buttons
-  const closeConfirmBtn = document.getElementById('closeFeishuConfirmModalBtn');
-  const cancelConfirmBtn = document.getElementById('cancelFeishuConfirmBtn');
-  const doSendBtn = document.getElementById('btnExecuteSendFeishu');
-  if (closeConfirmBtn) closeConfirmBtn.addEventListener('click', closeFeishuConfirmModal);
-  if (cancelConfirmBtn) cancelConfirmBtn.addEventListener('click', closeFeishuConfirmModal);
-  if (doSendBtn) doSendBtn.addEventListener('click', executeSendFeishu);
-
   // Open Master Gateways from Feishu
   const btnGw = document.getElementById('btnOpenMasterGatewaysFromFeishu');
   if (btnGw) btnGw.addEventListener('click', openMasterGatewaysModal);
@@ -569,12 +487,6 @@ function initFeishuEventListeners() {
         setTimeout(() => { if (span) span.textContent = 'Salin Pesan WhatsApp'; }, 2000);
       }
     });
-  }
-
-  // Send to Feishu Bot (Opens Confirmation Modal first!)
-  const btnBot = document.getElementById('btnSendToFeishuBot');
-  if (btnBot) {
-    btnBot.addEventListener('click', openFeishuConfirmModal);
   }
 
   // Register Outlet Modal buttons

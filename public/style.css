@@ -11439,8 +11439,8 @@ thead th input[type="checkbox"]:active {
 
 /* Generator Action Buttons */
 .feishu-gen-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 

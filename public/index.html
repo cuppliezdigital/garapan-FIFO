@@ -2327,25 +2327,13 @@
 
                   <!-- ACTION BUTTONS -->
                   <div class="feishu-gen-actions">
-                    <button type="button" class="btn-feishu-main btn-copy-whatsapp" id="btnCopyFeishuMessage">
+                    <button type="button" class="btn-feishu-main btn-copy-whatsapp" id="btnCopyFeishuMessage" style="width: 100%;">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
                         <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
                       </svg>
                       <span id="btnCopyFeishuMessageText">Salin Pesan WhatsApp</span>
                     </button>
-
-                    <button type="button" class="btn-feishu-main btn-send-bot" id="btnSendToFeishuBot">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                        <line x1="22" y1="2" x2="11" y2="13"/>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                      </svg>
-                      <span id="btnSendToFeishuBotText">Kirim ke Bot Feishu</span>
-                    </button>
-                  </div>
-
-                  <div class="feishu-gen-footer-hint">
-                    <span>Target Bot: <strong>Grup Feishu / Lark Ekspedisi</strong> &bull; Terhubung ke Webhook Resmi</span>
                   </div>
                 </div>
               </div>
@@ -3775,52 +3763,6 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
             </button>
           </div>
           <button type="button" class="secondary-btn" id="closeWaybillDetailBottomBtn">Tutup</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- MODAL KONFIRMASI PENGIRIMAN PESAN FEISHU     -->
-    <!-- ============================================ -->
-    <div id="feishuConfirmModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="feishuConfirmModalTitle">
-      <div class="modal-content modal-kendaraan-appsheet" style="width: min(650px, 95%);">
-        <div class="modal-header" style="padding-bottom: 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); margin-bottom: 14px;">
-          <div>
-            <span class="eyebrow text-purple" style="font-size: 0.72rem; letter-spacing: 0.06em;">REVIEW &amp; KONFIRMASI</span>
-            <h3 id="feishuConfirmModalTitle" style="font-size: 1.15rem; margin: 2px 0 0 0; color: #f8fafc;">Kirim Pesan ke Bot Feishu</h3>
-          </div>
-          <button type="button" class="close-btn" id="closeFeishuConfirmModalBtn" aria-label="Tutup modal">×</button>
-        </div>
-
-        <div class="feishu-confirm-body" style="display: flex; flex-direction: column; gap: 14px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.6); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.15);">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-              <span style="color: #cbd5e1; font-size: 0.82rem;">Tujuan: <strong>Bot Grup Feishu Operasional</strong></span>
-            </div>
-            <span class="badge-count" id="feishuConfirmResiCount" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-weight: 600; font-size: 0.78rem;">0 Resi</span>
-          </div>
-
-          <div>
-            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #e2e8f0; margin-bottom: 6px;">
-              Teks Pesan (Dapat Anda cek atau edit terlebih dahulu sebelum dikirim):
-            </label>
-            <textarea id="feishuConfirmTextarea" class="appsheet-textarea" style="min-height: 190px; max-height: 320px; font-family: monospace; font-size: 0.85rem; line-height: 1.5; color: #38bdf8;" placeholder="Isi pesan ke bot Feishu..."></textarea>
-            <span style="font-size: 0.74rem; color: #94a3b8; display: block; margin-top: 4px;">
-              💡 Teks di atas yang akan terkirim ke dalam bot Feishu. Anda bebas mengubah atau menambahkan keterangan.
-            </span>
-          </div>
-        </div>
-
-        <div class="form-actions" style="margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end;">
-          <button type="button" class="secondary-btn" id="cancelFeishuConfirmBtn" style="padding: 10px 18px;">Batal</button>
-          <button type="button" class="btn-feishu-main btn-send-bot" id="btnExecuteSendFeishu" style="padding: 10px 22px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-            <span id="btnExecuteSendFeishuText">🚀 Ya, Kirim Sekarang</span>
-          </button>
         </div>
       </div>
     </div>
