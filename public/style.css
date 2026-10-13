@@ -13058,3 +13058,65 @@ thead th input[type="checkbox"]:active {
   font-weight: bold;
 }
 
+/* ========================================================= */
+/* WAYBILL INTERACTIVE LINK & DETAIL MODAL                   */
+/* ========================================================= */
+.waybill-interactive-link {
+  background: transparent;
+  border: none;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  cursor: pointer;
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  user-select: text;
+}
+
+.waybill-interactive-link:hover {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+}
+
+.waybill-interactive-link:hover .cell-value {
+  color: #38bdf8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.waybill-link-icon {
+  opacity: 0.35;
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.waybill-interactive-link:hover .waybill-link-icon {
+  opacity: 1;
+  color: #38bdf8;
+  transform: translate(1px, -1px);
+}
+
+.waybill-detail-modal-card {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Accordion Styling for Manual Guide */
+.jfs-guide-accordion summary {
+  transition: color 0.15s ease;
+}
+
+.jfs-guide-accordion summary:hover {
+  color: #f8fafc;
+}
+
+

@@ -2454,10 +2454,11 @@
                       </div>
                       <div class="bookmarklet-titles">
                         <span class="bookmarklet-badge">REKOMENDASI PRAKTIS</span>
-                        <h4>Bookmarklet 1-Klik (Sync Token Tanpa F12)</h4>
+                        <h4>Bookmarklet 1-Klik (Sync Token Otomatis)</h4>
                         <p>Tarik tombol di bawah ke Bookmarks Bar Chrome Anda. Saat membuka JFS, cukup klik 1x untuk sinkronkan token otomatis!</p>
                       </div>
                     </div>
+                    <div class="bookmarklet-btn-row">
                       <a href="javascript:(function(){try{var isH=function(s){return typeof s==='string'&&/^[a-f0-9]{32}$/i.test(s.trim());};var mat=function(s){if(typeof s!=='string')return null;var m=s.match(/[a-f0-9]{32}/i);return m?m[0]:null;};var getT=function(){for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);var v=localStorage.getItem(k);if(isH(v))return v.trim();var m=mat(v);if(m&&(k.toLowerCase().includes('token')||k.toLowerCase().includes('auth')||k.toLowerCase().includes('user')||k.toLowerCase().includes('admin')))return m;}for(var j=0;j<sessionStorage.length;j++){var sk=sessionStorage.key(j);var sv=sessionStorage.getItem(sk);if(isH(sv))return sv.trim();var sm=mat(sv);if(sm&&(sk.toLowerCase().includes('token')||sk.toLowerCase().includes('auth')||sk.toLowerCase().includes('user')||sk.toLowerCase().includes('admin')))return sm;}var cm=document.cookie.match(/(?:token|auth|authtoken)=([a-f0-9]{32})/i)||document.cookie.match(/([a-f0-9]{32})/i);if(cm)return cm[1]||cm[0];for(var a=0;a<localStorage.length;a++){var lm=mat(localStorage.getItem(localStorage.key(a)));if(lm)return lm;}for(var b=0;b<sessionStorage.length;b++){var ssm=mat(sessionStorage.getItem(sessionStorage.key(b)));if(ssm)return ssm;}return null;};var t=getT();if(!t){t=prompt('Masukkan token JFS:');}if(!t){alert('Batal menyinkronkan token.');return;}t=t.trim();try{navigator.clipboard.writeText(t);}catch(_){}var appUrl='https://garapan-fifo-production.up.railway.app';if(window.location.origin.includes('localhost')||window.location.port==='3000'){appUrl='http://localhost:3000';}alert('✅ Token JFS Terdeteksi:\n'+t+'\n\nTab Monitoring FIFO akan dibuka untuk update & sinkronisasi otomatis!');window.open(appUrl+'/#/advance?sync_jfs_token='+encodeURIComponent(t),'_blank');}catch(err){alert('Error: '+err.message);}})();" 
                          class="bookmarklet-drag-pill" 
                          title="Tarik tombol ini ke Bookmarks Bar browser Anda (Ctrl+Shift+B)">
@@ -2473,23 +2474,9 @@
                       </button>
                     </div>
                   </div>
-
-                  <!-- PANDUAN MANUAL (OPSIONAL) -->
-                  <div class="jfs-guide-box">
-                    <div class="guide-title">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                      <strong>Alternatif: Cara Manual Mengambil Token JFS via F12</strong>
-                    </div>
-                    <ol class="guide-steps">
-                      <li>Buka <code>https://jfs.jtcargo.co.id</code> di Chrome (posisi sudah login scan barcode).</li>
-                      <li>Tekan <strong>F12</strong> ➔ Tab <strong>Network</strong> ➔ Filter <strong>Fetch/XHR</strong>.</li>
-                      <li>Klik sembarang request di daftar ➔ Tab <strong>Headers</strong> ➔ Cari tulisan <code>authtoken:</code>.</li>
-                      <li>Copy 32 karakter token tersebut dan paste pada form pengaturan di samping.</li>
-                    </ol>
-                  </div>
                 </div>
 
-                <!-- RIGHT: CONFIGURATION FORM -->
+                <!-- RIGHT: CONFIGURATION FORM (PENGATURAN API & WORKER) -->
                 <div class="jfs-config-card">
                   <div class="jfs-card-top">
                     <h3>Pengaturan API &amp; Background Worker</h3>
@@ -2559,17 +2546,41 @@
                 </div>
               </div>
 
+              <!-- PANDUAN MANUAL F12 (ACCORDION COLLAPSIBLE) -->
+              <details class="jfs-guide-accordion" style="margin-top: 18px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 12px; padding: 12px 18px;">
+                <summary style="cursor: pointer; font-size: 0.88rem; font-weight: 700; color: #cbd5e1; display: flex; align-items: center; gap: 8px; user-select: none;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <span>Alternatif: Panduan Ekstraksi Manual Auth Token JFS via Inspect (F12)</span>
+                  <span style="margin-left: auto; font-size: 0.76rem; color: #94a3b8; font-weight: 500;">Klik untuk buka / tutup</span>
+                </summary>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.1);">
+                  <ol class="guide-steps" style="margin: 0; padding-left: 20px; font-size: 0.82rem; color: #94a3b8; line-height: 1.6;">
+                    <li>Buka <code>https://jfs.jtcargo.co.id</code> di Chrome (posisi sudah login akun barcode).</li>
+                    <li>Tekan tombol <strong>F12</strong> pada keyboard ➔ Buka Tab <strong>Network</strong> ➔ Pilih filter <strong>Fetch/XHR</strong>.</li>
+                    <li>Klik sembarang request di daftar lalu buka tab <strong>Headers</strong>.</li>
+                    <li>Cari tulisan <code>authtoken:</code> pada Request Headers, salin 32 karakter token tersebut.</li>
+                    <li>Paste ke form <strong>JFS Auth Token</strong> di atas lalu klik <strong>Simpan Pengaturan</strong>.</li>
+                  </ol>
+                </div>
+              </details>
+
               <!-- RIWAYAT LOG SINKRONISASI -->
-              <div class="jfs-logs-card">
-                <div class="jfs-logs-header">
+              <div class="jfs-logs-card" style="margin-top: 20px;">
+                <div class="jfs-logs-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                   <div>
-                    <h3>Riwayat Sinkronisasi JFS</h3>
-                    <p>Catatan log pembaruan data otomatis dan manual terakhir.</p>
+                    <h3 style="margin: 0 0 4px 0; font-size: 1.15rem; color: #ffffff;">Riwayat Sinkronisasi JFS</h3>
+                    <p style="margin: 0; font-size: 0.82rem; color: #94a3b8;">Catatan log pembaruan data otomatis dan manual terakhir.</p>
                   </div>
-                  <button type="button" class="btn-refresh-logs" id="btnRefreshJfsLogs" title="Segarkan Log">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                    <span>Segarkan</span>
-                  </button>
+                  <div class="jfs-logs-actions" style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="table-btn restore-btn" id="btnClearJfsLogs" title="Bersihkan riwayat log sinkronisasi JFS" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                      <span>Hapus Riwayat</span>
+                    </button>
+                    <button type="button" class="btn-refresh-logs" id="btnRefreshJfsLogs" title="Segarkan Log">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                      <span>Segarkan</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div class="jfs-table-wrap">
@@ -3527,6 +3538,130 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
 
         <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="primary-btn" id="closeFlowDetailBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL INFORMASI WAYBILL / RESI        -->
+    <!-- ============================================ -->
+    <div id="waybillDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="wbDetailTitle">
+      <div class="modal-content waybill-detail-modal-card" style="max-width: 680px; width: 95%;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 12px; margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow text-emerald" id="wbDetailTitle">DETAIL LENGKAP WAYBILL</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+              <h3 id="wbDetailWaybillNo" style="color: #f8fafc; font-size: 1.35rem; font-family: monospace; font-weight: 800; margin: 0;">-</h3>
+              <button type="button" class="btn-copy-small" id="btnCopyWbDetailNumber" title="Salin No Resi" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Salin</span>
+              </button>
+            </div>
+            <p class="modal-subtitle" style="font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0 0;">Informasi penanganan, status inventaris, asal-tujuan outlet, dan riwayat stuck.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeWaybillDetailBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div class="waybill-detail-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- STATUS & AGING BANNER -->
+          <div class="wb-detail-banner" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 16px; border-radius: 10px;">
+            <div>
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 4px;">Status Waybill</span>
+              <span id="wbDetailStatusBadge" class="modern-status-badge status-pending">Pending</span>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 4px;">Durasi Stuck (Aging)</span>
+              <span id="wbDetailStuckBadge" class="badge badge-stuck" style="font-size: 0.95rem; font-weight: 700; padding: 4px 10px;">-</span>
+            </div>
+          </div>
+
+          <!-- GRID ATTRIBUTES -->
+          <div class="wb-detail-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <!-- OUTLET ASAL -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #38bdf8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+                <span>OUTLET ASAL</span>
+              </div>
+              <strong id="wbDetailOutletAsal" style="font-size: 1.05rem; color: #f8fafc; font-family: monospace;">-</strong>
+            </div>
+
+            <!-- OUTLET TUJUAN -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #a78bfa; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>OUTLET TUJUAN</span>
+              </div>
+              <strong id="wbDetailOutletTujuan" style="font-size: 1.05rem; color: #f8fafc; font-family: monospace;">-</strong>
+            </div>
+
+            <!-- TANGGAL MASUK -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>TANGGAL INVENTARIS</span>
+              </div>
+              <strong id="wbDetailTanggal" style="font-size: 0.95rem; color: #f8fafc;">-</strong>
+            </div>
+
+            <!-- TLC -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #34d399; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/></svg>
+                <span>KODE TLC</span>
+              </div>
+              <strong id="wbDetailTlc" style="font-size: 0.95rem; color: #f8fafc; font-family: monospace;">-</strong>
+            </div>
+
+            <!-- NAMA BARANG (FULL WIDTH) -->
+            <div class="wb-detail-item" style="grid-column: span 2; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #fbbf24; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                <span>NAMA BARANG / DESKRIPSI PAKET</span>
+              </div>
+              <div id="wbDetailNamaBarang" style="font-size: 0.95rem; color: #f8fafc; word-break: break-word;">-</div>
+            </div>
+
+            <!-- TINDAKAN / AKSI -->
+            <div class="wb-detail-item" style="grid-column: span 2; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #38bdf8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>AKSI / TINDAKAN PENANGANAN</span>
+              </div>
+              <strong id="wbDetailAksi" style="font-size: 1rem; color: #38bdf8;">-</strong>
+            </div>
+
+            <!-- DIAKSIKAN OLEH & TERAKHIR DIUPDATE -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>DIAKSIKAN OLEH</span>
+              </div>
+              <span id="wbDetailUpdatedBy" style="font-size: 0.9rem; color: #e2e8f0;">-</span>
+            </div>
+
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>TERAKHIR DIUPDATE</span>
+              </div>
+              <span id="wbDetailUpdatedAt" style="font-size: 0.9rem; color: #e2e8f0;">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 14px;">
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="secondary-btn" id="btnWbDetailCopyAll" title="Salin seluruh info waybill ke clipboard" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span>Salin Semua Info</span>
+            </button>
+            <button type="button" class="primary-btn" id="btnWbDetailEditAction" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>Update / Edit Tindakan</span>
+            </button>
+          </div>
+          <button type="button" class="secondary-btn" id="closeWaybillDetailBottomBtn">Tutup</button>
         </div>
       </div>
     </div>

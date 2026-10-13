@@ -111,6 +111,26 @@ async function getLogs(req, res) {
   }
 }
 
+async function clearLogs(req, res) {
+  try {
+    const result = await jfsService.clearLogs(req.user);
+    if (req.user) {
+      await auditService.logAudit({
+        userId: req.user.id,
+        username: req.user.username,
+        action: 'jfs_clear_logs',
+        entityType: 'jfs_sync_logs',
+        entityId: 'ALL',
+        details: { actorRole: req.user.role },
+      });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error('jfsController clearLogs error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal menghapus log sinkronisasi JFS' });
+  }
+}
+
 async function getFlowSummary(req, res) {
   try {
     const { siteCode, date } = req.query || {};
@@ -139,6 +159,7 @@ module.exports = {
   testConnection,
   triggerSync,
   getLogs,
+  clearLogs,
   getFlowSummary,
   getFlowTrend,
 };

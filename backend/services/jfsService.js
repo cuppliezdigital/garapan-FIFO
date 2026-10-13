@@ -343,7 +343,7 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
   try {
     await connection.beginTransaction();
 
-    const [existingRows] = await connection.query('SELECT * FROM monitoring_stuck');
+    const [existingRows] = await connection.query('SELECT waybill, status, aksi FROM monitoring_stuck');
     const existingMap = new Map();
     existingRows.forEach(r => existingMap.set(String(r.waybill), r));
 
@@ -359,6 +359,7 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
       }
     }
 
+    const validIncoming = [];
     for (const [wb, incoming] of incomingMap.entries()) {
       if (historySet.has(wb)) {
         skippedHistoryCount++;
@@ -370,40 +371,78 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
         const oldAksi = String(existing.aksi || '').trim();
         const oldStatus = String(existing.status || '').trim().toLowerCase();
         const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
-
         if (isUpdated) {
-          // PROTECT: Status Sudah Diupdate / ada aksi tidak boleh ditimpa status atau aksinya!
-          await connection.query(
-            `UPDATE monitoring_stuck
-             SET stuck = ?,
-                 outlet_asal = CASE WHEN outlet_asal IS NULL OR outlet_asal = '-' OR outlet_asal = '' THEN ? ELSE outlet_asal END,
-                 outlet = CASE WHEN outlet IS NULL OR outlet = '-' OR outlet = '' THEN ? ELSE outlet END,
-                 tlc = CASE WHEN tlc IS NULL OR tlc = '-' OR tlc = '' THEN ? ELSE tlc END,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE waybill = ?`,
-            [incoming.stuck, incoming.outlet_asal, incoming.outlet, incoming.tlc, wb]
-          );
           skippedUpdatedCount++;
         } else {
-          // Masih Pending: update jam stuck, outlet asal & tujuan, dll
-          await connection.query(
-            `UPDATE monitoring_stuck
-             SET tanggal = ?, outlet_asal = ?, outlet = ?, stuck = ?, tlc = ?, nama_barang = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE waybill = ?`,
-            [incoming.tanggal, incoming.outlet_asal, incoming.outlet, incoming.stuck, incoming.tlc, incoming.nama_barang, wb]
-          );
           updatedAgingCount++;
         }
       } else {
-        // Resi baru dari JFS
-        await connection.query(
-          `INSERT INTO monitoring_stuck
-           (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
-           VALUES (?, ?, ?, ?, ?, ?, 'Pending', '-', ?, 'JFS Realtime')`,
-          [incoming.waybill, incoming.tanggal, incoming.outlet_asal, incoming.outlet, incoming.stuck, incoming.tlc, incoming.nama_barang]
-        );
         importedCount++;
       }
+      validIncoming.push(incoming);
+    }
+
+    // Eksekusi batch upsert dengan chunks of 500 (sangat cepat ~1 detik untuk 15.000+ data)
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < validIncoming.length; i += CHUNK_SIZE) {
+      const chunk = validIncoming.slice(i, i + CHUNK_SIZE);
+      const values = chunk.map((r) => [
+        r.waybill,
+        r.tanggal || null,
+        r.outlet_asal || '-',
+        r.outlet || '-',
+        r.stuck || '0 Jam (1-12)',
+        r.tlc || '-',
+        'Pending',
+        '-',
+        r.nama_barang || '-',
+        'JFS Realtime',
+      ]);
+
+      await connection.query(
+        `INSERT INTO monitoring_stuck
+           (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+         VALUES ?
+         ON DUPLICATE KEY UPDATE
+           tanggal = VALUES(tanggal),
+           outlet_asal = CASE
+             WHEN monitoring_stuck.outlet_asal IS NULL OR monitoring_stuck.outlet_asal = '-' OR monitoring_stuck.outlet_asal = ''
+             THEN VALUES(outlet_asal)
+             WHEN VALUES(outlet_asal) IS NOT NULL AND VALUES(outlet_asal) != '-' AND VALUES(outlet_asal) != ''
+             THEN VALUES(outlet_asal)
+             ELSE monitoring_stuck.outlet_asal
+           END,
+           outlet = CASE
+             WHEN VALUES(outlet) IS NOT NULL AND VALUES(outlet) != '-' AND VALUES(outlet) != ''
+             THEN VALUES(outlet)
+             ELSE monitoring_stuck.outlet
+           END,
+           stuck = VALUES(stuck),
+           tlc = CASE
+             WHEN VALUES(tlc) IS NOT NULL AND VALUES(tlc) != '-' AND VALUES(tlc) != ''
+             THEN VALUES(tlc)
+             ELSE monitoring_stuck.tlc
+           END,
+           nama_barang = CASE
+             WHEN VALUES(nama_barang) IS NOT NULL AND VALUES(nama_barang) != '-' AND VALUES(nama_barang) != ''
+             THEN VALUES(nama_barang)
+             ELSE monitoring_stuck.nama_barang
+           END,
+           status = CASE
+             WHEN (monitoring_stuck.aksi IS NOT NULL AND monitoring_stuck.aksi != '-' AND monitoring_stuck.aksi != '')
+                  OR LOWER(monitoring_stuck.status) = 'sudah diupdate'
+                  OR LOWER(monitoring_stuck.status) = 'sudah scan kirim'
+             THEN 'Sudah Diupdate'
+             ELSE VALUES(status)
+           END,
+           aksi = CASE
+             WHEN (monitoring_stuck.aksi IS NOT NULL AND monitoring_stuck.aksi != '-' AND monitoring_stuck.aksi != '')
+             THEN monitoring_stuck.aksi
+             ELSE VALUES(aksi)
+           END,
+           updated_at = CURRENT_TIMESTAMP`,
+        [values]
+      );
     }
 
     await connection.commit();
@@ -422,15 +461,21 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
   }
 }
 
+let syncStartedAt = 0;
+
 async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
   if (isSyncInProgress) {
-    return {
-      success: false,
-      message: 'Proses sinkronisasi JFS sedang berjalan. Mohon tunggu...',
-    };
+    if (Date.now() - syncStartedAt < 120000) {
+      return {
+        success: false,
+        message: 'Proses sinkronisasi JFS sedang berjalan. Mohon tunggu beberapa saat...',
+      };
+    }
+    console.warn('[JFS Sync] Lock sinkronisasi kedaluwarsa (> 2 menit). Melepas safety lock.');
   }
 
   isSyncInProgress = true;
+  syncStartedAt = Date.now();
   const startTime = Date.now();
 
   try {
@@ -455,13 +500,12 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
     await db.query(
       `INSERT INTO jfs_sync_logs
         (trigger_type, status, total_fetched, imported_count, archived_count, deleted_count, message)
-       VALUES (?, 'success', ?, ?, ?, ?, ?)`,
+       VALUES (?, 'success', ?, ?, ?, 0, ?)`,
       [
         triggerType,
         rows.length,
         importResult.importedCount || 0,
         importResult.skippedUpdatedCount || 0,
-        importResult.skippedHistoryCount || 0,
         successMsg,
       ]
     );
@@ -498,7 +542,14 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
     };
   } finally {
     isSyncInProgress = false;
+    syncStartedAt = 0;
   }
+}
+
+async function clearLogs(actor = null) {
+  await ensureJfsTables();
+  await db.query('TRUNCATE TABLE jfs_sync_logs');
+  return { success: true, message: 'Riwayat log sinkronisasi JFS berhasil dibersihkan' };
 }
 
 async function getJfsFlowSummary(siteCodeParam = null, dateParam = null) {
@@ -686,5 +737,6 @@ module.exports = {
   getJfsFlowSummary,
   getJfsFlowTrend,
   getRecentLogs,
+  clearLogs,
   restartScheduler,
 };

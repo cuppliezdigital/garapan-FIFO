@@ -16,6 +16,7 @@ router.post('/sync', authMiddleware, requireAnyPermission(PERMISSION_KEYS.IMPORT
 router.post('/config', authMiddleware, requireAdminOrGm, jfsController.updateConfig);
 router.post('/test', authMiddleware, requireAdminOrGm, jfsController.testConnection);
 router.get('/logs', authMiddleware, requireAdminOrGm, jfsController.getLogs);
+router.delete('/logs', authMiddleware, requireAdminOrGm, jfsController.clearLogs);
 
 // Flow Summary & Trend (For PC dashboard live widget & charts)
 router.get('/flow-summary', authMiddleware, jfsController.getFlowSummary);

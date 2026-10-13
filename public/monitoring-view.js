@@ -295,7 +295,12 @@ function renderTable(data) {
 
     tr.innerHTML = `
       <td class="col-check" data-label="Pilih"><input type="checkbox" class="monitoring-select-checkbox" data-waybill="${item.waybill || ''}" ${selectedMonitoringWaybills.has(item.waybill) ? 'checked' : ''} /></td>
-      <td class="col-waybill" data-label="Waybill"><strong class="cell-value">${highlightSearch(item.waybill || '-')}</strong></td>
+      <td class="col-waybill" data-label="Waybill">
+        <button type="button" class="waybill-interactive-link" data-waybill="${escapeTlcHtml(item.waybill || '')}" title="Klik untuk rincian lengkap waybill">
+          <strong class="cell-value">${highlightSearch(item.waybill || '-')}</strong>
+          <svg class="waybill-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </button>
+      </td>
       <td class="col-tanggal" data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(item.tanggal))}</span></td>
       <td class="col-outlet-asal" data-label="Outlet Asal"><span class="cell-value font-mono font-bold">${highlightSearch(item.outlet_asal || '-')}</span></td>
       <td class="col-outlet-tujuan" data-label="Outlet Tujuan"><span class="cell-value font-mono font-bold">${highlightSearch(item.outlet || '-')}</span></td>
@@ -1073,5 +1078,141 @@ function initShiftArchiveHandler() {
 }
 
 initShiftArchiveHandler();
+ 
+let currentDetailWaybillItem = null;
+
+function openWaybillDetailModal(waybill) {
+  const modal = document.getElementById('waybillDetailModal');
+  if (!modal) return;
+
+  const item = (monitoringData || []).find((m) => m.waybill === waybill);
+  if (!item) {
+    showAppAlert(`Data untuk waybill ${waybill} tidak ditemukan di tabel monitoring.`, true);
+    return;
+  }
+
+  currentDetailWaybillItem = item;
+
+  const noEl = document.getElementById('wbDetailWaybillNo');
+  const statusEl = document.getElementById('wbDetailStatusBadge');
+  const stuckEl = document.getElementById('wbDetailStuckBadge');
+  const asalEl = document.getElementById('wbDetailOutletAsal');
+  const tujuanEl = document.getElementById('wbDetailOutletTujuan');
+  const tanggalEl = document.getElementById('wbDetailTanggal');
+  const tlcEl = document.getElementById('wbDetailTlc');
+  const barangEl = document.getElementById('wbDetailNamaBarang');
+  const aksiEl = document.getElementById('wbDetailAksi');
+  const updatedByEl = document.getElementById('wbDetailUpdatedBy');
+  const updatedAtEl = document.getElementById('wbDetailUpdatedAt');
+
+  if (noEl) noEl.textContent = item.waybill || '-';
+
+  const updated = isSudahUpdate(item);
+  const currentStatus = item.status && String(item.status).toLowerCase() !== 'open' ? item.status : 'Pending';
+
+  if (statusEl) {
+    statusEl.textContent = updated ? (item.aksi && item.aksi !== '-' ? `Sudah Diupdate (${item.aksi})` : 'Sudah Diupdate') : currentStatus;
+    statusEl.className = `modern-status-badge ${updated ? 'status-success' : 'status-pending'}`;
+  }
+
+  if (stuckEl) {
+    stuckEl.textContent = item.stuck || '0 Jam (1-12)';
+  }
+
+  if (asalEl) asalEl.textContent = item.outlet_asal || '-';
+  if (tujuanEl) tujuanEl.textContent = item.outlet || '-';
+  if (tanggalEl) tanggalEl.textContent = formatDate(item.tanggal) || '-';
+  if (tlcEl) tlcEl.textContent = item.tlc || '-';
+  if (barangEl) barangEl.textContent = item.nama_barang || '-';
+  if (aksiEl) {
+    aksiEl.textContent = item.aksi && item.aksi !== '-' ? item.aksi : 'Belum ada tindakan (Status Pending)';
+    aksiEl.style.color = item.aksi && item.aksi !== '-' ? '#38bdf8' : '#94a3b8';
+  }
+  if (updatedByEl) updatedByEl.textContent = item.updated_by || 'System';
+  if (updatedAtEl) {
+    updatedAtEl.textContent = item.updated_at ? new Date(item.updated_at).toLocaleString('id-ID') : '-';
+  }
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeWaybillDetailModal() {
+  const modal = document.getElementById('waybillDetailModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  currentDetailWaybillItem = null;
+}
+
+function initWaybillDetailModalHandlers() {
+  const modal = document.getElementById('waybillDetailModal');
+  if (!modal) return;
+
+  const closeBtn = document.getElementById('closeWaybillDetailBtn');
+  const closeBottomBtn = document.getElementById('closeWaybillDetailBottomBtn');
+  const btnCopyNo = document.getElementById('btnCopyWbDetailNumber');
+  const btnCopyAll = document.getElementById('btnWbDetailCopyAll');
+  const btnEditAction = document.getElementById('btnWbDetailEditAction');
+
+  if (closeBtn) closeBtn.addEventListener('click', closeWaybillDetailModal);
+  if (closeBottomBtn) closeBottomBtn.addEventListener('click', closeWaybillDetailModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeWaybillDetailModal();
+  });
+
+  if (btnCopyNo) {
+    btnCopyNo.addEventListener('click', () => {
+      if (currentDetailWaybillItem && currentDetailWaybillItem.waybill) {
+        navigator.clipboard.writeText(currentDetailWaybillItem.waybill);
+        showAppAlert(`📋 Resi ${currentDetailWaybillItem.waybill} disalin ke clipboard!`);
+      }
+    });
+  }
+
+  if (btnCopyAll) {
+    btnCopyAll.addEventListener('click', () => {
+      if (!currentDetailWaybillItem) return;
+      const d = currentDetailWaybillItem;
+      const text = [
+        `📦 DETAIL WAYBILL: ${d.waybill}`,
+        `• Tanggal: ${formatDate(d.tanggal)}`,
+        `• Asal: ${d.outlet_asal || '-'}`,
+        `• Tujuan: ${d.outlet || '-'}`,
+        `• TLC: ${d.tlc || '-'}`,
+        `• Stuck: ${d.stuck || '-'}`,
+        `• Status: ${d.status || 'Pending'}`,
+        `• Tindakan/Aksi: ${d.aksi || '-'}`,
+        `• Nama Barang: ${d.nama_barang || '-'}`,
+        `• Diupdate Oleh: ${d.updated_by || 'System'}`
+      ].join('\n');
+      navigator.clipboard.writeText(text);
+      showAppAlert('📋 Seluruh detail waybill berhasil disalin!');
+    });
+  }
+
+  if (btnEditAction) {
+    btnEditAction.addEventListener('click', () => {
+      if (!currentDetailWaybillItem) return;
+      const itemToEdit = currentDetailWaybillItem;
+      closeWaybillDetailModal();
+      openModal(isSudahUpdate(itemToEdit) ? 'edit' : 'update', itemToEdit);
+    });
+  }
+
+  // Event delegation untuk link waybill di tabel
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('.waybill-interactive-link');
+    if (link) {
+      e.preventDefault();
+      e.stopPropagation();
+      const wb = link.dataset.waybill;
+      if (wb) openWaybillDetailModal(wb);
+    }
+  });
+}
+
+initWaybillDetailModalHandlers();
 
 

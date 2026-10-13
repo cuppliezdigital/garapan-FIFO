@@ -430,6 +430,41 @@ function initJfsEventListeners() {
     refreshLogsBtn.addEventListener('click', fetchJfsLogs);
   }
 
+  // Clear logs button (Hapus Riwayat)
+  const clearLogsBtn = document.getElementById('btnClearJfsLogs');
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', async () => {
+      const confirmClear = confirm(
+        'Hapus seluruh riwayat log sinkronisasi JFS?\n\n' +
+        'Semua catatan histori sinkronisasi sebelumnya akan dibersihkan.'
+      );
+      if (!confirmClear) return;
+
+      clearLogsBtn.disabled = true;
+      try {
+        const token = getToken();
+        const res = await fetch('/api/jfs/logs', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showAppAlert('✅ Riwayat log sinkronisasi berhasil dibersihkan!');
+          await fetchJfsLogs();
+        } else {
+          showAppAlert(data.error || 'Gagal membersihkan riwayat log', true);
+        }
+      } catch (err) {
+        showAppAlert('Koneksi gagal: ' + err.message, true);
+      } finally {
+        clearLogsBtn.disabled = false;
+      }
+    });
+  }
+
   // Toggle token visibility
   const toggleVisibilityBtn = document.getElementById('btnToggleTokenVisibility');
   const tokenInput = document.getElementById('jfsInputToken');
