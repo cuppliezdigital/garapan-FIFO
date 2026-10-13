@@ -37,7 +37,11 @@ function openModal(mode = 'create', item = null) {
   if (item && (mode === 'edit' || mode === 'archive-edit')) {
     if (contextCard) contextCard.classList.remove('hidden');
     if (waybillText) waybillText.textContent = item.waybill || '-';
-    const outletParts = [item.outlet, item.tlc].filter((v) => v && v !== '-');
+    const outletParts = [
+      item.outlet_asal && item.outlet_asal !== '-' ? `Asal: ${item.outlet_asal}` : null,
+      item.outlet && item.outlet !== '-' ? `Tujuan: ${item.outlet}` : null,
+      item.tlc && item.tlc !== '-' ? `TLC: ${item.tlc}` : null
+    ].filter(Boolean);
     if (outletText) outletText.textContent = outletParts.length ? outletParts.join(' • ') : (item.outlet || '-');
     if (dateText) dateText.textContent = normalizeDateString(item.tanggal) || '-';
     if (stuckText) stuckText.textContent = item.stuck || '0';
@@ -242,7 +246,7 @@ function renderTable(data) {
   if (!data.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" class="empty-state">Belum ada data monitoring.</td>
+        <td colspan="11" class="empty-state">Belum ada data monitoring.</td>
       </tr>
     `;
     renderMonitoringPagination(0, 1);
@@ -293,7 +297,8 @@ function renderTable(data) {
       <td class="col-check" data-label="Pilih"><input type="checkbox" class="monitoring-select-checkbox" data-waybill="${item.waybill || ''}" ${selectedMonitoringWaybills.has(item.waybill) ? 'checked' : ''} /></td>
       <td class="col-waybill" data-label="Waybill"><strong class="cell-value">${highlightSearch(item.waybill || '-')}</strong></td>
       <td class="col-tanggal" data-label="Tanggal"><span class="cell-value">${highlightSearch(formatDate(item.tanggal))}</span></td>
-      <td class="col-outlet" data-label="Outlet"><span class="cell-value">${highlightSearch(item.outlet || '-')}</span></td>
+      <td class="col-outlet-asal" data-label="Outlet Asal"><span class="cell-value font-mono font-bold">${highlightSearch(item.outlet_asal || '-')}</span></td>
+      <td class="col-outlet-tujuan" data-label="Outlet Tujuan"><span class="cell-value font-mono font-bold">${highlightSearch(item.outlet || '-')}</span></td>
       <td class="col-stuck" data-label="Stuck"><span class="cell-value"><span class="badge badge-stuck">${highlightSearch(item.stuck || 0)}</span></span></td>
       <td class="col-tlc" data-label="TLC"><span class="cell-value">${highlightSearch(item.tlc || '-')}</span></td>
       <td class="col-status" data-label="Status"><span class="cell-value"><span class="status ${statusClass}" title="Status: ${escapeTlcHtml(currentStatus)}${item.aksi && item.aksi !== '-' ? ' (' + escapeTlcHtml(item.aksi) + ')' : ''}">${highlightSearch(statusDisplay)}</span></span></td>
@@ -704,6 +709,7 @@ function applyFilter() {
         item.waybill,
         item.tanggal,
         formattedTanggal,
+        item.outlet_asal,
         item.outlet,
         item.stuck,
         item.tlc,
@@ -1028,5 +1034,44 @@ function initQuickBarToggle() {
 }
 
 initQuickBarToggle();
+
+function initShiftArchiveHandler() {
+  const btnArchiveShift = document.getElementById('btnArchiveCompletedShift');
+  if (!btnArchiveShift) return;
+
+  btnArchiveShift.addEventListener('click', async () => {
+    const confirmShift = confirm(
+      'Pindahkan SEMUA waybill yang berstatus "Sudah Diupdate" ke Arsip History?\n\n' +
+      'ℹ️ Catatan: Fitur ini digunakan saat pergantian shift agar data yang sudah beres tersimpan rapi di histori dan tidak menumpuk di monitoring aktif.'
+    );
+    if (!confirmShift) return;
+
+    btnArchiveShift.disabled = true;
+    try {
+      const token = getToken();
+      const res = await fetch('/api/monitoring/archive-completed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        showAppAlert(`✅ ${result.archivedCount} waybill selesai berhasil diarsipkan ke History!`);
+        if (typeof fetchMonitoring === 'function') await fetchMonitoring();
+        if (typeof fetchMonitoringHistory === 'function') await fetchMonitoringHistory();
+      } else {
+        showAppAlert(result.error || 'Gagal mengarsipkan data selesai', true);
+      }
+    } catch (err) {
+      showAppAlert('Koneksi gagal: ' + err.message, true);
+    } finally {
+      btnArchiveShift.disabled = false;
+    }
+  });
+}
+
+initShiftArchiveHandler();
 
 

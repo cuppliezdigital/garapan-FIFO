@@ -146,10 +146,29 @@ async function ensureMonitoringArchiveTable() {
   }
 }
 
+async function ensureOutletAsalColumn() {
+  const tables = ['monitoring_stuck', 'monitoring_history', 'monitoring_archive'];
+  for (const table of tables) {
+    try {
+      const [cols] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'outlet_asal'`,
+        [table]
+      );
+      if (!cols || cols.length === 0) {
+        await db.query(`ALTER TABLE ${table} ADD COLUMN outlet_asal VARCHAR(150) NULL DEFAULT '-' AFTER tanggal`);
+        console.log(`[Database Migration] Berhasil menambahkan kolom outlet_asal pada tabel ${table}`);
+      }
+    } catch (err) {
+      console.error(`[Database Migration] Warning on ${table} outlet_asal check:`, err.message);
+    }
+  }
+}
+
 async function initMonitoringTables() {
   await ensureMonitoringTable();
   await ensureMonitoringHistoryTable();
   await ensureMonitoringArchiveTable();
+  await ensureOutletAsalColumn();
   try {
     await db.query("UPDATE monitoring_stuck SET status = 'Pending' WHERE status = 'Open' OR status IS NULL OR status = ''");
     await db.query("UPDATE monitoring_archive SET status = 'Pending' WHERE status = 'Open' OR status IS NULL OR status = ''");
@@ -163,7 +182,8 @@ function normalizeMonitoringRow(raw = {}) {
   if (!waybill) return null;
 
   const tanggal = normalizeMonitoringDate(raw.tanggal || raw.Tanggal || raw.date || '');
-  const outlet = raw.outlet || raw.Outlet || raw.outlet_name || '';
+  const outletAsal = raw.outlet_asal || raw.OutletAsal || raw.outletAsal || raw.take_site_name || raw['Outlet Asal'] || raw['outlet asal'] || '-';
+  const outlet = raw.outlet || raw.Outlet || raw.outlet_name || raw.destination_site_name || raw['Outlet Tujuan'] || raw['outlet tujuan'] || '-';
   const status = (raw.status || raw.Status || 'Pending').toString().trim() || 'Pending';
   const aksi = raw.aksi || raw.Aksi || '-';
   const namaBarang = raw.nama_barang || raw.NamaBarang || raw.namaBarang || '-';
@@ -175,7 +195,8 @@ function normalizeMonitoringRow(raw = {}) {
   return {
     waybill,
     tanggal,
-    outlet,
+    outlet_asal: String(outletAsal || '-').trim() || '-',
+    outlet: String(outlet || '-').trim() || '-',
     stuck,
     tlc: String(tlc || '-').trim() || '-',
     status,
@@ -311,11 +332,12 @@ async function archiveMonitoringRecord(record, source = 'archive', client = null
   const dbClient = client || db;
   await dbClient.query(
     `INSERT INTO monitoring_history
-      (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       record.waybill,
       normalizeMonitoringDate(record.tanggal),
+      record.outlet_asal || '-',
       record.outlet || '-',
       String(record.stuck || '0 Jam (1-12)').trim() || '0 Jam (1-12)',
       record.tlc || '-',
@@ -352,12 +374,12 @@ async function archiveMonitoring(waybills) {
     if (!record) continue;
     await db.query(
       `INSERT INTO monitoring_archive
-       (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE tanggal = VALUES(tanggal), outlet = VALUES(outlet), stuck = VALUES(stuck),
+       (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE tanggal = VALUES(tanggal), outlet_asal = VALUES(outlet_asal), outlet = VALUES(outlet), stuck = VALUES(stuck),
        tlc = VALUES(tlc), status = VALUES(status), aksi = VALUES(aksi), nama_barang = VALUES(nama_barang),
        updated_by = VALUES(updated_by), archived_at = CURRENT_TIMESTAMP`,
-      [record.waybill, record.tanggal, record.outlet, record.stuck, record.tlc, record.status, record.aksi, record.nama_barang, record.updated_by]
+      [record.waybill, record.tanggal, record.outlet_asal || '-', record.outlet, record.stuck, record.tlc, record.status, record.aksi, record.nama_barang, record.updated_by]
     );
     await db.query('DELETE FROM monitoring_stuck WHERE waybill = ?', [waybill]);
     archivedCount += 1;
@@ -374,11 +396,11 @@ async function restoreMonitoring(waybills) {
     if (!record) continue;
     await db.query(
       `INSERT INTO monitoring_stuck
-       (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE tanggal = VALUES(tanggal), outlet = VALUES(outlet), stuck = VALUES(stuck),
+       (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE tanggal = VALUES(tanggal), outlet_asal = VALUES(outlet_asal), outlet = VALUES(outlet), stuck = VALUES(stuck),
        tlc = VALUES(tlc), status = VALUES(status), aksi = VALUES(aksi), nama_barang = VALUES(nama_barang), updated_by = VALUES(updated_by)`,
-      [record.waybill, record.tanggal, record.outlet, record.stuck, record.tlc, record.status, record.aksi, record.nama_barang, record.updated_by]
+      [record.waybill, record.tanggal, record.outlet_asal || '-', record.outlet, record.stuck, record.tlc, record.status, record.aksi, record.nama_barang, record.updated_by]
     );
     await db.query('DELETE FROM monitoring_archive WHERE waybill = ?', [waybill]);
     restoredCount += 1;
@@ -484,10 +506,11 @@ async function createMonitoring(payload, actor = null) {
 
   const [result] = await db.query(
     `INSERT INTO monitoring_stuck
-     (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        tanggal = VALUES(tanggal),
+       outlet_asal = VALUES(outlet_asal),
        outlet = VALUES(outlet),
        stuck = VALUES(stuck),
        tlc = VALUES(tlc),
@@ -499,6 +522,7 @@ async function createMonitoring(payload, actor = null) {
     [
       normalized.waybill,
       normalized.tanggal || null,
+      normalized.outlet_asal || '-',
       normalized.outlet || '-',
       normalized.stuck || 0,
       normalized.tlc || '-',
@@ -519,6 +543,7 @@ async function createMonitoring(payload, actor = null) {
       details: {
         waybill: normalized.waybill,
         tanggal: normalized.tanggal,
+        outlet_asal: normalized.outlet_asal,
         outlet: normalized.outlet,
         status: normalized.status,
         updated_by: normalized.updated_by,
@@ -555,12 +580,17 @@ async function updateMonitoring(waybillParam, payload, actor = null) {
       : String(before.tanggal).split('T')[0].split(' ')[0])
     : (normalized.tanggal || null);
 
+  const preservedOutletAsal = (normalized.outlet_asal && normalized.outlet_asal !== '-')
+    ? normalized.outlet_asal
+    : (before?.outlet_asal || '-');
+
   const [result] = await db.query(
     `UPDATE monitoring_stuck
-     SET tanggal = ?, outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ?
+     SET tanggal = ?, outlet_asal = ?, outlet = ?, stuck = ?, tlc = ?, status = ?, aksi = ?, nama_barang = ?, updated_by = ?
      WHERE waybill = ?`,
     [
       preservedTanggal,
+      preservedOutletAsal,
       normalized.outlet || before?.outlet || '-',
       normalized.stuck || before?.stuck || '0',
       normalized.tlc || before?.tlc || '-',
@@ -842,6 +872,7 @@ async function bulkImportMonitoring(rows, actor = null) {
       const values = chunk.map((r) => [
         r.waybill,
         normalizeMonitoringDate(r.tanggal),
+        r.outlet_asal || '-',
         r.outlet || '-',
         String(r.stuck || '0 Jam (1-12)').trim() || '0 Jam (1-12)',
         r.tlc || '-',
@@ -853,7 +884,7 @@ async function bulkImportMonitoring(rows, actor = null) {
       ]);
       await connection.query(
         `INSERT INTO monitoring_history
-          (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
+          (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
          VALUES ?`,
         [values]
       );
@@ -874,6 +905,7 @@ async function bulkImportMonitoring(rows, actor = null) {
       const values = chunk.map((item) => [
         item.waybill,
         normalizeMonitoringDate(item.tanggal),
+        item.outlet_asal || '-',
         item.outlet || '-',
         item.stuck || '0 Jam (1-12)',
         item.tlc || '-',
@@ -884,10 +916,11 @@ async function bulkImportMonitoring(rows, actor = null) {
       ]);
       await connection.query(
         `INSERT INTO monitoring_stuck
-         (waybill, tanggal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+         (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
          VALUES ?
          ON DUPLICATE KEY UPDATE
            tanggal = VALUES(tanggal),
+           outlet_asal = VALUES(outlet_asal),
            outlet = VALUES(outlet),
            stuck = VALUES(stuck),
            tlc = VALUES(tlc),
@@ -935,6 +968,83 @@ async function bulkImportMonitoring(rows, actor = null) {
   return { importedCount, rows: importRows.length, skippedCount, overwrittenCount, deletedCount, historyCount };
 }
 
+async function archiveCompletedMonitoring(actor = null) {
+  const connection = await db.getConnection();
+  let archivedCount = 0;
+  const archivedWaybills = [];
+
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT * FROM monitoring_stuck 
+       WHERE status = 'Sudah Diupdate' OR (aksi IS NOT NULL AND aksi != '' AND aksi != '-')`
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return { archivedCount: 0, waybills: [] };
+    }
+
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE);
+      const values = chunk.map((r) => [
+        r.waybill,
+        normalizeMonitoringDate(r.tanggal),
+        r.outlet_asal || '-',
+        r.outlet || '-',
+        String(r.stuck || '0 Jam (1-12)').trim() || '0 Jam (1-12)',
+        r.tlc || '-',
+        r.status || 'Sudah Diupdate',
+        r.aksi || '-',
+        r.nama_barang || '-',
+        r.updated_by || 'System',
+        'manual_shift_archive',
+      ]);
+
+      await connection.query(
+        `INSERT INTO monitoring_history
+          (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
+         VALUES ?`,
+        [values]
+      );
+
+      const chunkWbs = chunk.map(r => r.waybill);
+      await connection.query('DELETE FROM monitoring_stuck WHERE waybill IN (?)', [chunkWbs]);
+      archivedWaybills.push(...chunkWbs);
+      archivedCount += chunk.length;
+    }
+
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+
+  if (actor && archivedCount > 0) {
+    try {
+      await auditService.logAudit({
+        userId: actor.id,
+        username: actor.username,
+        action: 'archive_completed',
+        entityType: 'monitoring',
+        entityId: 'SHIFT_ARCHIVE',
+        details: {
+          archivedCount,
+          actorRole: actor.role,
+        },
+      });
+    } catch (auditErr) {
+      console.error('archiveCompletedMonitoring audit log warning:', auditErr.message);
+    }
+  }
+
+  return { archivedCount, waybills: archivedWaybills };
+}
+
 module.exports = {
   getAllMonitoring,
   getAllMonitoringHistory,
@@ -951,6 +1061,7 @@ module.exports = {
   bulkDeleteMonitoring,
   deleteAllMonitoring,
   bulkImportMonitoring,
+  archiveCompletedMonitoring,
   initMonitoringTables,
   normalizeStuckCategory,
   formatStuckByHours,

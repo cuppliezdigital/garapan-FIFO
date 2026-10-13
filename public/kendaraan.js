@@ -923,6 +923,144 @@ function initKendaraanEventListeners() {
   if (closeEditPicBtn) closeEditPicBtn.addEventListener('click', closeEditPicModal);
   if (cancelEditPicBtn) cancelEditPicBtn.addEventListener('click', closeEditPicModal);
   if (editPicForm) editPicForm.addEventListener('submit', submitEditPicForm);
+
+  // Bulk Import Gateway PIC Modal triggers
+  const btnOpenBulkPic = document.getElementById('btnOpenBulkImportGatewayPic');
+  const closeBulkPicBtn = document.getElementById('closeBulkImportPicBtn');
+  const closeBulkPicBottomBtn = document.getElementById('closeBulkImportPicBottomBtn');
+  const bulkPicForm = document.getElementById('bulkImportGatewayPicForm');
+  if (btnOpenBulkPic) btnOpenBulkPic.addEventListener('click', openBulkImportGatewayPicModal);
+  if (closeBulkPicBtn) closeBulkPicBtn.addEventListener('click', closeBulkImportGatewayPicModal);
+  if (closeBulkPicBottomBtn) closeBulkPicBottomBtn.addEventListener('click', closeBulkImportGatewayPicModal);
+  if (bulkPicForm) bulkPicForm.addEventListener('submit', submitBulkImportGatewayPicForm);
+}
+
+function openBulkImportGatewayPicModal() {
+  const modal = document.getElementById('bulkImportGatewayPicModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const form = document.getElementById('bulkImportGatewayPicForm');
+    if (form) form.reset();
+  }
+}
+
+function closeBulkImportGatewayPicModal() {
+  const modal = document.getElementById('bulkImportGatewayPicModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function parseGatewayPicText(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rows = [];
+  for (const line of lines) {
+    let parts = [];
+    if (line.includes('\t')) {
+      parts = line.split('\t');
+    } else if (line.includes(';')) {
+      parts = line.split(';');
+    } else if (line.includes(',')) {
+      parts = line.split(',');
+    } else if (line.includes('|')) {
+      parts = line.split('|');
+    } else {
+      const match = line.match(/^(\S+)\s+(.+)$/);
+      if (match) {
+        parts = [match[1], match[2]];
+      } else {
+        parts = [line, ''];
+      }
+    }
+
+    const col1 = (parts[0] || '').trim().replace(/^["']|["']$/g, '');
+    const col2 = (parts[1] || '').trim().replace(/^["']|["']$/g, '');
+
+    const lowerCol1 = col1.toLowerCase();
+    const lowerCol2 = col2.toLowerCase();
+    if ((lowerCol1 === 'nama gateway' || lowerCol1 === 'gateway' || lowerCol1 === 'gw') &&
+        (lowerCol2 === 'nama pic' || lowerCol2 === 'pic' || lowerCol2 === 'tagging pic' || lowerCol2 === 'kontak')) {
+      continue;
+    }
+
+    if (col1) {
+      rows.push({
+        nama_gateway: col1,
+        tagging_pic: col2
+      });
+    }
+  }
+  return rows;
+}
+
+async function submitBulkImportGatewayPicForm(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('bulkPicFileInput');
+  const textarea = document.getElementById('bulkPicTextarea');
+  const submitBtn = document.getElementById('btnSubmitBulkPic');
+
+  let rawText = (textarea ? textarea.value : '').trim();
+
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    try {
+      const fileText = await fileInput.files[0].text();
+      rawText = (rawText ? rawText + '\n' : '') + fileText;
+    } catch (fErr) {
+      showAppAlert('Gagal membaca file: ' + fErr.message, true);
+      return;
+    }
+  }
+
+  const rows = parseGatewayPicText(rawText);
+  if (rows.length === 0) {
+    showAppAlert('Data kosong! Silakan paste data Excel atau upload file CSV/TXT terlebih dahulu.', true);
+    return;
+  }
+
+  const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Menyimpan ' + rows.length + ' data...</span>';
+  }
+
+  try {
+    const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('token');
+    const res = await fetch('/api/kendaraan/gateways/bulk-import', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ rows })
+    });
+
+    if (res.status === 401 && typeof logout === 'function') {
+      logout('Sesi telah berakhir. Silakan login kembali.');
+      return;
+    }
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal menyimpan import massal PIC');
+    }
+
+    closeBulkImportGatewayPicModal();
+    showAppAlert(`✅ ${data.message || `Berhasil import ${rows.length} PIC Gateway!`}`);
+    if (typeof openMasterGatewaysModal === 'function') {
+      await openMasterGatewaysModal();
+    }
+  } catch (err) {
+    showAppAlert(err.message, true);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origBtnHtml;
+    }
+  }
 }
 
 // Auto-run event listeners registration once DOM loaded

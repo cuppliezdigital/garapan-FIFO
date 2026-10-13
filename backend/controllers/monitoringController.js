@@ -225,6 +225,21 @@ async function restoreMonitoringUpdate(req, res) {
   }
 }
 
+async function archiveCompletedMonitoring(req, res) {
+  try {
+    const result = await monitoringService.archiveCompletedMonitoring(req.user);
+    res.json({
+      success: true,
+      message: `${result.archivedCount} waybill selesai berhasil diarsipkan ke History`,
+      archivedCount: result.archivedCount,
+      waybills: result.waybills,
+    });
+  } catch (error) {
+    console.error('Controller archiveCompletedMonitoring error:', error);
+    res.status(500).json({ error: error.message || 'Gagal mengarsipkan data monitoring selesai' });
+  }
+}
+
 module.exports = {
   getMonitoring,
   createMonitoring,
@@ -241,4 +256,5 @@ module.exports = {
   updateMonitoringArchive,
   deleteAllMonitoringHistory,
   importMonitoringBulk,
+  archiveCompletedMonitoring,
 };

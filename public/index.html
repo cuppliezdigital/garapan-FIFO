@@ -422,6 +422,107 @@
               </div>
             </section>
 
+            <!-- LIVE FLOW SPEEDOMETER GW (PC ONLY - MODUL 3) -->
+            <section class="jfs-flow-strip pc-only-flow-widget" id="jfsFlowStrip">
+              <div class="jfs-flow-header">
+                <div class="jfs-flow-title-wrap">
+                  <span class="jfs-flow-pulse"></span>
+                  <span class="jfs-flow-title">Beban Realtime GW-Jakarta</span>
+                  <span class="jfs-flow-site-chip">JKT99A</span>
+                  <span class="jfs-flow-time" id="jfsFlowTime">Memuat data JFS...</span>
+                </div>
+                <div class="jfs-flow-actions">
+                  <button type="button" class="btn-flow-refresh" id="btnRefreshFlowSummary" title="Segarkan Data Beban GW">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+              <div class="jfs-flow-cards-grid">
+                <!-- CARD 1: INBOUND / BONGKAR -->
+                <div class="jfs-flow-card card-inbound">
+                  <div class="flow-card-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                      <path d="m3.3 7 8.7 5 8.7-5"/>
+                      <path d="M12 22V12"/>
+                      <path d="m16 12 5 2.8"/>
+                      <path d="m3 14.8 5-2.8"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <span class="flow-card-label">Bongkar (Tiba Hari Ini)</span>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number" id="flowArrivalQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowArrivalWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+
+                <!-- CARD 2: BELUM MUAT / BACKLOG -->
+                <div class="jfs-flow-card card-backlog">
+                  <div class="flow-card-icon icon-amber">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <div class="flow-card-label-row">
+                      <span class="flow-card-label">Antrean Belum Muat</span>
+                      <span class="flow-badge-alert" id="flowBacklogBadge">Backlog</span>
+                    </div>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number text-amber" id="flowBacklogQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowBacklogWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+
+                <!-- CARD 3: OUTBOUND / MUAT TERKIRIM -->
+                <div class="jfs-flow-card card-outbound">
+                  <div class="flow-card-icon icon-emerald">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="1" y="3" width="15" height="13" rx="2"/>
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                      <circle cx="5.5" cy="18.5" r="2.5"/>
+                      <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <span class="flow-card-label">Muat Terkirim</span>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number text-emerald" id="flowSendQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowSendWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+
+                <!-- CARD 4: IN-TRANSIT / DI JALAN -->
+                <div class="jfs-flow-card card-transit">
+                  <div class="flow-card-icon icon-cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14"/>
+                      <path d="m12 5 7 7-7 7"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <span class="flow-card-label">Dalam Perjalanan</span>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number text-cyan" id="flowTransitQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowTransitWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <!-- 2. TOMBOL DRAWER KARTU JAM NGUMPET (EXPANDABLE TRIGGER BAR) -->
             <div class="stuck-drawer-wrap">
               <button type="button" id="btnToggleStuckDrawer" class="stuck-drawer-toggle">
@@ -632,6 +733,16 @@
                   </span>
                   <span class="btn-text-main">Sync JFS</span>
                   <span class="quick-status-chip live" id="jfsLiveBadge">Live</span>
+                </button>
+                <button type="button" class="btn-executive btn-executive-shift" id="btnArchiveCompletedShift" title="Pindahkan semua waybill yang sudah diupdate ke riwayat (dilakukan saat pergantian shift)">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="20" height="5" x="2" y="3" rx="1"/>
+                      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/>
+                      <path d="M10 12h4"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Arsip Selesai</span>
                 </button>
                 <button type="button" class="btn-executive btn-executive-primary" id="importBulkBtn">
                   <span class="btn-icon-circle">
@@ -922,7 +1033,8 @@
                       <th><input type="checkbox" id="selectAllMonitoring" aria-label="Pilih semua data halaman" /></th>
                       <th>Waybill</th>
                       <th>Tanggal</th>
-                      <th>Outlet</th>
+                      <th>Outlet Asal</th>
+                      <th>Outlet Tujuan</th>
                       <th>Stuck</th>
                       <th>TLC</th>
                       <th>Status</th>
@@ -2331,11 +2443,43 @@
                     <div class="sync-stats-mini" id="jfsResultStats"></div>
                   </div>
 
-                  <!-- PANDUAN RINGKAS -->
+                  <!-- BOOKMARKLET 1-KLIK (BEBAS COPY-PASTE TOKEN) -->
+                  <div class="jfs-bookmarklet-card">
+                    <div class="bookmarklet-header">
+                      <div class="bookmarklet-icon-box">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                      </div>
+                      <div class="bookmarklet-titles">
+                        <span class="bookmarklet-badge">REKOMENDASI PRAKTIS</span>
+                        <h4>Bookmarklet 1-Klik (Sync Token Tanpa F12)</h4>
+                        <p>Tarik tombol di bawah ke Bookmarks Bar Chrome Anda. Saat membuka JFS, cukup klik 1x untuk sinkronkan token otomatis!</p>
+                      </div>
+                    </div>
+                    <div class="bookmarklet-btn-row">
+                      <a href="javascript:(function(){try{var t=localStorage.getItem('token')||sessionStorage.getItem('token')||'';if(!t){var m=document.cookie.match(/(?:^|;\s*)(?:authtoken|token)=([^;]+)/);if(m)t=m[1];}if(!t){t=prompt('Masukkan token JFS:');}if(!t){alert('Token tidak ditemukan');return;}var appUrl=window.location.origin.includes('jtcargo')?'https://garapan-fifo-production.up.railway.app':'http://localhost:3000';fetch(appUrl+'/api/jfs/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authtoken:t})}).then(function(r){return r.json();}).then(function(d){alert('✅ Token JFS Berhasil Disinkronkan ke Monitoring FIFO!');}).catch(function(e){navigator.clipboard.writeText(t);alert('Token disalin ke clipboard:\n'+t);});}catch(err){alert('Error: '+err.message);}})();" 
+                         class="bookmarklet-drag-pill" 
+                         title="Tarik tombol ini ke Bookmarks Bar browser Anda (Ctrl+Shift+B)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                        <span>Sync JFS Token (Tarik ke Bookmark Bar)</span>
+                      </a>
+                      <button type="button" class="btn-copy-bookmarklet" id="btnCopyBookmarkletCode" title="Salin kode javascript bookmarklet">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        <span>Salin Script</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- PANDUAN MANUAL (OPSIONAL) -->
                   <div class="jfs-guide-box">
                     <div class="guide-title">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                      <strong>Cara Cepat Mengambil Auth Token JFS (10 Detik)</strong>
+                      <strong>Alternatif: Cara Manual Mengambil Token JFS via F12</strong>
                     </div>
                     <ol class="guide-steps">
                       <li>Buka <code>https://jfs.jtcargo.co.id</code> di Chrome (posisi sudah login scan barcode).</li>
@@ -3213,8 +3357,18 @@
             <input type="text" id="searchGatewayInput" placeholder="Cari Kode TLC (BDJ99A), Nama Gateway, Kota, atau PIC..." />
             <button type="button" class="btn-clear-search hidden" id="btnClearGatewaySearch">×</button>
           </div>
-          <div class="gateways-stat-badge">
-            <span id="gatewayCountBadge">122 Gateway</span> &bull; <span>14.317 Outlet</span>
+          <div class="gateways-toolbar-right" style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" class="btn-executive-shift" id="btnOpenBulkImportGatewayPic" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>Import Massal PIC</span>
+            </button>
+            <div class="gateways-stat-badge">
+              <span id="gatewayCountBadge">122 Gateway</span> &bull; <span>14.317 Outlet</span>
+            </div>
           </div>
         </div>
 
@@ -3269,6 +3423,48 @@
           <div class="form-actions">
             <button type="button" class="secondary-btn" id="cancelEditPicBtn">Batal</button>
             <button type="submit" class="primary-btn" id="saveEditPicBtn">Simpan PIC</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL IMPORT MASSAL PIC GATEWAY              -->
+    <!-- ============================================ -->
+    <div id="bulkImportGatewayPicModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="bulkPicTitle">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">UPDATE MASSAL DATABASE PIC</span>
+            <h3 id="bulkPicTitle">Import Massal PIC Gateway</h3>
+            <p class="modal-subtitle">Paste data dari Excel atau upload file CSV/Excel 2 kolom: <strong>Nama Gateway</strong> dan <strong>Nama PIC</strong>. Format @ terserah Anda.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeBulkImportPicBtn" aria-label="Tutup modal">×</button>
+        </div>
+        <form id="bulkImportGatewayPicForm">
+          <div class="form-grid single-col" style="gap: 14px;">
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">File CSV / TXT (Opsional)</span>
+              <input type="file" id="bulkPicFileInput" accept=".csv,.txt,.tsv" style="width: 100%; padding: 8px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1;" />
+            </label>
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Atau Paste Langsung dari Excel / Tabel (Kolom 1: Gateway, Kolom 2: PIC)</span>
+              <textarea id="bulkPicTextarea" rows="8" placeholder="Contoh isi tabel (bisa langsung Ctrl+V dari Excel):
+GW-Jakarta	@Budi
+GW-Bandung	Siti
+GW-Surabaya	@Agus Pratama
+GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82rem; padding: 10px; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 6px; color: #f8fafc;"></textarea>
+            </label>
+            <div style="font-size: 0.76rem; color: #94a3b8; line-height: 1.4; background: rgba(30, 41, 59, 0.5); padding: 8px 12px; border-radius: 6px; border-left: 3px solid #38bdf8;">
+              💡 <strong>Tips:</strong> Tidak perlu nomor HP. Penulisan nama dan tanda <code>@</code> akan disimpan 100% apa adanya sesuai yang Anda ketik/paste tanpa paksaan format sistem.
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="secondary-btn" id="closeBulkImportPicBottomBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="btnSubmitBulkPic" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>Simpan Massal PIC</span>
+            </button>
           </div>
         </form>
       </div>

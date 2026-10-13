@@ -111,10 +111,34 @@ async function getLogs(req, res) {
   }
 }
 
+async function getFlowSummary(req, res) {
+  try {
+    const { siteCode, date } = req.query || {};
+    const result = await jfsService.getJfsFlowSummary(siteCode, date);
+    res.json(result);
+  } catch (error) {
+    console.error('jfsController getFlowSummary error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal mengambil ringkasan beban muat JFS' });
+  }
+}
+
+async function getFlowTrend(req, res) {
+  try {
+    const { siteCode, beginDate, endDate } = req.query || {};
+    const result = await jfsService.getJfsFlowTrend(siteCode, beginDate, endDate);
+    res.json(result);
+  } catch (error) {
+    console.error('jfsController getFlowTrend error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal mengambil tren beban muat JFS' });
+  }
+}
+
 module.exports = {
   getStatus,
   updateConfig,
   testConnection,
   triggerSync,
   getLogs,
+  getFlowSummary,
+  getFlowTrend,
 };

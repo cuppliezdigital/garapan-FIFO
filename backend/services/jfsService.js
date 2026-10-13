@@ -122,13 +122,17 @@ async function updateConfig(newConfig = {}) {
   return getConfig();
 }
 
-function requestJfsApi(token, payload) {
+function requestJfsApi(token, payload, sqlCode = 'realtime_inv_man_dtl', customRoute = null) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify(payload);
+    const route = customRoute || (sqlCode === 'realtime_sca_cen_flo_sum' || sqlCode === 'realtime_sca_cen_flo_dtl'
+      ? 'Bd-theme-12f31774-6788-4f80-bd84-ad623f38c693|businessIndicatorIndex'
+      : 'Bd-theme-4d718ae8-fa85-4edc-b98c-1a0f75e5f9f3|businessIndicatorIndex');
+
     const options = {
       hostname: 'jfsgw.jtcargo.co.id',
       port: 443,
-      path: '/jfs-report-leader/report/dynamicReport/findByPagination?sqlCode=realtime_inv_man_dtl',
+      path: `/jfs-report-leader/report/dynamicReport/findByPagination?sqlCode=${encodeURIComponent(sqlCode)}&dcr_key=57b048fb-bc8c-4d24-982b-a750b7ce8693`,
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
@@ -138,7 +142,7 @@ function requestJfsApi(token, payload) {
         'langtype': 'ID',
         'origin': 'https://jfs.jtcargo.co.id',
         'referer': 'https://jfs.jtcargo.co.id/',
-        'routename': 'Bd-theme-4d718ae8-fa85-4edc-b98c-1a0f75e5f9f3|businessIndicatorIndex',
+        'routename': route,
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36',
         'Content-Length': Buffer.byteLength(postData),
       },
@@ -289,7 +293,8 @@ async function fetchAllJfsWaybills() {
 
     const rawTime = r.operate_scantime_1 || r.operate_scantime_2 || r.take_scantime || '';
     const tanggal = rawTime ? rawTime.split(' ')[0] : todayStr;
-    const outlet = r.destination_site_name || r.take_site_name || '-';
+    const outletAsal = r.take_site_name || '-';
+    const outletTujuan = r.destination_site_name || '-';
     const stuck = formatStuckByHours(r.inventoryHours);
     const tlc = r.destination_distribution_name || r.SEND_NEXTSTATION || siteName || 'GW-Jakarta';
     const namaBarang = r.goods_name || '-';
@@ -297,7 +302,8 @@ async function fetchAllJfsWaybills() {
     normalizedRows.push({
       waybill,
       tanggal,
-      outlet,
+      outlet_asal: outletAsal,
+      outlet: outletTujuan,
       stuck,
       tlc,
       status: 'Pending',
@@ -308,6 +314,95 @@ async function fetchAllJfsWaybills() {
   }
 
   return { rawCount: allRecords.length, rows: normalizedRows };
+}
+
+async function syncJfsWaybillsToMonitoring(rows, actor = null) {
+  const connection = await db.getConnection();
+  let importedCount = 0;
+  let skippedUpdatedCount = 0;
+  let skippedHistoryCount = 0;
+  let updatedAgingCount = 0;
+
+  try {
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query('SELECT * FROM monitoring_stuck');
+    const existingMap = new Map();
+    existingRows.forEach(r => existingMap.set(String(r.waybill), r));
+
+    const [historyRows] = await connection.query('SELECT waybill FROM monitoring_history');
+    const historySet = new Set(historyRows.map(r => String(r.waybill)));
+
+    const incomingMap = new Map();
+    for (const row of rows || []) {
+      const wb = String(row.waybill || '').trim();
+      if (!wb) continue;
+      if (!incomingMap.has(wb)) {
+        incomingMap.set(wb, row);
+      }
+    }
+
+    for (const [wb, incoming] of incomingMap.entries()) {
+      if (historySet.has(wb)) {
+        skippedHistoryCount++;
+        continue;
+      }
+
+      if (existingMap.has(wb)) {
+        const existing = existingMap.get(wb);
+        const oldAksi = String(existing.aksi || '').trim();
+        const oldStatus = String(existing.status || '').trim().toLowerCase();
+        const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
+
+        if (isUpdated) {
+          // PROTECT: Status Sudah Diupdate / ada aksi tidak boleh ditimpa status atau aksinya!
+          await connection.query(
+            `UPDATE monitoring_stuck
+             SET stuck = ?,
+                 outlet_asal = CASE WHEN outlet_asal IS NULL OR outlet_asal = '-' OR outlet_asal = '' THEN ? ELSE outlet_asal END,
+                 outlet = CASE WHEN outlet IS NULL OR outlet = '-' OR outlet = '' THEN ? ELSE outlet END,
+                 tlc = CASE WHEN tlc IS NULL OR tlc = '-' OR tlc = '' THEN ? ELSE tlc END,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE waybill = ?`,
+            [incoming.stuck, incoming.outlet_asal, incoming.outlet, incoming.tlc, wb]
+          );
+          skippedUpdatedCount++;
+        } else {
+          // Masih Pending: update jam stuck, outlet asal & tujuan, dll
+          await connection.query(
+            `UPDATE monitoring_stuck
+             SET tanggal = ?, outlet_asal = ?, outlet = ?, stuck = ?, tlc = ?, nama_barang = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE waybill = ?`,
+            [incoming.tanggal, incoming.outlet_asal, incoming.outlet, incoming.stuck, incoming.tlc, incoming.nama_barang, wb]
+          );
+          updatedAgingCount++;
+        }
+      } else {
+        // Resi baru dari JFS
+        await connection.query(
+          `INSERT INTO monitoring_stuck
+           (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+           VALUES (?, ?, ?, ?, ?, ?, 'Pending', '-', ?, 'JFS Realtime')`,
+          [incoming.waybill, incoming.tanggal, incoming.outlet_asal, incoming.outlet, incoming.stuck, incoming.tlc, incoming.nama_barang]
+        );
+        importedCount++;
+      }
+    }
+
+    await connection.commit();
+    return {
+      importedCount,
+      skippedUpdatedCount,
+      skippedHistoryCount,
+      updatedAgingCount,
+      totalIncoming: incomingMap.size,
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 }
 
 async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
@@ -330,9 +425,9 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
       role: 'system',
     };
 
-    const importResult = await monitoringService.bulkImportMonitoring(rows, importActor);
+    const importResult = await syncJfsWaybillsToMonitoring(rows, importActor);
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    const successMsg = `Sinkronisasi sukses (${duration}s): ${rows.length.toLocaleString('id-ID')} waybill JFS (${importResult.importedCount} dimuat, ${importResult.historyCount} diarsip, ${importResult.deletedCount} dibersihkan)`;
+    const successMsg = `Sinkronisasi sukses (${duration}s): ${rows.length.toLocaleString('id-ID')} waybill JFS (${importResult.importedCount} baru, ${importResult.skippedUpdatedCount} diproteksi, ${importResult.updatedAgingCount} diperbarui, ${importResult.skippedHistoryCount} di-skip)`;
 
     const nowIso = new Date().toISOString();
     await setConfigValue('last_sync_time', nowIso);
@@ -348,8 +443,8 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
         triggerType,
         rows.length,
         importResult.importedCount || 0,
-        importResult.historyCount || 0,
-        importResult.deletedCount || 0,
+        importResult.skippedUpdatedCount || 0,
+        importResult.skippedHistoryCount || 0,
         successMsg,
       ]
     );
@@ -359,10 +454,9 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
       message: successMsg,
       totalFetched: rows.length,
       importedCount: importResult.importedCount,
-      historyCount: importResult.historyCount,
-      deletedCount: importResult.deletedCount,
-      skippedCount: importResult.skippedCount,
-      overwrittenCount: importResult.overwrittenCount,
+      skippedUpdatedCount: importResult.skippedUpdatedCount,
+      skippedHistoryCount: importResult.skippedHistoryCount,
+      updatedAgingCount: importResult.updatedAgingCount,
       durationSeconds: duration,
       lastSyncTime: nowIso,
     };
@@ -388,6 +482,112 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
   } finally {
     isSyncInProgress = false;
   }
+}
+
+async function getJfsFlowSummary(siteCodeParam = null, dateParam = null) {
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  const siteCode = siteCodeParam || cfg.scanSiteCode || 'JKT99A';
+  const siteName = cfg.scanSiteCodeName || 'GW-Jakarta';
+
+  const todayStr = getFormattedDate(new Date());
+  const queryDate = dateParam || todayStr;
+
+  const payload = {
+    beginDate: queryDate,
+    endDate: queryDate,
+    scanSiteCode: siteCode,
+    scanSiteCodeName: siteName,
+    scanSiteCodeTypeId: 335,
+    scanSiteCodeId: 220,
+    sqlCode: 'realtime_sca_cen_flo_sum',
+    current: 1,
+    size: 20,
+    convertResultFromDictionCode: '',
+    convertResultFromDictionOriCode: '',
+    paginationSearchType: 'list',
+    countryId: '1',
+  };
+
+  const response = await requestJfsApi(
+    token,
+    payload,
+    'realtime_sca_cen_flo_sum',
+    'Bd-theme-12f31774-6788-4f80-bd84-ad623f38c693|businessIndicatorIndex'
+  );
+
+  const records = response?.data?.records || [];
+  const totalResult = response?.data?.totalResult || {};
+  const record = records[0] || {};
+
+  return {
+    success: true,
+    siteCode,
+    siteName,
+    date: queryDate,
+    summary: {
+      arrival_qty: Number(record.arrival_qty ?? totalResult.arrival_qty ?? 0),
+      arrival_pcs: Number(record.arrival_pcs ?? totalResult.arrival_pcs ?? 0),
+      arrival_weight: Number(record.arrival_weight ?? totalResult.arrival_weight ?? 0),
+      send_qty: Number(record.send_qty ?? totalResult.send_qty ?? 0),
+      send_pcs: Number(record.send_pcs ?? totalResult.send_pcs ?? 0),
+      send_weight: Number(record.send_weight ?? totalResult.send_weight ?? 0),
+      arrival_no_send_qty: Number(record.arrival_no_send_qty ?? totalResult.arrival_no_send_qty ?? 0),
+      arrival_no_send_pcs: Number(record.arrival_no_send_pcs ?? totalResult.arrival_no_send_pcs ?? 0),
+      arrival_no_send_weight: Number(record.arrival_no_send_weight ?? totalResult.arrival_no_send_weight ?? 0),
+      send_no_arrival_qty: Number(record.send_no_arrival_qty ?? totalResult.send_no_arrival_qty ?? 0),
+      send_no_arrival_pcs: Number(record.send_no_arrival_pcs ?? totalResult.send_no_arrival_pcs ?? 0),
+      send_no_arrival_weight: Number(record.send_no_arrival_weight ?? totalResult.send_no_arrival_weight ?? 0),
+      stay_storage_qty: Number(record.stay_storage_qty ?? totalResult.stay_storage_qty ?? 0),
+    },
+  };
+}
+
+async function getJfsFlowTrend(siteCodeParam = null, beginDateParam = null, endDateParam = null) {
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  const siteCode = siteCodeParam || cfg.scanSiteCode || 'JKT99A';
+  const siteName = cfg.scanSiteCodeName || 'GW-Jakarta';
+
+  const now = new Date();
+  const todayStr = getFormattedDate(now);
+  const firstDayOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const bDate = beginDateParam || firstDayOfMonth;
+  const eDate = endDateParam || todayStr;
+
+  const payload = {
+    beginDate: bDate,
+    endDate: eDate,
+    scanSiteCode: siteCode,
+    scanSiteCodeName: siteName,
+    scanSiteCodeTypeId: 335,
+    scanSiteCodeId: 220,
+    sqlCode: 'realtime_sca_cen_flo_sum',
+    current: 1,
+    size: 50,
+    convertResultFromDictionCode: '',
+    convertResultFromDictionOriCode: '',
+    paginationSearchType: 'list',
+    countryId: '1',
+  };
+
+  const response = await requestJfsApi(
+    token,
+    payload,
+    'realtime_sca_cen_flo_sum',
+    'Bd-theme-12f31774-6788-4f80-bd84-ad623f38c693|businessIndicatorIndex'
+  );
+
+  return {
+    success: true,
+    siteCode,
+    siteName,
+    beginDate: bDate,
+    endDate: eDate,
+    records: response?.data?.records || [],
+    totalResult: response?.data?.totalResult || null,
+  };
 }
 
 async function getRecentLogs(limit = 10) {
@@ -450,6 +650,8 @@ module.exports = {
   testJfsConnection,
   fetchAllJfsWaybills,
   syncJfsToDatabase,
+  getJfsFlowSummary,
+  getJfsFlowTrend,
   getRecentLogs,
   restartScheduler,
 };

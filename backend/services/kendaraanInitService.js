@@ -241,8 +241,8 @@ async function enrichKendaraanOutlets(ids = null) {
     const outletMap = {};
 
     const [stuckRes, histRes, hRes] = await Promise.all([
-      db.query(`SELECT waybill, outlet FROM monitoring_stuck WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`, [awbs]).catch(() => [[]]),
-      db.query(`SELECT waybill, outlet FROM monitoring_history WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`, [awbs]).catch(() => [[]]),
+      db.query(`SELECT waybill, COALESCE(NULLIF(NULLIF(outlet_asal, '-'), ''), outlet) AS outlet FROM monitoring_stuck WHERE waybill IN (?)`, [awbs]).catch(() => [[]]),
+      db.query(`SELECT waybill, COALESCE(NULLIF(NULLIF(outlet_asal, '-'), ''), outlet) AS outlet FROM monitoring_history WHERE waybill IN (?)`, [awbs]).catch(() => [[]]),
       db.query(`SELECT waybill, outlet FROM history WHERE waybill IN (?) AND outlet IS NOT NULL AND outlet != ''`, [awbs]).catch(() => [[]])
     ]);
 

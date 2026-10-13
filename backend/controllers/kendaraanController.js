@@ -629,19 +629,62 @@ exports.updateGatewayPic = async (req, res) => {
   }
 };
 
+// 9b. Bulk Import Master Gateway PIC
+exports.bulkImportGatewayPic = async (req, res) => {
+  try {
+    const { rows } = req.body || {};
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ error: 'Data baris CSV/Excel tidak boleh kosong' });
+    }
+
+    let updatedCount = 0;
+    let insertedCount = 0;
+
+    for (const r of rows) {
+      const namaGateway = String(r.nama_gateway || r.gateway || r.Gateway || r['Nama Gateway'] || '').trim();
+      const taggingPic = String(r.tagging_pic || r.pic || r.PIC || r['Nama PIC'] || '').trim();
+
+      if (!namaGateway) continue;
+
+      // Update or insert into master_gateway_list
+      const [existingGw] = await db.query('SELECT id FROM master_gateway_list WHERE UPPER(nama_gateway) = UPPER(?) LIMIT 1', [namaGateway]);
+      if (existingGw && existingGw.length > 0) {
+        await db.query('UPDATE master_gateway_list SET tagging_pic = ? WHERE id = ?', [taggingPic || null, existingGw[0].id]);
+        updatedCount++;
+      } else {
+        await db.query('INSERT INTO master_gateway_list (nama_gateway, tagging_pic) VALUES (?, ?)', [namaGateway, taggingPic || null]);
+        insertedCount++;
+      }
+
+      // Also update master_pic_gateway if present so outlets inherit this PIC
+      await db.query('UPDATE master_pic_gateway SET tagging_pic = ? WHERE UPPER(nama_gateway) = UPPER(?)', [taggingPic || null, namaGateway]).catch(() => null);
+    }
+
+    res.json({
+      success: true,
+      message: `Berhasil mengimpor PIC Gateway: ${updatedCount} diperbarui, ${insertedCount} baru ditambahkan.`,
+      updatedCount,
+      insertedCount,
+    });
+  } catch (err) {
+    console.error('bulkImportGatewayPic error:', err);
+    res.status(500).json({ error: 'Gagal import massal PIC Gateway: ' + err.message });
+  }
+};
+
 // 10. Lookup AWB or Outlet for Auto-fill
 exports.lookup = async (req, res) => {
   try {
     const { query } = req.params;
     const cleanQ = String(query).trim();
 
-    // 1. Try finding outlet from monitoring or history by waybill
+    // 1. Try finding outlet from monitoring or history by waybill (prioritizing outlet_asal)
     let outlet = null;
     try {
       const [hist] = await db.query(`
-        SELECT outlet FROM monitoring_stuck WHERE waybill = ?
+        SELECT COALESCE(NULLIF(outlet_asal, ''), outlet) AS outlet FROM monitoring_stuck WHERE waybill = ?
         UNION ALL
-        SELECT outlet FROM monitoring_history WHERE waybill = ?
+        SELECT COALESCE(NULLIF(outlet_asal, ''), outlet) AS outlet FROM monitoring_history WHERE waybill = ?
         UNION ALL
         SELECT outlet FROM history WHERE waybill = ?
         LIMIT 1

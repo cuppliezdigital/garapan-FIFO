@@ -399,12 +399,103 @@ function initJfsEventListeners() {
     });
   }
 
-  // Periodic status poll (every 60s)
+  // Refresh Flow Summary Button
+  const btnRefreshFlow = document.getElementById('btnRefreshFlowSummary');
+  if (btnRefreshFlow) {
+    btnRefreshFlow.addEventListener('click', () => {
+      btnRefreshFlow.classList.add('is-spinning');
+      fetchJfsFlowSummary().finally(() => {
+        setTimeout(() => btnRefreshFlow.classList.remove('is-spinning'), 600);
+      });
+    });
+  }
+
+  // Copy Bookmarklet script button
+  const copyBookmarkletBtn = document.getElementById('btnCopyBookmarkletCode');
+  if (copyBookmarkletBtn) {
+    copyBookmarkletBtn.addEventListener('click', () => {
+      const code = `javascript:(function(){try{var t=localStorage.getItem('token')||sessionStorage.getItem('token')||'';if(!t){var m=document.cookie.match(/(?:^|;\s*)(?:authtoken|token)=([^;]+)/);if(m)t=m[1];}if(!t){t=prompt('Masukkan token JFS:');}if(!t){alert('Token tidak ditemukan');return;}var appUrl=window.location.origin.includes('jtcargo')?'https://garapan-fifo-production.up.railway.app':'http://localhost:3000';fetch(appUrl+'/api/jfs/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authtoken:t})}).then(function(r){return r.json();}).then(function(d){alert('✅ Token JFS Berhasil Disinkronkan ke Monitoring FIFO!');}).catch(function(e){navigator.clipboard.writeText(t);alert('Token disalin ke clipboard:\\n'+t);});}catch(err){alert('Error: '+err.message);}})();`;
+      navigator.clipboard.writeText(code);
+      copyBookmarkletBtn.innerHTML = `<span>✓ Script Tersalin!</span>`;
+      setTimeout(() => {
+        copyBookmarkletBtn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <span>Salin Script Bookmarklet</span>
+        `;
+      }, 2500);
+    });
+  }
+
+  // Periodic status poll & flow summary (every 60s)
   if (!jfsStatusPollingTimer) {
     fetchJfsConfigAndStatus();
+    fetchJfsFlowSummary();
     jfsStatusPollingTimer = setInterval(() => {
       fetchJfsConfigAndStatus();
+      fetchJfsFlowSummary();
     }, 60 * 1000);
+  }
+}
+
+async function fetchJfsFlowSummary() {
+  // Only execute on screens that display the PC widget
+  if (window.innerWidth <= 992) return;
+
+  const token = getToken();
+  if (!token) return;
+
+  const flowStrip = document.getElementById('jfsFlowStrip');
+  if (!flowStrip) return;
+
+  try {
+    const res = await fetch('/api/jfs/flow-summary', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success || !data.summary) return;
+
+    const s = data.summary;
+
+    const arrQtyEl = document.getElementById('flowArrivalQty');
+    const arrWtEl = document.getElementById('flowArrivalWeight');
+    const bklgQtyEl = document.getElementById('flowBacklogQty');
+    const bklgWtEl = document.getElementById('flowBacklogWeight');
+    const bklgBadge = document.getElementById('flowBacklogBadge');
+    const sendQtyEl = document.getElementById('flowSendQty');
+    const sendWtEl = document.getElementById('flowSendWeight');
+    const trnQtyEl = document.getElementById('flowTransitQty');
+    const trnWtEl = document.getElementById('flowTransitWeight');
+    const timeEl = document.getElementById('jfsFlowTime');
+
+    if (arrQtyEl) arrQtyEl.textContent = (s.arrival_qty || 0).toLocaleString('id-ID');
+    if (arrWtEl) arrWtEl.textContent = `${((s.arrival_weight || 0) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Ton • ${(s.arrival_pcs || 0).toLocaleString('id-ID')} Koli`;
+
+    if (bklgQtyEl) bklgQtyEl.textContent = (s.arrival_no_send_qty || 0).toLocaleString('id-ID');
+    if (bklgWtEl) bklgWtEl.textContent = `${((s.arrival_no_send_weight || 0) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Ton • ${(s.arrival_no_send_pcs || 0).toLocaleString('id-ID')} Koli`;
+
+    if (bklgBadge) {
+      if ((s.arrival_no_send_qty || 0) > 10000) {
+        bklgBadge.className = 'flow-badge-alert alert-high';
+        bklgBadge.textContent = 'Padat';
+      } else {
+        bklgBadge.className = 'flow-badge-alert alert-normal';
+        bklgBadge.textContent = 'Lancar';
+      }
+    }
+
+    if (sendQtyEl) sendQtyEl.textContent = (s.send_qty || 0).toLocaleString('id-ID');
+    if (sendWtEl) sendWtEl.textContent = `${((s.send_weight || 0) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Ton • ${(s.send_pcs || 0).toLocaleString('id-ID')} Koli`;
+
+    if (trnQtyEl) trnQtyEl.textContent = (s.send_no_arrival_qty || 0).toLocaleString('id-ID');
+    if (trnWtEl) trnWtEl.textContent = `${((s.send_no_arrival_weight || 0) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Ton • ${(s.send_no_arrival_pcs || 0).toLocaleString('id-ID')} Koli`;
+
+    if (timeEl) {
+      const now = new Date();
+      timeEl.textContent = `Live: ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  } catch (err) {
+    console.error('fetchJfsFlowSummary error:', err);
   }
 }
 

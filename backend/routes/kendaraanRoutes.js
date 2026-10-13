@@ -23,6 +23,7 @@ router.post('/kendaraan/push-feishu', authMiddleware, requireAdminOrGm, kendaraa
 // Master Gateways Management
 router.get('/kendaraan/gateways', authMiddleware, requireAdminOrGm, kendaraanController.getMasterGateways);
 router.put('/kendaraan/gateways/:id', authMiddleware, requireAdminOrGm, kendaraanController.updateGatewayPic);
+router.post('/kendaraan/gateways/bulk-import', authMiddleware, requireAdminOrGm, kendaraanController.bulkImportGatewayPic);
 
 // Feishu Generator Dedicated Endpoints
 router.get('/kendaraan/feishu-hold-list', authMiddleware, requireAdminOrGm, kendaraanController.getFeishuHoldList);
