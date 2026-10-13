@@ -2204,6 +2204,14 @@
                     </svg>
                     <span>Master PIC Gateway</span>
                   </button>
+                  <button type="button" class="btn-feishu-action btn-add-outlet" id="btnOpenRegisterOutletModal" title="Daftarkan kode outlet baru ke Gateway &amp; PIC">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="16"/>
+                      <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>+ Daftarkan Outlet</span>
+                  </button>
                 </div>
               </div>
 
@@ -3474,6 +3482,49 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
             <button type="submit" class="primary-btn" id="btnSubmitBulkPic" style="display: flex; align-items: center; gap: 6px;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
               <span>Simpan Massal PIC</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DAFTARKAN OUTLET BARU (FEISHU / MAPPING)-->
+    <!-- ============================================ -->
+    <div id="registerOutletModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="registerOutletTitle">
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-cyan">DATABASE OUTLET &amp; PIC</span>
+            <h3 id="registerOutletTitle">Daftarkan Outlet Baru</h3>
+            <p class="modal-subtitle">Petakan kode outlet ke Gateway &amp; Tagging PIC agar dikenali otomatis di Generator Feishu &amp; Monitoring.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeRegisterOutletBtn" aria-label="Tutup modal">×</button>
+        </div>
+        <form id="registerOutletForm">
+          <div class="form-grid single-col" style="gap: 14px;">
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Kode Outlet / Asal <span class="text-rose">*</span></span>
+              <input type="text" id="regOutletCode" placeholder="Contoh: GRT013B" style="text-transform: uppercase; font-family: monospace; font-weight: 700; color: #38bdf8;" required />
+            </label>
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Gateway Tujuan / Induk <span class="text-rose">*</span></span>
+              <input type="text" list="regGatewayDatalist" id="regOutletGateway" placeholder="Ketik atau pilih gateway (contoh: GW-GarutMitra, GW-Bandung)..." required />
+              <datalist id="regGatewayDatalist"></datalist>
+            </label>
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Tagging PIC (Opsional)</span>
+              <input type="text" id="regOutletPic" placeholder="Contoh: Yoga / Siti / erasmushumanika@jtcargo (Kosongkan bila otomatis mewarisi PIC Gateway)" />
+            </label>
+            <div style="font-size: 0.76rem; color: #94a3b8; line-height: 1.4; background: rgba(30, 41, 59, 0.5); padding: 8px 12px; border-radius: 6px; border-left: 3px solid #38bdf8;">
+              💡 <strong>Otomatis:</strong> Begitu disimpan, outlet ini langsung tersimpan permanen di database dan baris tabel di Generator Feishu langsung otomatis terhubung ke Gateway &amp; Tagging PIC.
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="secondary-btn" id="cancelRegisterOutletBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="btnSubmitRegisterOutlet" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>Simpan &amp; Daftarkan</span>
             </button>
           </div>
         </form>

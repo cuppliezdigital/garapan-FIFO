@@ -29,6 +29,7 @@ router.post('/kendaraan/gateways/bulk-import', authMiddleware, requireAdminOrGm,
 router.get('/kendaraan/feishu-hold-list', authMiddleware, requireAdminOrGm, kendaraanController.getFeishuHoldList);
 router.post('/kendaraan/feishu-batch-lookup', authMiddleware, requireAdminOrGm, kendaraanController.batchLookup);
 router.get('/kendaraan/pic-map', authMiddleware, requireAdminOrGm, kendaraanController.getPicMap);
+router.post('/kendaraan/outlets', authMiddleware, requireAdminOrGm, kendaraanController.registerOutlet);
 
 module.exports = router;
 

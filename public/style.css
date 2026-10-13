@@ -13193,5 +13193,51 @@ thead th input[type="checkbox"]:active {
   box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3) !important;
 }
 
+/* ========================================================= */
+/* OUTLET REGISTRATION INLINE & TOOLBAR STYLES              */
+/* ========================================================= */
+.btn-inline-register-outlet {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.btn-inline-register-outlet:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-inline-register-outlet:active {
+  transform: translateY(0);
+}
+
+.btn-feishu-action.btn-add-outlet {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.btn-feishu-action.btn-add-outlet:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #34d399;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+
 
 

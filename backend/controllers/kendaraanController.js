@@ -879,5 +879,56 @@ exports.getPicMap = async (req, res) => {
   }
 };
 
+// 14. Register / Add New Outlet Mapping to Master PIC Gateway
+exports.registerOutlet = async (req, res) => {
+  try {
+    const { kode_outlet, nama_gateway, tagging_pic } = req.body || {};
+    if (!kode_outlet || !nama_gateway) {
+      return res.status(400).json({ error: 'Kode outlet dan Nama Gateway wajib diisi.' });
+    }
+
+    const cleanOutlet = String(kode_outlet).trim().toUpperCase();
+    const cleanGateway = String(nama_gateway).trim();
+    let finalPic = tagging_pic ? String(tagging_pic).trim() : null;
+
+    // Jika tagging_pic tidak diisi manual, warisi dari master_gateway_list
+    if (!finalPic) {
+      const [gwRows] = await db.query(
+        'SELECT tagging_pic FROM master_gateway_list WHERE UPPER(nama_gateway) = UPPER(?) LIMIT 1',
+        [cleanGateway]
+      );
+      if (gwRows && gwRows.length > 0 && gwRows[0].tagging_pic) {
+        finalPic = gwRows[0].tagging_pic;
+      }
+    }
+
+    const display = cleanGateway + (finalPic ? ` @${finalPic}` : '');
+
+    await db.query(`
+      INSERT INTO master_pic_gateway (kode_outlet, nama_gateway, tagging_pic, display_gateway_pic)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        nama_gateway = VALUES(nama_gateway),
+        tagging_pic = VALUES(tagging_pic),
+        display_gateway_pic = VALUES(display_gateway_pic)
+    `, [cleanOutlet, cleanGateway, finalPic, display]);
+
+    res.json({
+      success: true,
+      message: `Outlet ${cleanOutlet} berhasil didaftarkan ke ${cleanGateway}${finalPic ? ` (PIC: @${finalPic})` : ''}`,
+      data: {
+        kode_outlet: cleanOutlet,
+        nama_gateway: cleanGateway,
+        tagging_pic: finalPic || 'PIC',
+        display_gateway_pic: display,
+      }
+    });
+  } catch (err) {
+    console.error('registerOutlet error:', err);
+    res.status(500).json({ error: 'Gagal mendaftarkan outlet: ' + err.message });
+  }
+};
+
+
 
 

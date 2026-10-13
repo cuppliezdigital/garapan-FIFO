@@ -99,7 +99,12 @@ function renderFeishuExcelTable() {
           </div>
         `;
       } else {
-        resultHtml = `<span style="color: #fb7185; font-size: 0.74rem;">Outlet belum terdaftar</span>`;
+        resultHtml = `
+          <div class="unregistered-outlet-wrap" style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="color: #fb7185; font-size: 0.74rem;">Outlet belum terdaftar</span>
+            <button type="button" class="btn-inline-register-outlet" onclick="openRegisterOutletModal('${escKendaraanHtml(outlet)}', ${idx})" title="Daftarkan outlet ${escKendaraanHtml(outlet)}">+ Daftarkan</button>
+          </div>
+        `;
       }
     }
 
@@ -189,7 +194,13 @@ function handleExcelTableInput(e) {
             </div>
           `;
         } else {
-          resCell.innerHTML = `<span style="color: #fb7185; font-size: 0.74rem;">Outlet belum terdaftar</span>`;
+          const rawOt = feishuExcelRows[idx].outlet;
+          resCell.innerHTML = `
+            <div class="unregistered-outlet-wrap" style="display: inline-flex; align-items: center; gap: 6px;">
+              <span style="color: #fb7185; font-size: 0.74rem;">Outlet belum terdaftar</span>
+              <button type="button" class="btn-inline-register-outlet" onclick="openRegisterOutletModal('${escKendaraanHtml(rawOt)}', ${idx})" title="Daftarkan outlet ${escKendaraanHtml(rawOt)}">+ Daftarkan</button>
+            </div>
+          `;
         }
       } else {
         resCell.innerHTML = `<span class="cell-empty-dash">-</span>`;
@@ -564,6 +575,137 @@ function initFeishuEventListeners() {
   const btnBot = document.getElementById('btnSendToFeishuBot');
   if (btnBot) {
     btnBot.addEventListener('click', openFeishuConfirmModal);
+  }
+
+  // Register Outlet Modal buttons
+  const btnOpenReg = document.getElementById('btnOpenRegisterOutletModal');
+  if (btnOpenReg) btnOpenReg.addEventListener('click', () => openRegisterOutletModal(''));
+
+  const closeRegBtn = document.getElementById('closeRegisterOutletBtn');
+  const cancelRegBtn = document.getElementById('cancelRegisterOutletBtn');
+  if (closeRegBtn) closeRegBtn.addEventListener('click', closeRegisterOutletModal);
+  if (cancelRegBtn) cancelRegBtn.addEventListener('click', closeRegisterOutletModal);
+
+  const regForm = document.getElementById('registerOutletForm');
+  if (regForm) regForm.addEventListener('submit', submitRegisterOutletForm);
+}
+
+// ============================================================
+// MODAL DAFTARKAN OUTLET BARU KE GATEWAY & PIC
+// ============================================================
+window.openRegisterOutletModal = async function(defaultOutlet = '', targetIdx = null) {
+  const modal = document.getElementById('registerOutletModal');
+  if (!modal) return;
+  const codeInput = document.getElementById('regOutletCode');
+  const gwInput = document.getElementById('regOutletGateway');
+  const picInput = document.getElementById('regOutletPic');
+  const dl = document.getElementById('regGatewayDatalist');
+
+  if (codeInput) codeInput.value = (defaultOutlet || '').toUpperCase().trim();
+  if (gwInput) gwInput.value = '';
+  if (picInput) picInput.value = '';
+
+  // Populate gateway datalist from masterGatewaysData if available, else fetch
+  try {
+    const token = getToken();
+    const res = await fetch('/api/kendaraan/gateways', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (res.ok) {
+      const d = await res.json();
+      const list = d.data || [];
+      if (dl) {
+        dl.innerHTML = list.map(g => `<option value="${escKendaraanHtml(g.nama_gateway)}">${escKendaraanHtml(g.nama_gateway)}${g.tagging_pic ? ' (PIC: @' + escKendaraanHtml(g.tagging_pic) + ')' : ''}</option>`).join('');
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load gateways for datalist:', err);
+  }
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => {
+    if (codeInput && !defaultOutlet) codeInput.focus();
+    else if (gwInput) gwInput.focus();
+  }, 100);
+};
+
+function closeRegisterOutletModal() {
+  const modal = document.getElementById('registerOutletModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function submitRegisterOutletForm(e) {
+  if (e) e.preventDefault();
+  const token = getToken();
+  if (!token) return;
+
+  const codeInput = document.getElementById('regOutletCode');
+  const gwInput = document.getElementById('regOutletGateway');
+  const picInput = document.getElementById('regOutletPic');
+  const submitBtn = document.getElementById('btnSubmitRegisterOutlet');
+
+  const kode_outlet = (codeInput?.value || '').toUpperCase().trim();
+  const nama_gateway = (gwInput?.value || '').trim();
+  const tagging_pic = (picInput?.value || '').trim();
+
+  if (!kode_outlet || !nama_gateway) {
+    alert('Kode Outlet dan Nama Gateway wajib diisi!');
+    return;
+  }
+
+  const origHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Menyimpan...</span>';
+  }
+
+  try {
+    const res = await fetch('/api/kendaraan/outlets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ kode_outlet, nama_gateway, tagging_pic }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Gagal mendaftarkan outlet');
+    }
+
+    // Update local client pic-map cache immediately
+    if (!feishuPicMap) feishuPicMap = {};
+    feishuPicMap[kode_outlet] = {
+      nama_gateway: data.data.nama_gateway,
+      tagging_pic: data.data.tagging_pic || 'PIC',
+      display: data.data.display_gateway_pic,
+    };
+
+    // Re-resolve all rows in the spreadsheet that have this outlet
+    feishuExcelRows.forEach(row => {
+      if (String(row.outlet || '').toUpperCase().trim() === kode_outlet) {
+        resolveFeishuRowPic(row);
+      }
+    });
+
+    renderFeishuExcelTable();
+    updateFeishuStats();
+    generateFeishuPreviewText();
+
+    closeRegisterOutletModal();
+    showAppAlert(`✅ Outlet ${kode_outlet} berhasil didaftarkan ke ${nama_gateway}!`);
+  } catch (err) {
+    console.error('submitRegisterOutletForm error:', err);
+    alert(`❌ Gagal: ${err.message}`);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origHtml;
+    }
   }
 }
 
