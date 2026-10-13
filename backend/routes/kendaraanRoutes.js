@@ -30,6 +30,8 @@ router.get('/kendaraan/feishu-hold-list', authMiddleware, requireAdminOrGm, kend
 router.post('/kendaraan/feishu-batch-lookup', authMiddleware, requireAdminOrGm, kendaraanController.batchLookup);
 router.get('/kendaraan/pic-map', authMiddleware, requireAdminOrGm, kendaraanController.getPicMap);
 router.post('/kendaraan/outlets', authMiddleware, requireAdminOrGm, kendaraanController.registerOutlet);
+router.post('/kendaraan/report-counts', authMiddleware, requireAdminOrGm, kendaraanController.getReportCounts);
+router.post('/kendaraan/increment-report', authMiddleware, requireAdminOrGm, kendaraanController.incrementReportCounts);
 
 module.exports = router;
 

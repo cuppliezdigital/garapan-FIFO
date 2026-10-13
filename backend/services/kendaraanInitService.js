@@ -124,11 +124,23 @@ async function ensureKendaraanTables() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    // 3b. kendaraan_report_tracking table (Tracks how many times an AWB has been billed/reported)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS kendaraan_report_tracking (
+        awb VARCHAR(50) PRIMARY KEY,
+        report_count INT DEFAULT 1,
+        first_reported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_reported_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_report_count (report_count)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     // Harmonize table collations to prevent collation conflicts
     try {
       await db.query(`ALTER TABLE kendaraan_instock CONVERT TO CHARACTER SET utf8mb4`);
       await db.query(`ALTER TABLE master_gateway_list CONVERT TO CHARACTER SET utf8mb4`);
       await db.query(`ALTER TABLE master_pic_gateway CONVERT TO CHARACTER SET utf8mb4`);
+      await db.query(`ALTER TABLE kendaraan_report_tracking CONVERT TO CHARACTER SET utf8mb4`);
       await db.query(`ALTER TABLE history CONVERT TO CHARACTER SET utf8mb4`);
     } catch (_) {}
 

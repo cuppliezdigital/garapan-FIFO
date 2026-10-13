@@ -929,6 +929,68 @@ exports.registerOutlet = async (req, res) => {
   }
 };
 
+// 15. Get AWB Report Counts
+exports.getReportCounts = async (req, res) => {
+  try {
+    const { awbs } = req.body || {};
+    if (!Array.isArray(awbs) || awbs.length === 0) {
+      return res.json({ success: true, counts: {} });
+    }
+    const cleanAwbs = [...new Set(awbs.map(a => String(a).trim()).filter(Boolean))];
+    if (cleanAwbs.length === 0) {
+      return res.json({ success: true, counts: {} });
+    }
+    const [rows] = await db.query(
+      'SELECT awb, report_count, last_reported_at FROM kendaraan_report_tracking WHERE awb IN (?)',
+      [cleanAwbs]
+    );
+    const counts = {};
+    rows.forEach(r => {
+      counts[r.awb] = {
+        count: r.report_count || 1,
+        lastReportedAt: r.last_reported_at,
+      };
+    });
+    res.json({ success: true, counts });
+  } catch (err) {
+    console.error('getReportCounts error:', err);
+    res.status(500).json({ error: 'Gagal membaca riwayat report: ' + err.message });
+  }
+};
+
+// 16. Increment AWB Report Counts (when user copies/dispatches report)
+exports.incrementReportCounts = async (req, res) => {
+  try {
+    const { awbs } = req.body || {};
+    if (!Array.isArray(awbs) || awbs.length === 0) {
+      return res.json({ success: true, message: 'Tidak ada AWB diproses' });
+    }
+    const cleanAwbs = [...new Set(awbs.map(a => String(a).trim()).filter(Boolean))];
+    if (cleanAwbs.length === 0) {
+      return res.json({ success: true, message: 'Tidak ada AWB valid' });
+    }
+
+    for (const awb of cleanAwbs) {
+      await db.query(`
+        INSERT INTO kendaraan_report_tracking (awb, report_count, first_reported_at, last_reported_at)
+        VALUES (?, 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+          report_count = report_count + 1,
+          last_reported_at = NOW()
+      `, [awb]);
+    }
+
+    res.json({
+      success: true,
+      message: `Berhasil mencatat riwayat penagihan untuk ${cleanAwbs.length} resi.`,
+    });
+  } catch (err) {
+    console.error('incrementReportCounts error:', err);
+    res.status(500).json({ error: 'Gagal menyimpan riwayat penagihan: ' + err.message });
+  }
+};
+
+
 
 
 
