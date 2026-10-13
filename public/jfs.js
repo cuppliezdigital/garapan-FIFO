@@ -3,6 +3,7 @@
 /* ============================================================ */
 let jfsStatusPollingTimer = null;
 let jfsListenersInitialized = false;
+let lastKnownSyncTime = null;
 
 async function fetchJfsConfigAndStatus() {
   const token = getToken();
@@ -53,6 +54,14 @@ async function fetchJfsConfigAndStatus() {
       if (cfg.lastSyncTime) {
         const d = new Date(cfg.lastSyncTime);
         metricLast.textContent = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + d.toLocaleDateString('id-ID') + ')';
+
+        // Auto-refresh tabel monitoring jika server baru saja menyelesaikan background sync
+        if (lastKnownSyncTime && lastKnownSyncTime !== cfg.lastSyncTime) {
+          console.log('🔄 [JFS Realtime] Terdeteksi sinkronisasi baru dari server, menyegarkan tabel monitoring...');
+          if (typeof fetchMonitoring === 'function') fetchMonitoring();
+          if (typeof fetchMonitoringHistory === 'function') fetchMonitoringHistory();
+        }
+        lastKnownSyncTime = cfg.lastSyncTime;
       } else {
         metricLast.textContent = 'Belum Pernah';
       }
@@ -355,16 +364,17 @@ async function executeJfsSync(isQuickBtn = false) {
       const stats = document.getElementById('jfsResultStats');
       if (stats) {
         stats.innerHTML = `
-          <span class="sync-stat-tag">📥 Dimuat: <strong>${result.importedCount || 0}</strong></span>
-          <span class="sync-stat-tag">🗂️ Diarsip: <strong>${result.historyCount || 0}</strong></span>
-          <span class="sync-stat-tag">🗑️ Dibersihkan: <strong>${result.deletedCount || 0}</strong></span>
-          <span class="sync-stat-tag">🔄 Total Diambil: <strong>${result.totalFetched || 0}</strong></span>
+          <span class="sync-stat-tag">📥 Baru Dimuat: <strong>${(result.importedCount || 0).toLocaleString('id-ID')}</strong></span>
+          <span class="sync-stat-tag">⏱️ Diperbarui: <strong>${(result.updatedAgingCount || 0).toLocaleString('id-ID')}</strong></span>
+          <span class="sync-stat-tag">🗂️ Diarsip: <strong>${(result.archivedCount || result.historyCount || 0).toLocaleString('id-ID')}</strong></span>
+          <span class="sync-stat-tag">🗑️ Selesai/Keluar: <strong>${(result.deletedCount || 0).toLocaleString('id-ID')}</strong></span>
+          <span class="sync-stat-tag">🔄 Total JFS: <strong>${(result.totalFetched || 0).toLocaleString('id-ID')}</strong></span>
         `;
       }
     }
 
     if (isQuickBtn) {
-      alert(`✅ Sinkronisasi JFS Berhasil (${duration}s)!\n${result.totalFetched || 0} waybill ditarik (${result.importedCount || 0} aktif, ${result.historyCount || 0} masuk history).`);
+      alert(`✅ Sinkronisasi JFS Berhasil (${duration}s)!\n${(result.totalFetched || 0).toLocaleString('id-ID')} waybill JFS (${(result.importedCount || 0).toLocaleString('id-ID')} baru, ${(result.archivedCount || 0).toLocaleString('id-ID')} diarsip, ${(result.deletedCount || 0).toLocaleString('id-ID')} selesai/keluar).`);
     }
 
     // Refresh monitoring tables and KPI

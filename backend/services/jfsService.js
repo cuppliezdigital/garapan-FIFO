@@ -343,13 +343,18 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
   try {
     await connection.beginTransaction();
 
-    const [existingRows] = await connection.query('SELECT waybill, status, aksi FROM monitoring_stuck');
+    // 1. Ambil seluruh data aktif yang ada di monitoring_stuck saat ini
+    const [existingRows] = await connection.query(
+      'SELECT waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by FROM monitoring_stuck'
+    );
     const existingMap = new Map();
     existingRows.forEach(r => existingMap.set(String(r.waybill), r));
 
+    // 2. Ambil riwayat yang sudah pernah diselesaikan
     const [historyRows] = await connection.query('SELECT waybill FROM monitoring_history');
     const historySet = new Set(historyRows.map(r => String(r.waybill)));
 
+    // 3. Normalisasi data baru dari JFS
     const incomingMap = new Map();
     for (const row of rows || []) {
       const wb = String(row.waybill || '').trim();
@@ -359,6 +364,64 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
       }
     }
 
+    // 4. Deteksi paket yang SUDAH KELUAR dari inventaris stuck JFS (sudah berangkat / terkirim / beres di Gateway Jakarta)
+    const toArchive = [];
+    const toDelete = [];
+
+    for (const existing of existingRows) {
+      const wb = String(existing.waybill);
+      if (!incomingMap.has(wb)) {
+        const oldAksi = String(existing.aksi || '').trim();
+        const oldStatus = String(existing.status || '').trim().toLowerCase();
+        const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
+
+        if (isUpdated) {
+          // Data yang sudah dikerjakan/diupdate operator diarsipkan ke History agar catatan tidak hilang
+          toArchive.push({ ...existing, source: 'jfs_resolved' });
+        } else {
+          // Paket lama yang sudah tidak tertahan di gudang JFS dibersihkan dari antrean aktif monitoring
+          toDelete.push(wb);
+        }
+      }
+    }
+
+    const CHUNK_SIZE = 500;
+
+    // 5. Arsipkan data yang sudah diupdate ke monitoring_history (chunks of 500)
+    for (let i = 0; i < toArchive.length; i += CHUNK_SIZE) {
+      const chunk = toArchive.slice(i, i + CHUNK_SIZE);
+      const values = chunk.map((r) => [
+        r.waybill,
+        r.tanggal ? new Date(r.tanggal).toISOString().slice(0, 10) : null,
+        r.outlet_asal || '-',
+        r.outlet || '-',
+        String(r.stuck || '0 Jam (1-12)').trim() || '0 Jam (1-12)',
+        r.tlc || '-',
+        r.status || 'Sudah Diupdate',
+        r.aksi || '-',
+        r.nama_barang || '-',
+        r.updated_by || 'JFS Realtime',
+        r.source || 'jfs_resolved',
+      ]);
+      await connection.query(
+        `INSERT INTO monitoring_history
+          (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
+         VALUES ?`,
+        [values]
+      );
+    }
+
+    // 6. Hapus paket yang sudah keluar/beres dari monitoring_stuck (chunks of 500)
+    const allLeftWaybills = [...toArchive.map(r => r.waybill), ...toDelete];
+    for (let i = 0; i < allLeftWaybills.length; i += CHUNK_SIZE) {
+      const chunk = allLeftWaybills.slice(i, i + CHUNK_SIZE);
+      await connection.query(
+        'DELETE FROM monitoring_stuck WHERE waybill IN (?)',
+        [chunk]
+      );
+    }
+
+    // 7. Kategorikan paket incoming JFS
     const validIncoming = [];
     for (const [wb, incoming] of incomingMap.entries()) {
       if (historySet.has(wb)) {
@@ -382,8 +445,7 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
       validIncoming.push(incoming);
     }
 
-    // Eksekusi batch upsert dengan chunks of 500 (sangat cepat ~1 detik untuk 15.000+ data)
-    const CHUNK_SIZE = 500;
+    // 8. Eksekusi batch upsert dengan chunks of 500
     for (let i = 0; i < validIncoming.length; i += CHUNK_SIZE) {
       const chunk = validIncoming.slice(i, i + CHUNK_SIZE);
       const values = chunk.map((r) => [
@@ -451,6 +513,8 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
       skippedUpdatedCount,
       skippedHistoryCount,
       updatedAgingCount,
+      archivedCount: toArchive.length,
+      deletedCount: toDelete.length,
       totalIncoming: incomingMap.size,
     };
   } catch (err) {
@@ -489,7 +553,7 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
 
     const importResult = await syncJfsWaybillsToMonitoring(rows, importActor);
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    const successMsg = `Sinkronisasi sukses (${duration}s): ${rows.length.toLocaleString('id-ID')} waybill JFS (${importResult.importedCount} baru, ${importResult.skippedUpdatedCount} diproteksi, ${importResult.updatedAgingCount} diperbarui, ${importResult.skippedHistoryCount} di-skip)`;
+    const successMsg = `Sinkronisasi sukses (${duration}s): ${rows.length.toLocaleString('id-ID')} waybill JFS (${importResult.importedCount} baru, ${importResult.updatedAgingCount} diperbarui, ${importResult.archivedCount} diarsip, ${importResult.deletedCount} dibersihkan)`;
 
     const nowIso = new Date().toISOString();
     await setConfigValue('last_sync_time', nowIso);
@@ -500,12 +564,13 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
     await db.query(
       `INSERT INTO jfs_sync_logs
         (trigger_type, status, total_fetched, imported_count, archived_count, deleted_count, message)
-       VALUES (?, 'success', ?, ?, ?, 0, ?)`,
+       VALUES (?, 'success', ?, ?, ?, ?, ?)`,
       [
         triggerType,
         rows.length,
         importResult.importedCount || 0,
-        importResult.skippedUpdatedCount || 0,
+        importResult.archivedCount || 0,
+        importResult.deletedCount || 0,
         successMsg,
       ]
     );
@@ -515,6 +580,8 @@ async function syncJfsToDatabase(triggerType = 'auto', actor = null) {
       message: successMsg,
       totalFetched: rows.length,
       importedCount: importResult.importedCount,
+      archivedCount: importResult.archivedCount,
+      deletedCount: importResult.deletedCount,
       skippedUpdatedCount: importResult.skippedUpdatedCount,
       skippedHistoryCount: importResult.skippedHistoryCount,
       updatedAgingCount: importResult.updatedAgingCount,
