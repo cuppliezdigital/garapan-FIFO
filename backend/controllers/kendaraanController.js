@@ -452,7 +452,20 @@ exports.syncFromGoogleSheet = async (req, res) => {
     }
 
     if (sheetRows.length === 0) {
-      return res.status(400).json({ error: 'Tidak ada data yang ditemukan di sheet LOG_UPDATE Google Sheet.' });
+      // 1:1 synchronization with AppSheet / Google Sheet:
+      // If Google Sheet has 0 rows, clear database table kendaraan_instock as well
+      await db.query('DELETE FROM kendaraan_instock');
+      const summary = computeDashboardSummary([]);
+
+      return res.json({
+        success: true,
+        message: 'Sinkronisasi sukses! Google Sheet saat ini kosong (0 unit aktif). Data instock di database telah dikosongkan.',
+        synced_count: 0,
+        kpi: summary.kpi,
+        matrix: summary.matrix,
+        templates: summary.templates,
+        data: []
+      });
     }
 
     // Full 1:1 synchronization with AppSheet / Google Sheet
