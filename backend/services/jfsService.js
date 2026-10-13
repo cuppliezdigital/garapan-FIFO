@@ -47,8 +47,11 @@ async function ensureJfsTables() {
     )
   `);
 
+  const ACTIVE_DEFAULT_TOKEN = '83ae01d5865048e08a006eba7c53a6a1';
+  const initialToken = process.env.JFS_AUTH_TOKEN || ACTIVE_DEFAULT_TOKEN;
+
   const defaultConfigs = [
-    { key: 'authtoken', value: '5e5f58c243c645b89385c6806310474c' },
+    { key: 'authtoken', value: initialToken },
     { key: 'scan_site_code', value: 'JKT99A' },
     { key: 'scan_site_code_name', value: 'GW-Jakarta' },
     { key: 'auto_sync_enabled', value: 'true' },
@@ -67,6 +70,14 @@ async function ensureJfsTables() {
       [item.key, item.value]
     );
   }
+
+  // Otomatis upgrade jika token di database masih token lama yang sudah expired
+  await db.query(
+    `UPDATE jfs_config
+     SET config_value = ?
+     WHERE config_key = 'authtoken' AND (config_value = '5e5f58c243c645b89385c6806310474c' OR config_value IS NULL OR config_value = '')`,
+    [initialToken]
+  );
 }
 
 async function getConfig() {
@@ -76,8 +87,14 @@ async function getConfig() {
   for (const r of rows) {
     map[r.config_key] = r.config_value;
   }
+  const ACTIVE_DEFAULT_TOKEN = '83ae01d5865048e08a006eba7c53a6a1';
+  const defaultToken = process.env.JFS_AUTH_TOKEN || ACTIVE_DEFAULT_TOKEN;
+  let currentToken = map.authtoken || defaultToken;
+  if (currentToken === '5e5f58c243c645b89385c6806310474c' || !currentToken) {
+    currentToken = defaultToken;
+  }
   return {
-    authtoken: map.authtoken || '5e5f58c243c645b89385c6806310474c',
+    authtoken: currentToken,
     scanSiteCode: map.scan_site_code || 'JKT99A',
     scanSiteCodeName: map.scan_site_code_name || 'GW-Jakarta',
     autoSyncEnabled: map.auto_sync_enabled === 'true' || map.auto_sync_enabled === '1',
@@ -293,8 +310,8 @@ async function fetchAllJfsWaybills() {
 
     const rawTime = r.operate_scantime_1 || r.operate_scantime_2 || r.take_scantime || '';
     const tanggal = rawTime ? rawTime.split(' ')[0] : todayStr;
-    const outletAsal = r.take_site_name || '-';
-    const outletTujuan = r.destination_site_name || '-';
+    const outletAsal = r.take_site_name || r.first_distribution_name || r.take_proxy_area_name || '-';
+    const outletTujuan = r.destination_site_name || r.destination_distribution_name || '-';
     const stuck = formatStuckByHours(r.inventoryHours);
     const tlc = r.destination_distribution_name || r.SEND_NEXTSTATION || siteName || 'GW-Jakarta';
     const namaBarang = r.goods_name || '-';
@@ -638,6 +655,22 @@ async function initJfs() {
     await ensureJfsTables();
     startScheduler();
     console.log('✅ Inisialisasi JFS Realtime Service selesai.');
+
+    // Auto-sync langsung saat startup jika terdeteksi data di database belum punya outlet_asal
+    setTimeout(async () => {
+      try {
+        const [missing] = await db.query(
+          "SELECT COUNT(*) as cnt FROM monitoring_stuck WHERE outlet_asal IS NULL OR outlet_asal = '-' OR outlet_asal = ''"
+        );
+        if (missing && missing[0] && missing[0].cnt > 0) {
+          console.log(`🔄 [JFS Startup Auto-Sync] Mendeteksi ${missing[0].cnt} waybill dengan outlet asal kosong. Menjalankan sinkronisasi penyegaran realtime...`);
+          const result = await syncJfsToDatabase('auto');
+          console.log(`✅ [JFS Startup Auto-Sync] Selesai:`, result.message);
+        }
+      } catch (syncErr) {
+        console.error('⚠️ [JFS Startup Auto-Sync] Error:', syncErr.message);
+      }
+    }, 4000);
   } catch (err) {
     console.error('❌ Gagal inisialisasi JFS Service:', err.message);
   }
