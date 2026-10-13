@@ -1,0 +1,218 @@
+const https = require('https');
+const db = require('../config/db');
+
+const DEFAULT_PTO_TOKEN = '1478b74425e143139ccba26a46944ea4';
+
+// Ensure pto_authtoken exists in jfs_config
+async function getPtoToken() {
+  try {
+    const [rows] = await db.query("SELECT config_value FROM jfs_config WHERE config_key = 'pto_authtoken' LIMIT 1");
+    if (rows && rows.length > 0 && rows[0].config_value) {
+      return rows[0].config_value.trim();
+    }
+  } catch (e) {
+    console.warn('getPtoToken DB warning:', e.message);
+  }
+  return DEFAULT_PTO_TOKEN;
+}
+
+// 1. Get PTO Configuration & Account Status
+exports.getConfig = async (req, res) => {
+  try {
+    const token = await getPtoToken();
+    res.json({
+      success: true,
+      data: {
+        authtoken: token,
+        accountName: 'Indra Purnama (SPV Area DKI Jakarta)',
+        defaultPageSizes: [50, 100, 200, 300, 500]
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal mengambil konfigurasi PTO: ' + err.message });
+  }
+};
+
+// 2. Save PTO Token
+exports.saveConfig = async (req, res) => {
+  try {
+    const { authtoken } = req.body || {};
+    if (!authtoken || !authtoken.trim()) {
+      return res.status(400).json({ error: 'Token PTO tidak boleh kosong.' });
+    }
+    const cleanToken = authtoken.trim();
+    await db.query(
+      `INSERT INTO jfs_config (config_key, config_value)
+       VALUES ('pto_authtoken', ?)
+       ON DUPLICATE KEY UPDATE config_value = ?`,
+      [cleanToken, cleanToken]
+    );
+    res.json({ success: true, message: 'Token PTO berhasil disimpan.', authtoken: cleanToken });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal menyimpan token PTO: ' + err.message });
+  }
+};
+
+// Helper: HTTP Request to JFS Gateway
+function makeJfsPtoRequest(path, method, postData, token) {
+  return new Promise((resolve, reject) => {
+    const headers = {
+      'accept': 'application/json, text/plain, */*',
+      'authtoken': token,
+      'lang': 'ID',
+      'langtype': 'ID',
+      'origin': 'https://jfs.jtcargo.co.id',
+      'referer': 'https://jfs.jtcargo.co.id/',
+      'routename': 'orderTracking',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    };
+
+    if (method === 'POST') {
+      headers['content-type'] = 'application/json;charset=UTF-8';
+      headers['Content-Length'] = Buffer.byteLength(postData);
+    }
+
+    const options = {
+      hostname: 'jfsgw.jtcargo.co.id',
+      port: 443,
+      path: path,
+      method: method,
+      headers: headers
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 401) {
+          return reject(new Error('Sesi token PTO telah kedaluwarsa atau tidak valid (HTTP 401). Silakan perbarui token di menu PTO.'));
+        }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`Server JFS mengembalikan status HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
+        }
+        try {
+          const json = JSON.parse(body);
+          resolve(json);
+        } catch (e) {
+          reject(new Error('Gagal membaca response JSON dari JFS PTO: ' + e.message));
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      reject(new Error('Koneksi ke gateway JFS PTO gagal: ' + err.message));
+    });
+
+    req.setTimeout(45000, () => {
+      req.destroy(new Error('Request ke gateway JFS PTO timeout (45 detik)'));
+    });
+
+    if (method === 'POST' && postData) {
+      req.write(postData);
+    }
+    req.end();
+  });
+}
+
+// 3. Query Orders (Pelacakan Total Order)
+exports.queryOrders = async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate,
+      waybillIds,
+      current = 1,
+      size = 100,
+      orderSourceName,
+      countryId = '1'
+    } = req.body || {};
+
+    const token = await getPtoToken();
+
+    // Default dates if omitted: past 15 days to today
+    const now = new Date();
+    const defaultEnd = now.toISOString().slice(0, 10) + ' 23:59:59';
+    const past15 = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+    const defaultStart = past15.toISOString().slice(0, 10) + ' 00:00:00';
+
+    const cleanStart = (startDate && String(startDate).trim()) ? String(startDate).trim() : defaultStart;
+    const cleanEnd = (endDate && String(endDate).trim()) ? String(endDate).trim() : defaultEnd;
+
+    // Normalize size (allow 20, 50, 100, 200, 300, 500)
+    let parsedSize = parseInt(size, 10) || 100;
+    if (parsedSize > 500) parsedSize = 500;
+    if (parsedSize < 10) parsedSize = 20;
+
+    const parsedCurrent = Math.max(1, parseInt(current, 10) || 1);
+
+    const payload = {
+      startDate: cleanStart,
+      endDate: cleanEnd,
+      current: parsedCurrent,
+      size: parsedSize,
+      countryId: String(countryId)
+    };
+
+    if (orderSourceName && String(orderSourceName).trim() && String(orderSourceName).toLowerCase() !== 'all') {
+      payload.orderSourceName = String(orderSourceName).trim();
+    }
+
+    if (Array.isArray(waybillIds) && waybillIds.length > 0) {
+      payload.waybillIds = waybillIds.map(w => String(w).trim()).filter(Boolean);
+    } else if (typeof waybillIds === 'string' && waybillIds.trim().length > 0) {
+      payload.waybillIds = waybillIds.split(/[\s,;\n\t]+/).map(w => w.trim()).filter(Boolean);
+    }
+
+    const postData = JSON.stringify(payload);
+    const result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+
+    if (result.code !== 1 && result.code !== 200 && result.succ !== true) {
+      return res.status(400).json({
+        error: result.msg || result.message || 'Gagal mengambil data dari JFS PTO',
+        raw: result
+      });
+    }
+
+    const records = result?.data?.records || [];
+    const total = result?.data?.total || records.length;
+
+    res.json({
+      success: true,
+      total: total,
+      current: parsedCurrent,
+      size: parsedSize,
+      totalPages: Math.ceil(total / parsedSize),
+      records: records
+    });
+  } catch (err) {
+    console.error('queryOrders error:', err);
+    res.status(500).json({ error: 'Gagal query order JFS PTO: ' + err.message });
+  }
+};
+
+// 4. Get Full Order Detail (Unmasked Sender & Receiver info)
+exports.getOrderDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Order ID wajib disertakan' });
+    }
+    const token = await getPtoToken();
+    const result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token);
+
+    if (result.code !== 1 && result.code !== 200 && result.succ !== true) {
+      return res.status(400).json({
+        error: result.msg || result.message || 'Gagal memuat detail order',
+        raw: result
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.data || {}
+    });
+  } catch (err) {
+    console.error('getOrderDetail error:', err);
+    res.status(500).json({ error: 'Gagal memuat detail order: ' + err.message });
+  }
+};

@@ -197,7 +197,7 @@ const navLinks = {
 let currentAdvanceTab = 'reconcile';
 
 function switchAdvanceTab(tabName, updateUrl = true) {
-  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs'];
+  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto'];
   const tab = validTabs.includes(tabName) ? tabName : 'reconcile';
   currentAdvanceTab = tab;
 
@@ -211,11 +211,13 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   const paneKendaraan = document.getElementById('viewKendaraan');
   const paneFeishu = document.getElementById('viewFeishuDoc');
   const paneJfs = document.getElementById('viewJfs');
+  const panePto = document.getElementById('viewPto');
 
   if (paneReconcile) paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
   if (paneKendaraan) paneKendaraan.classList.toggle('hidden', tab !== 'kendaraan');
   if (paneFeishu) paneFeishu.classList.toggle('hidden', tab !== 'generator-feishu');
   if (paneJfs) paneJfs.classList.toggle('hidden', tab !== 'jfs');
+  if (panePto) panePto.classList.toggle('hidden', tab !== 'pto');
 
   if (updateUrl) {
     history.replaceState(null, '', `#/advance?tab=${tab}`);
@@ -233,6 +235,10 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   } else if (tab === 'jfs') {
     fetchJfsConfigAndStatus();
     fetchJfsLogs();
+  } else if (tab === 'pto') {
+    if (typeof initPtoModule === 'function') {
+      initPtoModule();
+    }
   }
 }
 

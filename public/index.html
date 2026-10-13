@@ -20,6 +20,7 @@
     <script src="jfs.js?v=2.7.0" defer></script>
     <script src="kendaraan.js?v=2.7.0" defer></script>
     <script src="feishu.js?v=2.7.0" defer></script>
+    <script src="pto.js?v=2.7.0" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -1603,6 +1604,19 @@
                   <span class="tab-label">Integrasi JFS</span>
                   <span class="advance-tab-pill pill-amber" id="jfsTabPill">Realtime API</span>
                 </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="pto" id="tabBtnAdvancePto">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">PTO</span>
+                  <span class="advance-tab-pill pill-cyan">Pelacakan Order</span>
+                </button>
               </div>
             </div>
 
@@ -2600,6 +2614,195 @@
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- TAB PANE 5: PTO (PELACAKAN TOTAL ORDER OMS) -->
+          <div id="viewPto" class="advance-pane hidden">
+            <section class="panel pto-panel">
+              <!-- HEADER SECTION -->
+              <div class="pto-header">
+                <div class="pto-header-titles">
+                  <div class="pto-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="pto-title">PTO &mdash; Pelacakan Total Order (OMS JFS)</h3>
+                    <p class="pto-desc">Pencarian &amp; penelusuran live jutaan data order pelanggan J&amp;T Cargo. Dilengkapi nama barang, berat asli, detail alamat pengirim &amp; penerima, serta rute gateway.</p>
+                  </div>
+                </div>
+
+                <div class="pto-header-actions">
+                  <div class="pto-account-badge" id="ptoAccountBadge">
+                    <span class="pto-status-dot"></span>
+                    <span id="ptoAccountNameText">Akun: Indra Purnama (SPV Area)</span>
+                  </div>
+                  <button type="button" class="btn-pto-ghost" id="btnOpenPtoConfigModal" title="Ganti atau atur Auth Token PTO">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Setting Token</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- FILTER & SEARCH CARD -->
+              <div class="pto-filter-card">
+                <!-- PRESET DATE BUTTONS -->
+                <div class="pto-filter-row">
+                  <div class="pto-preset-chips" id="ptoDatePresets">
+                    <span class="pto-chip-label">Preset Tanggal:</span>
+                    <button type="button" class="pto-chip" data-days="0">Hari Ini</button>
+                    <button type="button" class="pto-chip" data-days="3">3 Hari</button>
+                    <button type="button" class="pto-chip active" data-days="7">7 Hari</button>
+                    <button type="button" class="pto-chip" data-days="15">15 Hari</button>
+                    <button type="button" class="pto-chip" data-days="30">30 Hari (1 Bulan)</button>
+                    <button type="button" class="pto-chip" data-days="custom">Custom Bebas</button>
+                  </div>
+                </div>
+
+                <!-- MAIN CONTROLS ROW -->
+                <form id="ptoFilterForm" class="pto-filter-grid">
+                  <div class="pto-field-group">
+                    <label for="ptoStartDate">Tanggal Awal (Bebas)</label>
+                    <input type="date" id="ptoStartDate" class="pto-input" required />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoEndDate">Tanggal Akhir (Bebas)</label>
+                    <input type="date" id="ptoEndDate" class="pto-input" required />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoOrderSource">Sumber Order / Platform</label>
+                    <select id="ptoOrderSource" class="pto-input">
+                      <option value="all">Semua Platform (All)</option>
+                      <option value="shopee">Shopee</option>
+                      <option value="Tokopedia">Tokopedia</option>
+                      <option value="TikTok">TikTok</option>
+                    </select>
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoPageSize">Baris per Halaman</label>
+                    <select id="ptoPageSize" class="pto-input">
+                      <option value="50">50 Baris</option>
+                      <option value="100" selected>100 Baris (Rekomendasi)</option>
+                      <option value="200">200 Baris</option>
+                      <option value="300">300 Baris</option>
+                      <option value="500">500 Baris (Maksimal)</option>
+                    </select>
+                  </div>
+
+                  <div class="pto-field-group full-width">
+                    <label for="ptoWaybillSearch">
+                      <span>Cari Nomor Resi / AWB Tertentu</span>
+                      <small class="text-muted">(Bisa masukkan 1 atau banyak resi, pisahkan dengan koma/spasi/enter)</small>
+                    </label>
+                    <div class="pto-search-input-wrap">
+                      <input type="text" id="ptoWaybillSearch" class="pto-input" placeholder="Contoh: 570626514258, 201786555578, 201789814210..." />
+                      <button type="button" class="btn-clear-input" id="btnClearPtoSearch" title="Bersihkan input">✕</button>
+                    </div>
+                  </div>
+
+                  <div class="pto-actions-row full-width">
+                    <button type="submit" class="btn-pto-primary" id="btnSubmitPtoQuery">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      <span>Tarik &amp; Cari Data PTO</span>
+                    </button>
+                    <button type="button" class="btn-pto-secondary" id="btnResetPtoFilter">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                      <span>Reset</span>
+                    </button>
+                    <div class="pto-spacer"></div>
+                    <button type="button" class="btn-pto-tool" id="btnExportPtoExcel" title="Download data halaman ini ke Excel / CSV">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      <span>Export Excel</span>
+                    </button>
+                    <button type="button" class="btn-pto-tool" id="btnCopyPtoSummary" title="Salin ringkasan nomor resi &amp; nama barang ke clipboard">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                      <span id="btnCopyPtoSummaryText">Salin Ringkasan</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- KPI STAT STRIP -->
+              <div class="pto-kpi-strip">
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">TOTAL DATA DITEMUKAN</span>
+                  <span class="pto-kpi-value highlight-cyan" id="ptoKpiTotalOrders">0 Order</span>
+                </div>
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">HALAMAN AKTIF</span>
+                  <span class="pto-kpi-value" id="ptoKpiPageInfo">Halaman 1 / 1</span>
+                </div>
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">TOTAL BERAT HALAMAN INI</span>
+                  <span class="pto-kpi-value highlight-amber" id="ptoKpiTotalWeight">0.00 kg</span>
+                </div>
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">WAKTU RESPON API</span>
+                  <span class="pto-kpi-value" id="ptoKpiResponseTime">0.00s</span>
+                </div>
+              </div>
+
+              <!-- TABLE CARD -->
+              <div class="pto-table-container">
+                <div class="pto-table-responsive">
+                  <table class="pto-data-table" id="ptoTable">
+                    <thead>
+                      <tr>
+                        <th style="width: 45px; text-align: center;">NO</th>
+                        <th style="width: 140px;">NOMOR AWB</th>
+                        <th style="min-width: 220px;">NAMA BARANG</th>
+                        <th style="width: 110px; text-align: right;">BERAT / KOLI</th>
+                        <th style="width: 110px;">ASAL OUTLET</th>
+                        <th style="width: 150px;">TUJUAN &amp; KOTA</th>
+                        <th style="width: 140px;">SORTING GW</th>
+                        <th style="width: 105px; text-align: center;">PLATFORM</th>
+                        <th style="width: 140px;">PENGIRIM</th>
+                        <th style="width: 140px;">PENERIMA</th>
+                        <th style="width: 125px;">WAKTU INPUT</th>
+                        <th style="width: 85px; text-align: center;">AKSI</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ptoTableBody">
+                      <tr>
+                        <td colspan="12" class="pto-empty-state">
+                          <div class="pto-empty-content">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.5; margin-bottom: 8px;">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <circle cx="12" cy="14" r="3"/>
+                            </svg>
+                            <p style="font-weight: 600; color: #cbd5e1;">Belum Ada Data yang Ditampilkan</p>
+                            <span style="font-size: 0.8rem; color: #94a3b8;">Tentukan rentang tanggal atau masukkan nomor resi pada filter di atas, lalu klik <strong>"Tarik &amp; Cari Data PTO"</strong>.</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- PAGINATION BAR -->
+                <div class="pto-pagination-bar" id="ptoPaginationBar">
+                  <div class="pto-pagination-info">
+                    <span id="ptoPaginationRangeText">Menampilkan 0 dari 0 order</span>
+                  </div>
+                  <div class="pto-pagination-controls" id="ptoPaginationControls">
+                    <button type="button" class="btn-page" id="btnPtoFirstPage" disabled title="Halaman Pertama">&laquo;</button>
+                    <button type="button" class="btn-page" id="btnPtoPrevPage" disabled title="Halaman Sebelumnya">&lsaquo;</button>
+                    <div class="pto-page-numbers" id="ptoPageNumbers"></div>
+                    <button type="button" class="btn-page" id="btnPtoNextPage" disabled title="Halaman Berikutnya">&rsaquo;</button>
+                    <button type="button" class="btn-page" id="btnPtoLastPage" disabled title="Halaman Terakhir">&raquo;</button>
+                  </div>
                 </div>
               </div>
             </section>
@@ -3795,6 +3998,62 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
           <div class="form-actions" style="margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end;">
             <button type="button" class="secondary-btn" id="cancelFeishuBatchModalBtn" style="padding: 10px 18px;">Batal</button>
             <button type="submit" class="primary-btn" id="submitFeishuBatchBtn" style="padding: 10px 22px;">Masukkan ke Tabel</button>
+          </div>
+        </form>
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL LENGKAP ORDER PTO               -->
+    <!-- ============================================ -->
+    <div id="ptoDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="ptoDetailModalTitle">
+      <div class="modal-content modal-pto-detail-card" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 12px; margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow text-emerald" style="font-size: 0.72rem; letter-spacing: 0.06em;">PELACAKAN TOTAL ORDER (OMS)</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+              <h3 id="ptoDetailModalTitle" style="color: #f8fafc; font-size: 1.35rem; font-family: monospace; font-weight: 800; margin: 0;">-</h3>
+              <button type="button" class="btn-copy-small" id="btnCopyPtoWaybillNo" title="Salin No Resi" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Salin</span>
+              </button>
+            </div>
+            <p id="ptoDetailModalSubtitle" style="font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0 0;">Informasi detail fisik paket, pengirim, penerima, dan rute gateway langsung dari OMS JFS.</p>
+          </div>
+          <button type="button" class="close-btn" id="closePtoDetailModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div id="ptoDetailModalBody" class="pto-detail-body">
+          <!-- Dynamic Content -->
+        </div>
+
+        <div class="modal-actions" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 14px;">
+          <button type="button" class="btn-pto-tool" id="btnCopyPtoSingleDetail">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Salin Seluruh Info</span>
+          </button>
+          <button type="button" class="secondary-btn" id="closePtoDetailModalBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL SETTING TOKEN PTO                      -->
+    <!-- ============================================ -->
+    <div id="ptoConfigModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="ptoConfigTitle">
+      <div class="modal-content small-modal" style="max-width: 480px; width: 95%;">
+        <div class="modal-header">
+          <h3 id="ptoConfigTitle">Konfigurasi Auth Token PTO</h3>
+          <button type="button" class="close-btn" id="closePtoConfigModalBtn" aria-label="Tutup">×</button>
+        </div>
+        <form id="ptoConfigForm" style="padding: 16px 20px;">
+          <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 14px; line-height: 1.4;">
+            Masukkan token aktif akun JFS (SPV Area / Customer Platform). Token ini otomatis dipakai saat menarik data Pelacakan Total Order (PTO).
+          </p>
+          <div class="form-group-jfs">
+            <label for="ptoInputToken" style="font-size: 0.82rem; font-weight: 700; color: #cbd5e1; margin-bottom: 6px; display: block;">PTO Auth Token</label>
+            <input type="text" id="ptoInputToken" class="jfs-input" placeholder="Contoh: 1478b74425e143139ccba26a46944ea4" required style="font-family: monospace; font-size: 0.85rem;" />
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+            <button type="button" class="secondary-btn" id="cancelPtoConfigBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="btnSavePtoConfig">Simpan Token</button>
           </div>
         </form>
       </div>

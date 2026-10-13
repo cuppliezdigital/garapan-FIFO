@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const kendaraanRoutes = require('./routes/kendaraanRoutes');
 const jfsRoutes = require('./routes/jfsRoutes');
+const ptoRoutes = require('./routes/ptoRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -103,6 +104,7 @@ app.use('/api', monitoringRoutes);
 app.use('/api', auditRoutes);
 app.use('/api', kendaraanRoutes);
 app.use('/api/jfs', jfsRoutes);
+app.use('/api/pto', ptoRoutes);
 app.use('/api/auth', authRoutes);
 
 const publicDir = path.join(__dirname, '../public');
