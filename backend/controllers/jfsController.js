@@ -153,6 +153,16 @@ async function getFlowTrend(req, res) {
   }
 }
 
+async function getFlowDetail(req, res) {
+  try {
+    const result = await jfsService.getJfsFlowDetail(req.query);
+    res.json(result);
+  } catch (error) {
+    console.error('jfsController getFlowDetail error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal mengambil rincian data waybill JFS' });
+  }
+}
+
 module.exports = {
   getStatus,
   updateConfig,
@@ -162,4 +172,5 @@ module.exports = {
   clearLogs,
   getFlowSummary,
   getFlowTrend,
+  getFlowDetail,
 };

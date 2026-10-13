@@ -658,6 +658,78 @@ async function getJfsFlowTrend(siteCodeParam = null, beginDateParam = null, endD
   };
 }
 
+async function getJfsFlowDetail(options = {}) {
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  const siteCode = options.siteCode || cfg.scanSiteCode || 'JKT99A';
+  const siteName = options.scanSiteCodeName || cfg.scanSiteCodeName || 'GW-Jakarta';
+  const date = options.date || getFormattedDate(new Date());
+
+  // Mapping tipe: 'inbound' / 'backlog' -> 'arr'; 'outbound' / 'transit' -> 'sen'
+  let type = options.type || 'arr';
+  if (type === 'inbound' || type === 'backlog') type = 'arr';
+  if (type === 'outbound' || type === 'transit') type = 'sen';
+
+  const page = Math.max(1, parseInt(options.page || '1', 10));
+  const size = Math.min(100, Math.max(10, parseInt(options.size || '20', 10)));
+  const billCode = (options.search || options.billCode || '').trim();
+
+  const basePayload = {
+    beginDate: date,
+    endDate: date,
+    scanSiteCode: siteCode,
+    scanSiteCodeName: siteName,
+    scanSiteCodeTypeId: 335,
+    scanSiteCodeId: 220,
+    type: type,
+    billCode: billCode,
+    sqlCode: 'realtime_sca_cen_flo_dtl',
+    convertResultFromDictionCode: '',
+    convertResultFromDictionOriCode: '',
+    countryId: '1',
+  };
+
+  const route = 'Bd-theme-12f31774-6788-4f80-bd84-ad623f38c693|businessIndicatorIndex';
+
+  // Jalankan request count dan list secara paralel untuk response cepat
+  const [countRes, listRes] = await Promise.all([
+    requestJfsApi(
+      token,
+      { ...basePayload, current: 1, size: 10, paginationSearchType: 'count' },
+      'realtime_sca_cen_flo_dtl',
+      route
+    ).catch(err => {
+      console.warn('getJfsFlowDetail count warning:', err.message);
+      return null;
+    }),
+    requestJfsApi(
+      token,
+      { ...basePayload, current: page, size: size, paginationSearchType: 'list' },
+      'realtime_sca_cen_flo_dtl',
+      route
+    ).catch(err => {
+      console.error('getJfsFlowDetail list error:', err.message);
+      throw err;
+    }),
+  ]);
+
+  const records = listRes?.data?.records || [];
+  const total = countRes?.data?.total || records.length;
+
+  return {
+    success: true,
+    siteCode,
+    siteName,
+    date,
+    type,
+    page,
+    size,
+    total,
+    pages: Math.ceil(total / size),
+    records,
+  };
+}
+
 async function getRecentLogs(limit = 10) {
   await ensureJfsTables();
   const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
@@ -736,6 +808,7 @@ module.exports = {
   syncJfsToDatabase,
   getJfsFlowSummary,
   getJfsFlowTrend,
+  getJfsFlowDetail,
   getRecentLogs,
   clearLogs,
   restartScheduler,

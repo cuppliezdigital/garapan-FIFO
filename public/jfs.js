@@ -530,6 +530,77 @@ function initJfsEventListeners() {
   if (closeFlowBtn) closeFlowBtn.addEventListener('click', closeFlowDetailModal);
   if (closeFlowBottomBtn) closeFlowBottomBtn.addEventListener('click', closeFlowDetailModal);
 
+  // Flow Modal Drilldown Controls
+  const btnBackToTrend = document.getElementById('btnBackToFlowTrend');
+  if (btnBackToTrend) {
+    btnBackToTrend.addEventListener('click', () => {
+      const trendView = document.getElementById('flowTrendView');
+      const listView = document.getElementById('flowWaybillListView');
+      if (trendView) trendView.classList.remove('hidden');
+      if (listView) listView.classList.add('hidden');
+    });
+  }
+
+  const btnFlowSearch = document.getElementById('btnFlowListSearch');
+  const inputFlowSearch = document.getElementById('flowListSearchInput');
+  if (btnFlowSearch && inputFlowSearch) {
+    btnFlowSearch.addEventListener('click', () => {
+      openFlowWaybillList(currentFlowDetailState.date, currentFlowDetailState.type, 1, inputFlowSearch.value.trim());
+    });
+    inputFlowSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        openFlowWaybillList(currentFlowDetailState.date, currentFlowDetailState.type, 1, inputFlowSearch.value.trim());
+      }
+    });
+  }
+
+  const btnFlowPrev = document.getElementById('btnFlowListPrev');
+  if (btnFlowPrev) {
+    btnFlowPrev.addEventListener('click', () => {
+      if (currentFlowDetailState.page > 1) {
+        openFlowWaybillList(currentFlowDetailState.date, currentFlowDetailState.type, currentFlowDetailState.page - 1, currentFlowDetailState.search);
+      }
+    });
+  }
+
+  const btnFlowNext = document.getElementById('btnFlowListNext');
+  if (btnFlowNext) {
+    btnFlowNext.addEventListener('click', () => {
+      const totalPages = Math.ceil(currentFlowDetailState.total / currentFlowDetailState.size);
+      if (currentFlowDetailState.page < totalPages) {
+        openFlowWaybillList(currentFlowDetailState.date, currentFlowDetailState.type, currentFlowDetailState.page + 1, currentFlowDetailState.search);
+      }
+    });
+  }
+
+  // Event Delegation for AWB drilldown button and resi copy
+  document.addEventListener('click', (e) => {
+    const drillBtn = e.target.closest('.btn-flow-awb-drilldown');
+    if (drillBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const date = drillBtn.dataset.date;
+      const type = drillBtn.dataset.type || currentFlowDetailState.type || 'inbound';
+      if (date) {
+        openFlowWaybillList(date, type, 1, '');
+      }
+      return;
+    }
+
+    const copyWb = e.target.closest('.flow-wb-copyable');
+    if (copyWb) {
+      e.preventDefault();
+      e.stopPropagation();
+      const wb = copyWb.dataset.wb;
+      if (wb) {
+        navigator.clipboard.writeText(wb);
+        showAppAlert(`📋 No. Resi ${wb} disalin ke clipboard!`);
+      }
+      return;
+    }
+  });
+
   // Check URL parameter for auto-sync token from Bookmarklet
   checkUrlForJfsToken();
   window.addEventListener('hashchange', checkUrlForJfsToken);
@@ -546,10 +617,23 @@ function initJfsEventListeners() {
 }
 
 let currentFlowSummaryData = null;
+let currentFlowDetailState = {
+  date: '',
+  type: 'inbound',
+  page: 1,
+  size: 20,
+  total: 0,
+  search: '',
+};
 
 async function openFlowDetailModal(type) {
   const modal = document.getElementById('jfsFlowDetailModal');
   if (!modal) return;
+
+  const trendView = document.getElementById('flowTrendView');
+  const listView = document.getElementById('flowWaybillListView');
+  if (trendView) trendView.classList.remove('hidden');
+  if (listView) listView.classList.add('hidden');
 
   const eyebrow = document.getElementById('flowDetailEyebrow');
   const title = document.getElementById('flowDetailTitle');
@@ -651,14 +735,20 @@ async function openFlowDetailModal(type) {
         }
 
         const ton = ((rWt || 0) / 1000).toFixed(1);
-        const isToday = r.date_code === s.date || r.endDate === s.date;
+        const dateCode = r.date_code || r.endDate || '-';
+        const isToday = dateCode === s.date || r.endDate === s.date;
 
         return `
           <tr style="${isToday ? 'background: rgba(56, 189, 248, 0.08); font-weight: 700;' : ''}">
             <td style="padding: 8px 12px; color: ${isToday ? '#38bdf8' : '#e2e8f0'};">
-              ${r.date_code || r.endDate || '-'} ${isToday ? '<span class="flow-badge-alert" style="margin-left: 4px;">Hari Ini</span>' : ''}
+              ${dateCode} ${isToday ? '<span class="flow-badge-alert" style="margin-left: 4px;">Hari Ini</span>' : ''}
             </td>
-            <td style="padding: 8px 12px; text-align: right; color: #f8fafc;">${(rAwb || 0).toLocaleString('id-ID')}</td>
+            <td style="padding: 6px 12px; text-align: right;">
+              <button type="button" class="btn-flow-awb-drilldown" data-date="${dateCode}" data-type="${type}" title="Klik untuk rincian semua waybill pada ${dateCode}">
+                <span class="drilldown-number">${(rAwb || 0).toLocaleString('id-ID')}</span>
+                <svg class="drilldown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </button>
+            </td>
             <td style="padding: 8px 12px; text-align: right; color: #cbd5e1;">${(rPcs || 0).toLocaleString('id-ID')}</td>
             <td style="padding: 8px 12px; text-align: right; color: #38bdf8;">${ton} Ton</td>
             <td style="padding: 8px 12px; text-align: center;">
@@ -673,6 +763,123 @@ async function openFlowDetailModal(type) {
   } catch (err) {
     console.error('openFlowDetailModal error:', err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Gagal memuat tren: ${err.message}</td></tr>`;
+  }
+}
+
+async function openFlowWaybillList(date, type, page = 1, search = '') {
+  currentFlowDetailState.date = date;
+  currentFlowDetailState.type = type;
+  currentFlowDetailState.page = page;
+  currentFlowDetailState.search = search;
+
+  const trendView = document.getElementById('flowTrendView');
+  const listView = document.getElementById('flowWaybillListView');
+  const dateBadge = document.getElementById('flowListDateBadge');
+  const countBadge = document.getElementById('flowListCountBadge');
+  const searchInput = document.getElementById('flowListSearchInput');
+  const tbody = document.getElementById('modalFlowWaybillsTableBody');
+  const summaryEl = document.getElementById('flowListPaginationSummary');
+  const indicatorEl = document.getElementById('flowListPageIndicator');
+  const prevBtn = document.getElementById('btnFlowListPrev');
+  const nextBtn = document.getElementById('btnFlowListNext');
+
+  if (trendView) trendView.classList.add('hidden');
+  if (listView) listView.classList.remove('hidden');
+
+  const typeLabels = {
+    inbound: 'Bongkar Tiba',
+    outbound: 'Muat Kirim',
+    backlog: 'Belum Kirim',
+    transit: 'Dalam Perjalanan',
+  };
+
+  const label = typeLabels[type] || 'Waybill';
+  if (dateBadge) dateBadge.textContent = `${date} • ${label}`;
+  if (countBadge) countBadge.textContent = 'Memuat...';
+  if (searchInput && document.activeElement !== searchInput) searchInput.value = search;
+
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-6">Sedang mengambil rincian waybill realtime dari JFS Gateway...</td></tr>';
+  }
+
+  try {
+    const token = getToken();
+    const q = new URLSearchParams({
+      date,
+      type,
+      page: String(page),
+      size: String(currentFlowDetailState.size),
+      search: search || '',
+    });
+
+    const res = await fetch(`/api/jfs/flow-detail?${q.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const records = data.records || [];
+    const total = data.total || records.length;
+    currentFlowDetailState.total = total;
+
+    if (countBadge) {
+      countBadge.textContent = `${total.toLocaleString('id-ID')} AWB`;
+    }
+
+    if (!records.length) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-6">Tidak ada waybill ditemukan ${search ? `untuk pencarian "${escapeJfsHtml(search)}"` : 'pada tanggal ini'}.</td></tr>`;
+      }
+      if (summaryEl) summaryEl.textContent = 'Menampilkan 0 data';
+      if (indicatorEl) indicatorEl.textContent = 'Hal 1 dari 1';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+
+    const startIdx = (page - 1) * currentFlowDetailState.size + 1;
+    const endIdx = Math.min(page * currentFlowDetailState.size, total);
+    if (summaryEl) summaryEl.textContent = `Menampilkan ${startIdx}-${endIdx} dari ${total.toLocaleString('id-ID')} waybill`;
+    const totalPages = Math.max(1, Math.ceil(total / currentFlowDetailState.size));
+    if (indicatorEl) indicatorEl.textContent = `Hal ${page} dari ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = page <= 1;
+    if (nextBtn) nextBtn.disabled = page >= totalPages;
+
+    if (tbody) {
+      tbody.innerHTML = records.map((r) => {
+        const waybill = escapeJfsHtml(r.billcode || '-');
+        const koli = escapeJfsHtml(r.package_number || '1');
+        const berat = r.package_charge_weight ? `${Number(r.package_charge_weight).toFixed(1)} Kg` : '-';
+        const asal = escapeJfsHtml(r.last_dept || r.arr_dept || '-');
+        const tujuan = escapeJfsHtml(r.dispatch_network_name || r.send_dept || '-');
+        const tTiba = escapeJfsHtml(r.arrive_tm || '-');
+        const tKirim = escapeJfsHtml(r.send_tm || '-');
+        const user = escapeJfsHtml(r.scanuser || '-');
+        const dispatchCode = escapeJfsHtml(r.terminal_dispatch_code || '-');
+
+        return `
+          <tr>
+            <td style="padding: 8px 12px; font-family: monospace; font-weight: 700; color: #38bdf8;">
+              <span class="flow-wb-copyable" data-wb="${waybill}" title="Klik untuk salin resi" style="cursor: pointer; text-decoration: underline; text-underline-offset: 2px;">${waybill}</span>
+            </td>
+            <td style="padding: 8px 10px; text-align: center; color: #e2e8f0;">${koli}</td>
+            <td style="padding: 8px 10px; text-align: right; color: #a5b4fc; font-weight: 600;">${berat}</td>
+            <td style="padding: 8px 12px; color: #cbd5e1;">${asal}</td>
+            <td style="padding: 8px 12px; color: #cbd5e1;">${tujuan}</td>
+            <td style="padding: 8px 12px; color: #94a3b8; font-size: 0.75rem;">${tTiba}</td>
+            <td style="padding: 8px 12px; color: #94a3b8; font-size: 0.75rem;">${tKirim}</td>
+            <td style="padding: 8px 12px; color: #cbd5e1;">${user}</td>
+            <td style="padding: 8px 12px; color: #94a3b8; font-size: 0.75rem;">${dispatchCode}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    console.error('openFlowWaybillList error:', err);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-6">Gagal memuat rincian: ${escapeJfsHtml(err.message)}</td></tr>`;
+    }
+    if (countBadge) countBadge.textContent = 'Gagal memuat';
   }
 }
 

@@ -18,8 +18,9 @@ router.post('/test', authMiddleware, requireAdminOrGm, jfsController.testConnect
 router.get('/logs', authMiddleware, requireAdminOrGm, jfsController.getLogs);
 router.delete('/logs', authMiddleware, requireAdminOrGm, jfsController.clearLogs);
 
-// Flow Summary & Trend (For PC dashboard live widget & charts)
+// Flow Summary, Trend & Detail Waybill (For PC dashboard live widget & charts)
 router.get('/flow-summary', authMiddleware, jfsController.getFlowSummary);
 router.get('/flow-trend', authMiddleware, jfsController.getFlowTrend);
+router.get('/flow-detail', authMiddleware, jfsController.getFlowDetail);
 
 module.exports = router;

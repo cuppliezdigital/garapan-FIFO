@@ -13119,4 +13119,79 @@ thead th input[type="checkbox"]:active {
   color: #f8fafc;
 }
 
+/* ========================================================= */
+/* JFS FLOW MODAL DRILL-DOWN STYLES                          */
+/* ========================================================= */
+.btn-flow-awb-drilldown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-flow-awb-drilldown:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+}
+
+.btn-flow-awb-drilldown:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-flow-awb-drilldown .drilldown-number {
+  letter-spacing: -0.01em;
+}
+
+.btn-flow-awb-drilldown .drilldown-icon {
+  opacity: 0.7;
+  color: currentColor;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-flow-awb-drilldown:hover .drilldown-icon {
+  opacity: 1;
+  transform: translate(2px, -2px);
+}
+
+.flow-wb-copyable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.08);
+  color: #38bdf8;
+  transition: all 0.15s ease;
+  user-select: all;
+}
+
+.flow-wb-copyable:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: #ffffff;
+  text-decoration: underline;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+}
+
+#btnBackToFlowTrend:hover {
+  background: rgba(56, 189, 248, 0.25) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3) !important;
+}
+
+
 
