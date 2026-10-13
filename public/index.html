@@ -442,7 +442,7 @@
               </div>
               <div class="jfs-flow-cards-grid">
                 <!-- CARD 1: INBOUND / BONGKAR -->
-                <div class="jfs-flow-card card-inbound">
+                <div class="jfs-flow-card card-inbound" id="flowCardInbound" title="Klik untuk melihat rincian & tren Bongkar GW">
                   <div class="flow-card-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
@@ -463,7 +463,7 @@
                 </div>
 
                 <!-- CARD 2: BELUM MUAT / BACKLOG -->
-                <div class="jfs-flow-card card-backlog">
+                <div class="jfs-flow-card card-backlog" id="flowCardBacklog" title="Klik untuk melihat rincian & tren Antrean Belum Muat">
                   <div class="flow-card-icon icon-amber">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <circle cx="12" cy="12" r="10"/>
@@ -484,7 +484,7 @@
                 </div>
 
                 <!-- CARD 3: OUTBOUND / MUAT TERKIRIM -->
-                <div class="jfs-flow-card card-outbound">
+                <div class="jfs-flow-card card-outbound" id="flowCardOutbound" title="Klik untuk melihat rincian & tren Muat Terkirim GW">
                   <div class="flow-card-icon icon-emerald">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="1" y="3" width="15" height="13" rx="2"/>
@@ -504,7 +504,7 @@
                 </div>
 
                 <!-- CARD 4: IN-TRANSIT / DI JALAN -->
-                <div class="jfs-flow-card card-transit">
+                <div class="jfs-flow-card card-transit" id="flowCardTransit" title="Klik untuk melihat rincian & tren Dalam Perjalanan">
                   <div class="flow-card-icon icon-cyan">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M5 12h14"/>
@@ -2458,8 +2458,7 @@
                         <p>Tarik tombol di bawah ke Bookmarks Bar Chrome Anda. Saat membuka JFS, cukup klik 1x untuk sinkronkan token otomatis!</p>
                       </div>
                     </div>
-                    <div class="bookmarklet-btn-row">
-                      <a href="javascript:(function(){try{var t=localStorage.getItem('token')||sessionStorage.getItem('token')||'';if(!t){var m=document.cookie.match(/(?:^|;\s*)(?:authtoken|token)=([^;]+)/);if(m)t=m[1];}if(!t){t=prompt('Masukkan token JFS:');}if(!t){alert('Token tidak ditemukan');return;}var appUrl=window.location.origin.includes('jtcargo')?'https://garapan-fifo-production.up.railway.app':'http://localhost:3000';fetch(appUrl+'/api/jfs/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authtoken:t})}).then(function(r){return r.json();}).then(function(d){alert('✅ Token JFS Berhasil Disinkronkan ke Monitoring FIFO!');}).catch(function(e){navigator.clipboard.writeText(t);alert('Token disalin ke clipboard:\n'+t);});}catch(err){alert('Error: '+err.message);}})();" 
+                      <a href="javascript:(function(){try{var isH=function(s){return typeof s==='string'&&/^[a-f0-9]{32}$/i.test(s.trim());};var mat=function(s){if(typeof s!=='string')return null;var m=s.match(/[a-f0-9]{32}/i);return m?m[0]:null;};var getT=function(){for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);var v=localStorage.getItem(k);if(isH(v))return v.trim();var m=mat(v);if(m&&(k.toLowerCase().includes('token')||k.toLowerCase().includes('auth')||k.toLowerCase().includes('user')||k.toLowerCase().includes('admin')))return m;}for(var j=0;j<sessionStorage.length;j++){var sk=sessionStorage.key(j);var sv=sessionStorage.getItem(sk);if(isH(sv))return sv.trim();var sm=mat(sv);if(sm&&(sk.toLowerCase().includes('token')||sk.toLowerCase().includes('auth')||sk.toLowerCase().includes('user')||sk.toLowerCase().includes('admin')))return sm;}var cm=document.cookie.match(/(?:token|auth|authtoken)=([a-f0-9]{32})/i)||document.cookie.match(/([a-f0-9]{32})/i);if(cm)return cm[1]||cm[0];for(var a=0;a<localStorage.length;a++){var lm=mat(localStorage.getItem(localStorage.key(a)));if(lm)return lm;}for(var b=0;b<sessionStorage.length;b++){var ssm=mat(sessionStorage.getItem(sessionStorage.key(b)));if(ssm)return ssm;}return null;};var t=getT();if(!t){t=prompt('Masukkan token JFS:');}if(!t){alert('Batal menyinkronkan token.');return;}t=t.trim();try{navigator.clipboard.writeText(t);}catch(_){}var appUrl='https://garapan-fifo-production.up.railway.app';if(window.location.origin.includes('localhost')||window.location.port==='3000'){appUrl='http://localhost:3000';}alert('✅ Token JFS Terdeteksi:\n'+t+'\n\nTab Monitoring FIFO akan dibuka untuk update & sinkronisasi otomatis!');window.open(appUrl+'/#/advance?sync_jfs_token='+encodeURIComponent(t),'_blank');}catch(err){alert('Error: '+err.message);}})();" 
                          class="bookmarklet-drag-pill" 
                          title="Tarik tombol ini ke Bookmarks Bar browser Anda (Ctrl+Shift+B)">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -3467,6 +3466,68 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL BEBAN FLOW GATEWAY (DRILL-DOWN) -->
+    <!-- ============================================ -->
+    <div id="jfsFlowDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="flowDetailTitle">
+      <div class="modal-content" style="max-width: 820px; width: 95%;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 12px; margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow text-cyan" id="flowDetailEyebrow">DATA REALTIME GATEWAY JAKARTA</span>
+            <h3 id="flowDetailTitle" style="color: #f8fafc; font-size: 1.2rem; margin: 2px 0 0 0;">Detail Beban GW</h3>
+            <p class="modal-subtitle" id="flowDetailSubtitle" style="font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0 0;">Rincian volume AWB, tonase, koli, dan tren harian.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeFlowDetailBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div class="flow-detail-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- SUMMARY CARDS ROW -->
+          <div class="flow-detail-summary-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 14px; border-radius: 8px;">
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Hari Ini (AWB)</span>
+              <div style="font-size: 1.4rem; font-weight: 800; color: #f8fafc; margin-top: 4px;" id="modalMetricAwb">0</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 14px; border-radius: 8px;">
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Tonase</span>
+              <div style="font-size: 1.4rem; font-weight: 800; color: #38bdf8; margin-top: 4px;" id="modalMetricWeight">0 Ton</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 14px; border-radius: 8px;">
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Koli</span>
+              <div style="font-size: 1.4rem; font-weight: 800; color: #a5b4fc; margin-top: 4px;" id="modalMetricPcs">0 Koli</div>
+            </div>
+          </div>
+
+          <!-- TABLE TITLE & ACTIONS -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <h4 style="margin: 0; font-size: 0.92rem; color: #e2e8f0; font-weight: 700;">Tren Harian Bulan Ini (JFS Gateway)</h4>
+            <span style="font-size: 0.72rem; color: #94a3b8;">Diperbarui otomatis dari Gateway</span>
+          </div>
+
+          <!-- TREND BREAKDOWN TABLE -->
+          <div style="max-height: 320px; overflow-y: auto; border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 8px;">
+            <table class="jfs-table" style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+              <thead style="position: sticky; top: 0; background: #0f172a; z-index: 2;">
+                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                  <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Tanggal</th>
+                  <th style="padding: 8px 12px; text-align: right; color: #94a3b8;">AWB</th>
+                  <th style="padding: 8px 12px; text-align: right; color: #94a3b8;">Koli</th>
+                  <th style="padding: 8px 12px; text-align: right; color: #94a3b8;">Berat (Ton)</th>
+                  <th style="padding: 8px 12px; text-align: center; color: #94a3b8;">Porsi Harian</th>
+                </tr>
+              </thead>
+              <tbody id="modalFlowTrendTableBody">
+                <tr><td colspan="5" class="text-center text-muted py-4">Memuat data tren...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="primary-btn" id="closeFlowDetailBottomBtn">Tutup</button>
+        </div>
       </div>
     </div>
 

@@ -746,6 +746,10 @@ async function fetchMonitoring() {
   renderStatusOverview(data);
   updateStats(data);
   applyFilter();
+
+  if (!autoRefreshInterval && typeof startAutoRefresh === 'function') {
+    startAutoRefresh();
+  }
 }
 
 function renderUserTable(users) {
