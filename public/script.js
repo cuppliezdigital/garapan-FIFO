@@ -271,7 +271,7 @@ function handleHashRoute() {
   const queryStr = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
   const urlParams = new URLSearchParams(queryStr);
 
-  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu'];
+  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto'];
   let target = baseRoute;
   let advanceSubTab = 'reconcile';
 
@@ -290,7 +290,7 @@ function handleHashRoute() {
 
   const routeConfig = {
     monitoring: { title: 'FIFO Dashboard', eyebrow: 'Monitoring System' },
-    advance: { title: 'Advance Operations', eyebrow: 'Pusat Rekonsiliasi, Kendaraan & Generator' },
+    advance: { title: 'Advance Operations & Intelligence', eyebrow: 'Pusat Rekonsiliasi, Kendaraan, Feishu, JFS & PTO' },
     archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
     history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
     users: { title: 'Manajemen User', eyebrow: 'Administrasi Sistem' },
