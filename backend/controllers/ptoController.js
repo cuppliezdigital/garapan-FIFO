@@ -254,8 +254,8 @@ function makeJfsPtoRequest(path, method, postData, token) {
       'langtype': 'ID',
       'origin': 'https://jfs.jtcargo.co.id',
       'referer': 'https://jfs.jtcargo.co.id/',
-      'routename': 'orderTracking',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'routename': path.includes('/detail') ? 'orderTrackingView' : 'orderTracking',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36'
     };
 
     if (method === 'POST') {
@@ -609,13 +609,78 @@ exports.getOrderDetail = async (req, res) => {
     // 2. Coba request ke JFS OMS API
     const token = await getPtoToken();
     try {
-      let result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
+      let result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
       if (!result || (result.code !== 1 && result.code !== 200 && result.succ !== true) || !result.data) {
-        result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
+        result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
       }
       if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data) {
         const detailData = result.data || {};
         detailCache.set(id, detailData);
+
+        // Auto-persist live detail to pto_orders database
+        if (detailData.waybillId) {
+          try {
+            await db.query(`
+              INSERT INTO pto_orders (
+                waybill, nama_barang, sumber_pesanan, outlet_pengirim, kode_pos_pengirim,
+                provinsi_pengirim, kota_pengirim, area_pengirim, alamat_lengkap_pengirim,
+                pengirim, nomor_ponsel_pengirim, ten_letter_code, nama_outlet_delivery,
+                nomor_pesanan_pelanggan, perusahaan_pengirim,
+                penerima, perusahaan_penerima_paket, nomor_handphone_penerima,
+                negara_penerima, provinsi_penerima, kota_penerima, area_penerima,
+                alamat_lengkap_penerima, kode_pos_penerima, jumlah_pembayaran_cod,
+                jenis_barang, jumlah_koli, berat_pickup, waktu_input_pesanan
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON DUPLICATE KEY UPDATE
+                nama_barang = VALUES(nama_barang),
+                sumber_pesanan = VALUES(sumber_pesanan),
+                outlet_pengirim = VALUES(outlet_pengirim),
+                pengirim = VALUES(pengirim),
+                nomor_ponsel_pengirim = VALUES(nomor_ponsel_pengirim),
+                ten_letter_code = VALUES(ten_letter_code),
+                nama_outlet_delivery = VALUES(nama_outlet_delivery),
+                nomor_pesanan_pelanggan = VALUES(nomor_pesanan_pelanggan),
+                penerima = VALUES(penerima),
+                nomor_handphone_penerima = VALUES(nomor_handphone_penerima),
+                alamat_lengkap_penerima = VALUES(alamat_lengkap_penerima),
+                jenis_barang = VALUES(jenis_barang),
+                berat_pickup = VALUES(berat_pickup)
+            `, [
+              detailData.waybillId,
+              detailData.goodsName || '',
+              detailData.orderSourceName || '',
+              detailData.pickNetworkName || detailData.sendCode || '',
+              detailData.senderPostalCode || '',
+              detailData.senderProvinceName || '',
+              detailData.senderCityName || '',
+              detailData.senderAreaName || '',
+              detailData.senderDetailedAddress || '',
+              detailData.senderName || '',
+              detailData.senderMobilePhone || detailData.senderTelphone || '',
+              detailData.terminalDispatchCode || detailData.receiverSortingCode || '',
+              detailData.dispatchNetworkCode || detailData.dispatchCode || '',
+              detailData.customerOrderNo || String(detailData.id || ''),
+              detailData.senderCompany || '',
+              detailData.receiverName || '',
+              detailData.receiverCompany || '',
+              detailData.receiverMobilePhone || detailData.receiverTelphone || '',
+              detailData.receiverCountryName || 'Indonesia',
+              detailData.receiverProvinceName || '',
+              detailData.receiverCityName || '',
+              detailData.receiverAreaName || '',
+              detailData.receiverDetailedAddress || '',
+              detailData.receiverPostalCode || '',
+              parseFloat(detailData.codMoney || detailData.goodsValue || 0) || 0,
+              detailData.goodsTypeName || '',
+              parseInt(detailData.packageNumber || 1, 10) || 1,
+              parseFloat(detailData.packageTotalWeight || 0) || 0,
+              detailData.customerOrderTime || ''
+            ]);
+          } catch(e) {
+            console.warn('Failed auto-persisting live detail to pto_orders:', e.message);
+          }
+        }
+
         return res.json({ success: true, data: detailData });
       }
     } catch (_) {}
