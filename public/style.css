@@ -11802,6 +11802,9 @@ thead th input[type="checkbox"]:active {
   margin-bottom: 22px;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(12px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .advance-subnav-header {
@@ -11874,32 +11877,35 @@ thead th input[type="checkbox"]:active {
 
 .advance-tabs-container {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-@media (max-width: 1200px) {
-  .advance-tabs-container {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .advance-tabs-container {
     display: flex;
     overflow-x: auto;
     gap: 8px;
     padding-bottom: 6px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
   }
   .advance-tabs-container::-webkit-scrollbar {
-    display: none;
+    height: 4px;
+  }
+  .advance-tabs-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .advance-tabs-container::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
   }
   .advance-tab-btn {
-    flex-shrink: 0;
-    min-width: 175px;
-    padding: 10px 12px;
+    flex: 0 0 auto;
+    min-width: 170px;
   }
 }
 
@@ -11907,14 +11913,17 @@ thead th input[type="checkbox"]:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 14px;
-  min-height: 50px;
+  gap: 6px;
+  padding: 8px 10px;
+  min-height: 48px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: rgba(15, 23, 42, 0.65);
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 12px;
   color: #94a3b8;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -11930,7 +11939,7 @@ thead th input[type="checkbox"]:active {
 }
 
 .advance-tab-btn .tab-label {
-  flex: 1;
+  flex: 1 1 auto;
   line-height: 1.25;
   min-width: 0;
   white-space: nowrap;
@@ -11978,14 +11987,15 @@ thead th input[type="checkbox"]:active {
 }
 
 .advance-tab-pill {
-  font-size: 0.66rem;
+  font-size: 0.63rem;
   font-weight: 700;
-  padding: 2.5px 7px;
+  padding: 2px 6px;
   border-radius: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   flex-shrink: 0;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .advance-tab-pill.pill-blue {
