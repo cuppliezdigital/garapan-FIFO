@@ -29,6 +29,114 @@ async function getScanSiteCode() {
   return 'JKT99A';
 }
 
+// Ensure pto_orders table exists for storing 36 columns with 100% precision
+let isPtoTableInitialized = false;
+async function ensurePtoOrdersTable() {
+  if (isPtoTableInitialized) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS pto_orders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        waybill VARCHAR(100) NOT NULL UNIQUE,
+        nama_barang TEXT,
+        sumber_pesanan VARCHAR(100),
+        outlet_pengirim VARCHAR(100),
+        kode_pos_pengirim VARCHAR(30),
+        provinsi_pengirim VARCHAR(100),
+        kota_pengirim VARCHAR(100),
+        area_pengirim VARCHAR(100),
+        alamat_lengkap_pengirim TEXT,
+        pengirim VARCHAR(255),
+        nomor_ponsel_pengirim VARCHAR(50),
+        ten_letter_code VARCHAR(100),
+        nama_outlet_delivery VARCHAR(100),
+        gateway_asal VARCHAR(100),
+        gateway_tujuan VARCHAR(100),
+        kode_rute VARCHAR(100),
+        nomor_pesanan_pelanggan VARCHAR(100),
+        perusahaan_pengirim VARCHAR(255),
+        telepon_rumah_pengirim VARCHAR(50),
+        kelurahan_pengirim VARCHAR(100),
+        penerima VARCHAR(255),
+        perusahaan_penerima_paket VARCHAR(255),
+        nomor_handphone_penerima VARCHAR(50),
+        nomor_telepon_penerima VARCHAR(50),
+        negara_penerima VARCHAR(100) DEFAULT 'Indonesia',
+        provinsi_penerima VARCHAR(100),
+        kota_penerima VARCHAR(100),
+        area_penerima VARCHAR(100),
+        kelurahan_penerima VARCHAR(100),
+        jalan_penerima_paket VARCHAR(255),
+        alamat_lengkap_penerima TEXT,
+        kode_pos_penerima VARCHAR(30),
+        jumlah_pembayaran_cod DECIMAL(14,2) DEFAULT 0,
+        jenis_barang VARCHAR(100),
+        jumlah_koli INT DEFAULT 1,
+        berat_pickup DECIMAL(10,2) DEFAULT 0,
+        waktu_input_pesanan VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_waybill (waybill),
+        INDEX idx_outlet_delivery (nama_outlet_delivery),
+        INDEX idx_nomor_pesanan (nomor_pesanan_pelanggan)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    isPtoTableInitialized = true;
+  } catch (err) {
+    console.error('ensurePtoOrdersTable error:', err.message);
+  }
+}
+
+// Ensure table is created at startup
+ensurePtoOrdersTable().catch(() => null);
+
+function mapPtoDbRowToRecord(r) {
+  if (!r) return null;
+  return {
+    id: r.waybill,
+    waybillId: r.waybill,
+    goodsName: r.nama_barang || '-',
+    goodsTypeName: r.jenis_barang || 'Lainnya',
+    packageTotalWeight: String(r.berat_pickup != null ? r.berat_pickup : '0.00'),
+    packageNumber: String(r.jumlah_koli || '1'),
+    orderSourceName: r.sumber_pesanan || 'JFS',
+    customerOrderNo: r.nomor_pesanan_pelanggan || '-',
+    senderCompanyName: r.perusahaan_pengirim || '-',
+    senderName: r.pengirim || '-',
+    senderMobile: r.nomor_ponsel_pengirim || '-',
+    senderMobilePhone: r.nomor_ponsel_pengirim || '-',
+    senderPostcode: r.kode_pos_pengirim || '',
+    senderProvinceName: r.provinsi_pengirim || '',
+    senderCityName: r.kota_pengirim || '',
+    senderAreaName: r.area_pengirim || '',
+    senderTownName: r.kelurahan_pengirim || '',
+    senderTelphone: r.telepon_rumah_pengirim || '',
+    senderDetailedAddress: r.alamat_lengkap_pengirim || '-',
+    pickNetworkName: r.outlet_pengirim || '-',
+    terminalDispatchCode: r.ten_letter_code || '-',
+    dispatchNetworkCode: r.nama_outlet_delivery || '-',
+    dispatchNetworkName: r.nama_outlet_delivery || '-',
+    receiverCompanyName: r.perusahaan_penerima_paket || '-',
+    receiverName: r.penerima || '-',
+    receiverMobile: r.nomor_handphone_penerima || '-',
+    receiverMobilePhone: r.nomor_handphone_penerima || '-',
+    receiverTelphone: r.nomor_telepon_penerima || '',
+    receiverProvinceName: r.provinsi_penerima || '',
+    receiverCityName: r.kota_penerima || '',
+    receiverAreaName: r.area_penerima || '',
+    receiverTownName: r.kelurahan_penerima || '',
+    receiverStreetName: r.jalan_penerima_paket || '',
+    receiverDetailedAddress: r.alamat_lengkap_penerima || '-',
+    receiverPostcode: r.kode_pos_penerima || '',
+    goodsValue: String(r.jumlah_pembayaran_cod != null ? r.jumlah_pembayaran_cod : '0.00'),
+    sourceNetworkCode: r.gateway_asal || '-',
+    destGateway: r.gateway_tujuan || '-',
+    transferPath: r.kode_rute || '-',
+    inputTime: r.waktu_input_pesanan || (r.created_at ? String(r.created_at).slice(0, 10) : '-'),
+    _isPtoOfficial: true
+  };
+}
+
 // 1. Get PTO Configuration
 exports.getConfig = async (req, res) => {
   try {
@@ -270,48 +378,85 @@ exports.queryOrders = async (req, res) => {
     let total = 0;
     let querySuccessful = false;
 
-    // --- TIER 1: COBA QUERY JFS OMS API SECARA GLOBAL ---
-    // 1A. Coba request dengan token saat ini
+    // --- TIER 0: CEK DATABASE RESMI PTO (pto_orders - DATA LENGKAP 36 KOLOM JFS PTO) ---
+    await ensurePtoOrdersTable();
     try {
-      const postData = JSON.stringify(payload);
-      let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+      let ptoWhereClauses = [];
+      let ptoQueryParams = [];
 
-      if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data?.records?.length > 0) {
-        records = result.data.records;
-        total = result.data.total || records.length;
-        querySuccessful = true;
-      } else if (!querySuccessful && effectiveSiteCode === 'JKT99A') {
-        const payloadWithSite = { ...payload, siteCode: 'JKT99A' };
-        const resultSite = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadWithSite), token).catch(() => null);
-        if (resultSite && (resultSite.code === 1 || resultSite.code === 200 || resultSite.succ === true) && resultSite.data?.records?.length > 0) {
-          records = resultSite.data.records;
-          total = resultSite.data.total || records.length;
+      if (payload.waybillIds && payload.waybillIds.length > 0) {
+        const placeholders = payload.waybillIds.map(() => '?').join(',');
+        ptoWhereClauses.push(`waybill IN (${placeholders})`);
+        ptoQueryParams.push(...payload.waybillIds);
+      }
+
+      const ptoWhereSql = ptoWhereClauses.length > 0 ? `WHERE ${ptoWhereClauses.join(' AND ')}` : '';
+      const [ptoCountResult] = await db.query(`SELECT COUNT(*) AS total FROM pto_orders ${ptoWhereSql}`, ptoQueryParams);
+      const ptoTotal = ptoCountResult[0]?.total || 0;
+
+      if (ptoTotal > 0) {
+        const offset = (parsedCurrent - 1) * parsedSize;
+        const [ptoRows] = await db.query(
+          `SELECT * FROM pto_orders
+           ${ptoWhereSql}
+           ORDER BY id DESC
+           LIMIT ? OFFSET ?`,
+          [...ptoQueryParams, parsedSize, offset]
+        );
+
+        if (ptoRows.length > 0) {
+          records = ptoRows.map(mapPtoDbRowToRecord);
+          total = ptoTotal;
           querySuccessful = true;
         }
       }
-    } catch (e1) {
-      console.warn('Tier 1A OMS Query note:', e1.message);
+    } catch (ptoDbErr) {
+      console.warn('Tier 0 pto_orders query note:', ptoDbErr.message);
     }
 
-    // 1B. Jika belum dapat data dan kita punya token default SPV Area yang memiliki izin global (992.000 order)
-    if (!querySuccessful && token !== DEFAULT_PTO_TOKEN) {
+    // --- TIER 1: COBA QUERY JFS OMS API JIKA BELUM ADA DI DATABASE PTO ---
+    if (!querySuccessful) {
+      // 1A. Coba request dengan token saat ini
       try {
-        const payloadGlobal = { ...payload };
-        delete payloadGlobal.siteCode;
-        const resultSpv = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadGlobal), DEFAULT_PTO_TOKEN);
-        if (resultSpv && (resultSpv.code === 1 || resultSpv.code === 200 || resultSpv.succ === true) && resultSpv.data?.records?.length > 0) {
-          records = resultSpv.data.records;
-          total = resultSpv.data.total || records.length;
+        const postData = JSON.stringify(payload);
+        let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+
+        if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data?.records?.length > 0) {
+          records = result.data.records;
+          total = result.data.total || records.length;
           querySuccessful = true;
+        } else if (!querySuccessful && effectiveSiteCode === 'JKT99A') {
+          const payloadWithSite = { ...payload, siteCode: 'JKT99A' };
+          const resultSite = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadWithSite), token).catch(() => null);
+          if (resultSite && (resultSite.code === 1 || resultSite.code === 200 || resultSite.succ === true) && resultSite.data?.records?.length > 0) {
+            records = resultSite.data.records;
+            total = resultSite.data.total || records.length;
+            querySuccessful = true;
+          }
         }
-      } catch (e2) {
-        console.warn('Tier 1B SPV Token Query note:', e2.message);
+      } catch (e1) {
+        console.warn('Tier 1A OMS Query note:', e1.message);
+      }
+
+      // 1B. Jika belum dapat data dan kita punya token default SPV Area
+      if (!querySuccessful && token !== DEFAULT_PTO_TOKEN) {
+        try {
+          const payloadGlobal = { ...payload };
+          delete payloadGlobal.siteCode;
+          const resultSpv = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadGlobal), DEFAULT_PTO_TOKEN);
+          if (resultSpv && (resultSpv.code === 1 || resultSpv.code === 200 || resultSpv.succ === true) && resultSpv.data?.records?.length > 0) {
+            records = resultSpv.data.records;
+            total = resultSpv.data.total || records.length;
+            querySuccessful = true;
+          }
+        } catch (e2) {
+          console.warn('Tier 1B SPV Token Query note:', e2.message);
+        }
       }
     }
 
-    // --- TIER 2: SMART HYBRID FALLBACK KE DATABASE JFS REALTIME (12.000+ WAYBILL AKTIF) ---
-    // Jika server JFS OMS tidak mengembalikan data (misal query tanpa filter resi di luar hak drop point),
-    // otomatis tampilkan data live JFS yang tersimpan di sistem monitoring_stuck sehingga layar SELALU MUNCUL DATA!
+    // --- TIER 2: SMART HYBRID FALLBACK KE DATABASE JFS REALTIME (12.000+ WAYBILL FIFO) ---
+    // Jangan pernah memasukkan kode outlet (seperti SIN020B / KUB003A) ke dalam nama orang Pengirim/Penerima!
     if (!querySuccessful || records.length === 0) {
       try {
         const offset = (parsedCurrent - 1) * parsedSize;
@@ -344,29 +489,31 @@ exports.queryOrders = async (req, res) => {
             id: r.waybill,
             waybillId: r.waybill,
             goodsName: r.nama_barang || '-',
-            goodsTypeName: 'Lainnya',
+            goodsTypeName: '-',
             packageTotalWeight: '0.00',
             packageNumber: '1',
-            orderSourceName: 'JFS Live Gateway',
+            orderSourceName: 'Monitoring FIFO (Belum di-import PTO)',
             customerOrderNo: '-',
             senderCompanyName: '-',
-            senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
+            senderName: '-',
             senderMobile: '-',
-            senderProvinceName: 'DKI Jakarta',
-            senderCityName: 'Jakarta Utara',
-            senderAreaName: 'Penjaringan',
-            senderDetailedAddress: `Gateway Origin: ${r.outlet_asal || 'JKT99A'}`,
-            pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
+            senderMobilePhone: '-',
+            senderProvinceName: '',
+            senderCityName: '',
+            senderAreaName: '',
+            senderDetailedAddress: '-',
+            pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : '-',
             terminalDispatchCode: r.tlc || '-',
             dispatchNetworkCode: r.outlet || '-',
             dispatchNetworkName: r.outlet || '-',
             receiverCompanyName: '-',
-            receiverName: r.outlet || 'Penerima Cargo',
+            receiverName: '-',
             receiverMobile: '-',
-            receiverProvinceName: '-',
+            receiverMobilePhone: '-',
+            receiverProvinceName: '',
             receiverCityName: '',
             receiverAreaName: '',
-            receiverDetailedAddress: `Outlet Tujuan: ${r.outlet} • Jalur Sorting TLC: ${r.tlc}`,
+            receiverDetailedAddress: '-',
             goodsValue: '0.00',
             inputTime: r.tanggal ? String(r.tanggal).slice(0, 10) : String(r.created_at || '').slice(0, 10),
             _isLocalLive: true
@@ -443,6 +590,23 @@ exports.getOrderDetail = async (req, res) => {
       });
     }
 
+    // 1. Cek pto_orders database resmi JFS PTO terlebih dahulu
+    try {
+      await ensurePtoOrdersTable();
+      const [ptoRows] = await db.query(
+        'SELECT * FROM pto_orders WHERE waybill = ? OR nomor_pesanan_pelanggan = ? LIMIT 1',
+        [id, id]
+      );
+      if (ptoRows && ptoRows.length > 0) {
+        const detailData = mapPtoDbRowToRecord(ptoRows[0]);
+        detailCache.set(id, detailData);
+        return res.json({ success: true, data: detailData, fromPtoDb: true });
+      }
+    } catch (e) {
+      console.warn('pto_orders lookup warning:', e.message);
+    }
+
+    // 2. Coba request ke JFS OMS API
     const token = await getPtoToken();
     try {
       let result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
@@ -456,7 +620,7 @@ exports.getOrderDetail = async (req, res) => {
       }
     } catch (_) {}
 
-    // Fallback: Check local monitoring_stuck database
+    // 3. Fallback: Check local monitoring_stuck database (FIFO) tanpa membuat-buat nama palsu
     try {
       const [rows] = await db.query('SELECT * FROM monitoring_stuck WHERE waybill = ? LIMIT 1', [id]);
       if (rows && rows.length > 0) {
@@ -464,30 +628,30 @@ exports.getOrderDetail = async (req, res) => {
         const localDetail = {
           waybillId: r.waybill,
           goodsName: r.nama_barang || '-',
-          goodsTypeName: 'Paket Cargo Instock',
+          goodsTypeName: '-',
           packageTotalWeight: '0.00',
           packageNumber: '1',
-          orderSourceName: 'JFS Live Gateway (FIFO)',
+          orderSourceName: 'Monitoring FIFO (Belum di-import PTO)',
           customerOrderNo: '-',
           senderCompanyName: '-',
-          senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
+          senderName: '-',
           senderMobilePhone: '-',
-          senderProvinceName: 'DKI Jakarta',
-          senderCityName: 'Jakarta Utara',
-          senderAreaName: 'Penjaringan',
-          senderDetailedAddress: `Gateway Origin: ${r.outlet_asal || 'JKT99A'}`,
-          pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
-          pickStaffName: 'Petugas JFS Gateway',
+          senderProvinceName: '-',
+          senderCityName: '-',
+          senderAreaName: '-',
+          senderDetailedAddress: '-',
+          pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : '-',
+          pickStaffName: '-',
           dispatchNetworkCode: r.outlet || '-',
           dispatchNetworkName: r.outlet || '-',
           terminalDispatchCode: r.tlc || '-',
           receiverCompanyName: '-',
-          receiverName: r.outlet || 'Penerima Cargo',
+          receiverName: '-',
           receiverMobilePhone: '-',
           receiverProvinceName: '-',
-          receiverCityName: '',
-          receiverAreaName: '',
-          receiverDetailedAddress: `Outlet Tujuan: ${r.outlet} • Jalur Sorting TLC: ${r.tlc}`,
+          receiverCityName: '-',
+          receiverAreaName: '-',
+          receiverDetailedAddress: '-',
           goodsValue: '0.00',
           inputTime: r.tanggal ? String(r.tanggal).slice(0, 10) : String(r.created_at || '').slice(0, 10),
           dispatchNetworkTime: r.stuck || '-'
@@ -499,6 +663,150 @@ exports.getOrderDetail = async (req, res) => {
     return res.status(404).json({ error: 'Detail order tidak ditemukan' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// 5. Import PTO Orders (36 Kolom Lengkap dari Excel JFS Pelacakan Total Order)
+exports.importOrders = async (req, res) => {
+  try {
+    await ensurePtoOrdersTable();
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada data order yang dikirim untuk diimport.' });
+    }
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    for (const r of rows) {
+      const waybill = String(r.waybill || r.waybillId || r['Waybill Utama'] || r['Waybill'] || r['No Resi'] || '').trim();
+      if (!waybill) continue;
+
+      const namaBarang = r.nama_barang || r.goodsName || r['Nama Barang'] || '';
+      const sumberPesanan = r.sumber_pesanan || r.orderSourceName || r['Sumber Pesanan'] || '';
+      const outletPengirim = r.outlet_pengirim || r.pickNetworkName || r['Outlet Pengirim'] || '';
+      const kodePosPengirim = r.kode_pos_pengirim || r.senderPostcode || r['Kode Pos Pengirim'] || '';
+      const provinsiPengirim = r.provinsi_pengirim || r.senderProvinceName || r['Provinsi Pengirim'] || '';
+      const kotaPengirim = r.kota_pengirim || r.senderCityName || r['Kota Pengirim'] || '';
+      const areaPengirim = r.area_pengirim || r.senderAreaName || r['Area Pengirim'] || '';
+      const alamatLengkapPengirim = r.alamat_lengkap_pengirim || r.senderDetailedAddress || r['Alamat Lengkap Pengirim'] || '';
+      const pengirim = r.pengirim || r.senderName || r['Pengirim'] || '';
+      const nomorPonselPengirim = r.nomor_ponsel_pengirim || r.senderMobile || r['nomor ponsel pengirim'] || '';
+      const tenLetterCode = r.ten_letter_code || r.terminalDispatchCode || r['Ten letter code'] || '';
+      const namaOutletDelivery = r.nama_outlet_delivery || r.dispatchNetworkCode || r['Nama Outlet Delivery'] || '';
+      const gatewayAsal = r.gateway_asal || r.sourceNetworkCode || r['Gateway asal'] || '';
+      const gatewayTujuan = r.gateway_tujuan || r.destGateway || r['Gateway tujuan'] || '';
+      const kodeRute = r.kode_rute || r.transferPath || r['Kode rute'] || '';
+      const nomorPesananPelanggan = r.nomor_pesanan_pelanggan || r.customerOrderNo || r['Nomor pesanan pelanggan'] || '';
+      const perusahaanPengirim = r.perusahaan_pengirim || r.senderCompanyName || r['Perusahaan pengirim'] || '';
+      const teleponRumahPengirim = r.telepon_rumah_pengirim || r['Telepon rumah pengirim'] || '';
+      const kelurahanPengirim = r.kelurahan_pengirim || r['Kelurahan Pengirim'] || '';
+      const penerima = r.penerima || r.receiverName || r['Penerima'] || '';
+      const perusahaanPenerimaPaket = r.perusahaan_penerima_paket || r.receiverCompanyName || r['perusahaan penerima paket'] || '';
+      const nomorHandphonePenerima = r.nomor_handphone_penerima || r.receiverMobile || r['nomor handphone penerima'] || '';
+      const nomorTeleponPenerima = r.nomor_telepon_penerima || r['nomor telepon penerima'] || '';
+      const negaraPenerima = r.negara_penerima || r['negara penerima'] || 'Indonesia';
+      const provinsiPenerima = r.provinsi_penerima || r.receiverProvinceName || r['Provinsi penerima'] || '';
+      const kotaPenerima = r.kota_penerima || r.receiverCityName || r['Kota penerima'] || '';
+      const areaPenerima = r.area_penerima || r.receiverAreaName || r['area penerima'] || '';
+      const kelurahanPenerima = r.kelurahan_penerima || r['Kelurahan Penerima'] || '';
+      const jalanPenerimaPaket = r.jalan_penerima_paket || r['jalan penerima paket'] || '';
+      const alamatLengkapPenerima = r.alamat_lengkap_penerima || r.receiverDetailedAddress || r['Alamat Lengkap Penerima'] || '';
+      const kodePosPenerima = r.kode_pos_penerima || r.receiverPostcode || r['Kode Pos Penerima'] || '';
+      const jumlahPembayaranCod = parseFloat(String(r.jumlah_pembayaran_cod || r.goodsValue || r['jumlah pembayaran COD'] || 0).replace(/,/g, '')) || 0;
+      const jenisBarang = r.jenis_barang || r.goodsTypeName || r['Jenis Barang'] || '';
+      const jumlahKoli = parseInt(r.jumlah_koli || r.packageNumber || r['Jumlah Koli'] || 1, 10) || 1;
+      const beratPickup = parseFloat(String(r.berat_pickup || r.packageTotalWeight || r['Berat Pick-up'] || 0).replace(/,/g, '')) || 0;
+      const waktuInputPesanan = r.waktu_input_pesanan || r.inputTime || r['Waktu Input Pesanan'] || '';
+
+      const [res] = await db.query(
+        `INSERT INTO pto_orders (
+          waybill, nama_barang, sumber_pesanan, outlet_pengirim, kode_pos_pengirim,
+          provinsi_pengirim, kota_pengirim, area_pengirim, alamat_lengkap_pengirim,
+          pengirim, nomor_ponsel_pengirim, ten_letter_code, nama_outlet_delivery,
+          gateway_asal, gateway_tujuan, kode_rute, nomor_pesanan_pelanggan,
+          perusahaan_pengirim, telepon_rumah_pengirim, kelurahan_pengirim,
+          penerima, perusahaan_penerima_paket, nomor_handphone_penerima,
+          nomor_telepon_penerima, negara_penerima, provinsi_penerima, kota_penerima,
+          area_penerima, kelurahan_penerima, jalan_penerima_paket,
+          alamat_lengkap_penerima, kode_pos_penerima, jumlah_pembayaran_cod,
+          jenis_barang, jumlah_koli, berat_pickup, waktu_input_pesanan
+        ) VALUES (
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?, ?
+        ) ON DUPLICATE KEY UPDATE
+          nama_barang = VALUES(nama_barang),
+          sumber_pesanan = VALUES(sumber_pesanan),
+          outlet_pengirim = VALUES(outlet_pengirim),
+          kode_pos_pengirim = VALUES(kode_pos_pengirim),
+          provinsi_pengirim = VALUES(provinsi_pengirim),
+          kota_pengirim = VALUES(kota_pengirim),
+          area_pengirim = VALUES(area_pengirim),
+          alamat_lengkap_pengirim = VALUES(alamat_lengkap_pengirim),
+          pengirim = VALUES(pengirim),
+          nomor_ponsel_pengirim = VALUES(nomor_ponsel_pengirim),
+          ten_letter_code = VALUES(ten_letter_code),
+          nama_outlet_delivery = VALUES(nama_outlet_delivery),
+          gateway_asal = VALUES(gateway_asal),
+          gateway_tujuan = VALUES(gateway_tujuan),
+          kode_rute = VALUES(kode_rute),
+          nomor_pesanan_pelanggan = VALUES(nomor_pesanan_pelanggan),
+          perusahaan_pengirim = VALUES(perusahaan_pengirim),
+          telepon_rumah_pengirim = VALUES(telepon_rumah_pengirim),
+          kelurahan_pengirim = VALUES(kelurahan_pengirim),
+          penerima = VALUES(penerima),
+          perusahaan_penerima_paket = VALUES(perusahaan_penerima_paket),
+          nomor_handphone_penerima = VALUES(nomor_handphone_penerima),
+          nomor_telepon_penerima = VALUES(nomor_telepon_penerima),
+          negara_penerima = VALUES(negara_penerima),
+          provinsi_penerima = VALUES(provinsi_penerima),
+          kota_penerima = VALUES(kota_penerima),
+          area_penerima = VALUES(area_penerima),
+          kelurahan_penerima = VALUES(kelurahan_penerima),
+          jalan_penerima_paket = VALUES(jalan_penerima_paket),
+          alamat_lengkap_penerima = VALUES(alamat_lengkap_penerima),
+          kode_pos_penerima = VALUES(kode_pos_penerima),
+          jumlah_pembayaran_cod = VALUES(jumlah_pembayaran_cod),
+          jenis_barang = VALUES(jenis_barang),
+          jumlah_koli = VALUES(jumlah_koli),
+          berat_pickup = VALUES(berat_pickup),
+          waktu_input_pesanan = VALUES(waktu_input_pesanan)`,
+        [
+          waybill, namaBarang, sumberPesanan, outletPengirim, kodePosPengirim,
+          provinsiPengirim, kotaPengirim, areaPengirim, alamatLengkapPengirim,
+          pengirim, nomorPonselPengirim, tenLetterCode, namaOutletDelivery,
+          gatewayAsal, gatewayTujuan, kodeRute, nomorPesananPelanggan,
+          perusahaanPengirim, teleponRumahPengirim, kelurahanPengirim,
+          penerima, perusahaanPenerimaPaket, nomorHandphonePenerima,
+          nomorTeleponPenerima, negaraPenerima, provinsiPenerima, kotaPenerima,
+          areaPenerima, kelurahanPenerima, jalanPenerimaPaket,
+          alamatLengkapPenerima, kodePosPenerima, jumlahPembayaranCod,
+          jenisBarang, jumlahKoli, beratPickup, waktuInputPesanan
+        ]
+      );
+
+      if (res.affectedRows === 1) insertedCount++;
+      else if (res.affectedRows === 2) updatedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Berhasil mengimport data PTO: ${insertedCount} order baru, ${updatedCount} order diperbarui.`,
+      insertedCount,
+      updatedCount,
+      totalProcessed: rows.length
+    });
+  } catch (err) {
+    console.error('importOrders error:', err);
+    res.status(500).json({ error: 'Gagal mengimport data PTO: ' + err.message });
   }
 };
 

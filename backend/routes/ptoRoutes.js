@@ -9,6 +9,7 @@ router.post('/query', authMiddleware, requireAdminOrGm, ptoController.queryOrder
 router.get('/detail/:id', authMiddleware, requireAdminOrGm, ptoController.getOrderDetail);
 router.get('/config', authMiddleware, requireAdminOrGm, ptoController.getConfig);
 router.post('/config', authMiddleware, requireAdminOrGm, ptoController.saveConfig);
+router.post('/import', authMiddleware, requireAdminOrGm, ptoController.importOrders);
 
 module.exports = router;
 

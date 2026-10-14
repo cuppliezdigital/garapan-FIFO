@@ -813,11 +813,87 @@ async function submitPtoConfig(e) {
   }
 }
 
+// 11B. Import File Excel PTO (36 Kolom Lengkap JFS Pelacakan Total Order)
+function initPtoImportHandler() {
+  const btnImport = document.getElementById('btnImportPtoExcel');
+  const fileInput = document.getElementById('inputPtoExcelFile');
+
+  if (btnImport && fileInput) {
+    btnImport.addEventListener('click', () => {
+      fileInput.value = '';
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      showAppAlert(`⏳ Sedang membaca file Excel ${file.name}...`);
+
+      try {
+        const data = await file.arrayBuffer();
+        let rows = [];
+
+        if (typeof XLSX !== 'undefined') {
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        } else {
+          const text = new TextDecoder('utf-8').decode(data);
+          const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+          if (lines.length > 1) {
+            const sep = lines[0].includes('\t') ? '\t' : ',';
+            const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g, ''));
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+              const obj = {};
+              headers.forEach((h, idx) => { obj[h] = cols[idx] || ''; });
+              rows.push(obj);
+            }
+          }
+        }
+
+        if (!rows || rows.length === 0) {
+          showAppAlert('❌ File kosong atau kolom tidak terbaca.', true);
+          return;
+        }
+
+        showAppAlert(`📤 Mengunggah ${rows.length} data order resmi JFS PTO...`);
+
+        const token = getToken();
+        const res = await fetch('/api/pto/import', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ rows })
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Gagal menyimpan data import');
+        }
+
+        showAppAlert(`✅ ${json.message || `Berhasil mengimpor ${rows.length} order!`}`);
+        // Refresh PTO table immediately
+        executePtoQuery(1);
+      } catch (err) {
+        console.error('Import PTO Error:', err);
+        showAppAlert(`❌ Gagal import: ${err.message}`, true);
+      }
+    });
+  }
+}
+
 // 12. Setup Event Listeners
 let ptoListenersInitialized = false;
 function initPtoEventListeners() {
   if (ptoListenersInitialized) return;
   ptoListenersInitialized = true;
+
+  initPtoImportHandler();
 
   // Preset Date Chips
   document.querySelectorAll('#ptoDatePresets .pto-chip').forEach(chip => {
