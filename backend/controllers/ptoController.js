@@ -16,15 +16,29 @@ async function getPtoToken() {
   return DEFAULT_PTO_TOKEN;
 }
 
-// 1. Get PTO Configuration & Account Status
+// Ensure scan_site_code exists in jfs_config
+async function getScanSiteCode() {
+  try {
+    const [rows] = await db.query("SELECT config_value FROM jfs_config WHERE config_key = 'scan_site_code' LIMIT 1");
+    if (rows && rows.length > 0 && rows[0].config_value) {
+      return rows[0].config_value.trim().toUpperCase();
+    }
+  } catch (e) {
+    console.warn('getScanSiteCode DB warning:', e.message);
+  }
+  return 'JKT99A';
+}
+
+// 1. Get PTO Configuration
 exports.getConfig = async (req, res) => {
   try {
     const token = await getPtoToken();
+    const siteCode = await getScanSiteCode();
     res.json({
       success: true,
       data: {
         authtoken: token,
-        accountName: 'Indra Purnama (SPV Area DKI Jakarta)',
+        siteCode: siteCode,
         defaultPageSizes: [50, 100, 200, 300, 500]
       }
     });
@@ -174,10 +188,13 @@ exports.queryOrders = async (req, res) => {
       current = 1,
       size = 100,
       orderSourceName,
-      countryId = '1'
+      countryId = '1',
+      siteCode
     } = req.body || {};
 
     const token = await getPtoToken();
+    const defaultSiteCode = await getScanSiteCode();
+    const effectiveSiteCode = (siteCode && String(siteCode).trim()) ? String(siteCode).trim().toUpperCase() : defaultSiteCode;
 
     // Default dates if omitted: past 15 days to today
     const now = new Date();
@@ -200,7 +217,8 @@ exports.queryOrders = async (req, res) => {
       endDate: cleanEnd,
       current: parsedCurrent,
       size: parsedSize,
-      countryId: String(countryId)
+      countryId: String(countryId),
+      siteCode: effectiveSiteCode
     };
 
     if (orderSourceName && String(orderSourceName).trim() && String(orderSourceName).toLowerCase() !== 'all') {
@@ -229,8 +247,14 @@ exports.queryOrders = async (req, res) => {
       });
     }
     if (result.code !== 1 && result.code !== 200 && result.succ !== true) {
+      let friendlyError = result.msg || result.message || 'Gagal mengambil data dari JFS PTO';
+      if (friendlyError.includes('取件网点编码不能为空')) {
+        friendlyError = 'Kode Gateway / Site Asal (siteCode) tidak boleh kosong.';
+      } else if (friendlyError.includes('非法查询')) {
+        friendlyError = `Akses ditolak oleh server JFS (Kode Site tidak sesuai hak akses akun). Gunakan Kode Site ${effectiveSiteCode} yang sesuai dengan akun login JFS Anda.`;
+      }
       return res.status(400).json({
-        error: result.msg || result.message || 'Gagal mengambil data dari JFS PTO',
+        error: friendlyError,
         raw: result
       });
     }

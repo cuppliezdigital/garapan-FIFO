@@ -13684,15 +13684,21 @@ thead th input[type="checkbox"]:active {
 
 .pto-actions-row {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  gap: 12px;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
 }
 
-.pto-spacer {
-  flex: 1;
+.pto-actions-left,
+.pto-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .btn-pto-primary {

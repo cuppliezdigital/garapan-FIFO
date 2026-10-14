@@ -2642,13 +2642,9 @@
                 </div>
 
                 <div class="pto-header-actions">
-                  <div class="pto-account-badge" id="ptoAccountBadge">
-                    <span class="pto-status-dot"></span>
-                    <span id="ptoAccountNameText">Akun: Indra Purnama (SPV Area)</span>
-                  </div>
-                  <button type="button" class="btn-pto-ghost" id="btnOpenPtoConfigModal" title="Ganti atau atur Auth Token PTO">
+                  <button type="button" class="btn-pto-ghost" id="btnOpenPtoConfigModal" onclick="openPtoConfigModal()" title="Ganti atau atur Auth Token PTO">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    <span>Setting Token</span>
+                    <span>Setting Token PTO</span>
                   </button>
                 </div>
               </div>
@@ -2681,7 +2677,12 @@
                   </div>
 
                   <div class="pto-field-group">
-                    <label for="ptoOrderSource">Sumber Order / Platform</label>
+                    <label for="ptoSiteCode">Kode Gateway / Site</label>
+                    <input type="text" id="ptoSiteCode" class="pto-input" value="JKT99A" placeholder="Contoh: JKT99A" style="text-transform: uppercase; font-family: monospace; font-weight: 700; color: #38bdf8;" />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoOrderSource">Sumber Platform</label>
                     <select id="ptoOrderSource" class="pto-input">
                       <option value="all">Semua Platform (All)</option>
                       <option value="shopee">Shopee</option>
@@ -2713,23 +2714,26 @@
                   </div>
 
                   <div class="pto-actions-row full-width">
-                    <button type="submit" class="btn-pto-primary" id="btnSubmitPtoQuery">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                      <span>Tarik &amp; Cari Data PTO</span>
-                    </button>
-                    <button type="button" class="btn-pto-secondary" id="btnResetPtoFilter">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                      <span>Reset</span>
-                    </button>
-                    <div class="pto-spacer"></div>
-                    <button type="button" class="btn-pto-tool" id="btnExportPtoExcel" title="Download data halaman ini ke Excel / CSV">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                      <span>Export Excel</span>
-                    </button>
-                    <button type="button" class="btn-pto-tool" id="btnCopyPtoSummary" title="Salin ringkasan nomor resi &amp; nama barang ke clipboard">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                      <span id="btnCopyPtoSummaryText">Salin Ringkasan</span>
-                    </button>
+                    <div class="pto-actions-left">
+                      <button type="submit" class="btn-pto-primary" id="btnSubmitPtoQuery">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <span>Tarik &amp; Cari Data PTO</span>
+                      </button>
+                      <button type="button" class="btn-pto-secondary" id="btnResetPtoFilter">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        <span>Reset</span>
+                      </button>
+                    </div>
+                    <div class="pto-actions-right">
+                      <button type="button" class="btn-pto-tool" id="btnExportPtoExcel" title="Download data halaman ini ke Excel / CSV">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export Excel</span>
+                      </button>
+                      <button type="button" class="btn-pto-tool" id="btnCopyPtoSummary" title="Salin ringkasan nomor resi &amp; nama barang ke clipboard">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        <span id="btnCopyPtoSummaryText">Salin Ringkasan</span>
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -4001,6 +4005,8 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
             <button type="submit" class="primary-btn" id="submitFeishuBatchBtn" style="padding: 10px 22px;">Masukkan ke Tabel</button>
           </div>
         </form>
+      </div>
+    </div>
     <!-- ============================================ -->
     <!-- MODAL DETAIL LENGKAP ORDER PTO               -->
     <!-- ============================================ -->

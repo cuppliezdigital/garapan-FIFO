@@ -68,13 +68,13 @@ async function fetchPtoConfig() {
     if (res.ok) {
       const data = await res.json();
       const cfg = data.data || {};
-      const nameEl = document.getElementById('ptoAccountNameText');
-      if (nameEl && cfg.accountName) {
-        nameEl.textContent = `Akun: ${cfg.accountName}`;
-      }
       const tokenInput = document.getElementById('ptoInputToken');
       if (tokenInput && cfg.authtoken) {
         tokenInput.value = cfg.authtoken;
+      }
+      const siteInput = document.getElementById('ptoSiteCode');
+      if (siteInput && cfg.siteCode && !siteInput.value) {
+        siteInput.value = cfg.siteCode;
       }
     }
   } catch (err) {
@@ -119,6 +119,7 @@ async function executePtoQuery(targetPage = 1) {
   try {
     const startVal = document.getElementById('ptoStartDate')?.value;
     const endVal = document.getElementById('ptoEndDate')?.value;
+    const siteVal = document.getElementById('ptoSiteCode')?.value.trim();
     const sourceVal = document.getElementById('ptoOrderSource')?.value;
     const sizeVal = parseInt(document.getElementById('ptoPageSize')?.value, 10) || 100;
     const searchVal = document.getElementById('ptoWaybillSearch')?.value.trim();
@@ -129,6 +130,7 @@ async function executePtoQuery(targetPage = 1) {
     const payload = {
       startDate,
       endDate,
+      siteCode: siteVal || 'JKT99A',
       current: targetPage,
       size: sizeVal,
       orderSourceName: sourceVal !== 'all' ? sourceVal : undefined
@@ -836,9 +838,9 @@ function initPtoEventListeners() {
 // Auto-run if DOM loaded
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    // Ready
+    initPtoModule();
   });
 } else {
-  // Ready
+  initPtoModule();
 }
 
