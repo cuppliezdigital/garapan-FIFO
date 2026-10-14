@@ -513,7 +513,7 @@ function initJfsEventListeners() {
   const copyBookmarkletBtn = document.getElementById('btnCopyBookmarkletCode');
   if (copyBookmarkletBtn) {
     copyBookmarkletBtn.addEventListener('click', () => {
-      const code = `javascript:(function(){try{var isH=function(s){return typeof s==='string'&&/^[a-f0-9]{32}$/i.test(s.trim());};var mat=function(s){if(typeof s!=='string')return null;var m=s.match(/[a-f0-9]{32}/i);return m?m[0]:null;};var getT=function(){for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);var v=localStorage.getItem(k);if(isH(v))return v.trim();var m=mat(v);if(m&&(k.toLowerCase().includes('token')||k.toLowerCase().includes('auth')||k.toLowerCase().includes('user')||k.toLowerCase().includes('admin')))return m;}for(var j=0;j<sessionStorage.length;j++){var sk=sessionStorage.key(j);var sv=sessionStorage.getItem(sk);if(isH(sv))return sv.trim();var sm=mat(sv);if(sm&&(sk.toLowerCase().includes('token')||sk.toLowerCase().includes('auth')||sk.toLowerCase().includes('user')||sk.toLowerCase().includes('admin')))return sm;}var cm=document.cookie.match(/(?:token|auth|authtoken)=([a-f0-9]{32})/i)||document.cookie.match(/([a-f0-9]{32})/i);if(cm)return cm[1]||cm[0];for(var a=0;a<localStorage.length;a++){var lm=mat(localStorage.getItem(localStorage.key(a)));if(lm)return lm;}for(var b=0;b<sessionStorage.length;b++){var ssm=mat(sessionStorage.getItem(sessionStorage.key(b)));if(ssm)return ssm;}return null;};var t=getT();if(!t){t=prompt('Masukkan token JFS:');}if(!t){alert('Batal menyinkronkan token.');return;}t=t.trim();try{navigator.clipboard.writeText(t);}catch(_){}var appUrl='https://garapan-fifo-production.up.railway.app';if(window.location.origin.includes('localhost')||window.location.port==='3000'){appUrl='http://localhost:3000';}alert('✅ Token JFS Terdeteksi:\\n'+t+'\\n\\nTab Monitoring FIFO akan dibuka untuk update & sinkronisasi otomatis!');window.open(appUrl+'/#/advance?sync_jfs_token='+encodeURIComponent(t),'_blank');}catch(err){alert('Error: '+err.message);}})();`;
+      const code = `javascript:(function(){try{var isH=function(s){return typeof s==='string'&&/^[a-f0-9]{32}$/i.test(s.trim());};var mat=function(s){if(typeof s!=='string')return null;var m=s.match(/[a-f0-9]{32}/i);return m?m[0]:null;};var getT=function(){for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);var v=localStorage.getItem(k);if(isH(v))return v.trim();var m=mat(v);if(m&&(k.toLowerCase().includes('token')||k.toLowerCase().includes('auth')||k.toLowerCase().includes('user')||k.toLowerCase().includes('admin')))return m;}for(var j=0;j<sessionStorage.length;j++){var sk=sessionStorage.key(j);var sv=sessionStorage.getItem(sk);if(isH(sv))return sv.trim();var sm=mat(sv);if(sm&&(sk.toLowerCase().includes('token')||sk.toLowerCase().includes('auth')||sk.toLowerCase().includes('user')||sk.toLowerCase().includes('admin')))return sm;}var cm=document.cookie.match(/(?:token|auth|authtoken)=([a-f0-9]{32})/i)||document.cookie.match(/([a-f0-9]{32})/i);if(cm)return cm[1]||cm[0];for(var a=0;a<localStorage.length;a++){var lm=mat(localStorage.getItem(localStorage.key(a)));if(lm)return lm;}for(var b=0;b<sessionStorage.length;b++){var ssm=mat(sessionStorage.getItem(sessionStorage.key(b)));if(ssm)return ssm;}return null;};var t=getT();if(!t){t=prompt('Masukkan token JFS:');}if(!t)return;t=t.trim();try{navigator.clipboard.writeText(t);}catch(_){}var old=document.getElementById('fifo-jfs-modal');if(old)old.remove();var div=document.createElement('div');div.id='fifo-jfs-modal';div.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.85);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;backdrop-filter:blur(4px);';var rw='https://garapan-fifo-production.up.railway.app/#/advance?sync_jfs_token='+encodeURIComponent(t);var loc='http://localhost:3000/#/advance?sync_jfs_token='+encodeURIComponent(t);div.innerHTML='<div style=\"background:#0f172a;border:1px solid #334155;border-radius:14px;padding:22px;max-width:440px;width:92%;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);color:#f8fafc;position:relative;\"><button id=\"fifo-close-btn\" style=\"position:absolute;top:12px;right:14px;background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;\">&times;</button><div style=\"display:flex;align-items:center;gap:10px;margin-bottom:12px;\"><span style=\"font-size:26px;\">🔑</span><div><h3 style=\"margin:0;font-size:16px;font-weight:700;color:#38bdf8;\">Token JFS Terdeteksi!</h3><span style=\"font-size:12px;color:#34d399;font-weight:600;\">✓ Otomatis disalin ke clipboard</span></div></div><div style=\"margin:14px 0;\"><label style=\"display:block;font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;\">Auth Token JFS:</label><div style=\"display:flex;gap:8px;\"><input id=\"fifo-token-inp\" type=\"text\" readonly value=\"'+t+'\" style=\"flex:1;background:#1e293b;border:1px solid #475569;border-radius:8px;padding:8px 10px;font-family:monospace;font-size:13px;color:#38bdf8;outline:none;\"/><button id=\"fifo-btn-copy\" style=\"background:#10b981;border:none;border-radius:8px;padding:8px 14px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;\">📋 Salin</button></div></div><div style=\"margin-top:16px;border-top:1px solid #1e293b;padding-top:14px;display:flex;flex-direction:column;gap:8px;\"><span style=\"font-size:11px;color:#94a3b8;font-weight:600;\">KIRIM & BUKA MONITORING FIFO:</span><button id=\"fifo-open-rw\" style=\"background:#2563eb;border:none;border-radius:8px;padding:10px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;\">🌐 Buka Monitoring FIFO (Railway Online)</button><button id=\"fifo-open-loc\" style=\"background:#334155;border:1px solid #475569;border-radius:8px;padding:8px;color:#cbd5e1;font-weight:600;font-size:12px;cursor:pointer;\">🖥️ Buka ke Localhost (:3000)</button></div></div>';document.body.appendChild(div);var inp=document.getElementById('fifo-token-inp');if(inp){inp.focus();inp.select();}var btnC=document.getElementById('fifo-btn-copy');if(btnC){btnC.onclick=function(){if(inp)inp.select();try{navigator.clipboard.writeText(t);}catch(_){}btnC.textContent='✓ Tersalin!';btnC.style.background='#059669';setTimeout(function(){btnC.textContent='📋 Salin';btnC.style.background='#10b981';},2000);};}var btnX=document.getElementById('fifo-close-btn');if(btnX)btnX.onclick=function(){div.remove();};var btnR=document.getElementById('fifo-open-rw');if(btnR)btnR.onclick=function(){try{navigator.clipboard.writeText(t);}catch(_){}window.open(rw,'_blank');div.remove();};var btnL=document.getElementById('fifo-open-loc');if(btnL)btnL.onclick=function(){try{navigator.clipboard.writeText(t);}catch(_){}window.open(loc,'_blank');div.remove();};}catch(err){prompt('Token JFS (Ctrl+C untuk menyalin):',t||err.message);}})();`;
       navigator.clipboard.writeText(code);
       copyBookmarkletBtn.innerHTML = `<span>✓ Script Tersalin!</span>`;
       setTimeout(() => {
@@ -909,11 +909,22 @@ async function checkUrlForJfsToken() {
       const match = window.location.hash.match(/sync_jfs_token=([a-f0-9]{32})/i);
       if (match) incomingToken = match[1];
     }
+    if (!incomingToken) {
+      incomingToken = localStorage.getItem('pending_jfs_token');
+    }
 
     if (incomingToken && /^[a-f0-9]{32}$/i.test(incomingToken)) {
-      console.log('Incoming JFS token detected from URL sync:', incomingToken);
-      const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('token');
+      console.log('Incoming JFS token detected:', incomingToken);
+
+      // Auto-fill input fields if present
+      const jfsInput = document.getElementById('jfsInputToken');
+      if (jfsInput) jfsInput.value = incomingToken;
+      const ptoInput = document.getElementById('ptoInputToken');
+      if (ptoInput) ptoInput.value = incomingToken;
+
+      const token = typeof getToken === 'function' ? getToken() : (sessionStorage.getItem('monitoring_jwt') || localStorage.getItem('token'));
       if (token) {
+        // 1. Update JFS config (FIFO gateway)
         const res = await fetch('/api/jfs/config', {
           method: 'POST',
           headers: {
@@ -922,16 +933,48 @@ async function checkUrlForJfsToken() {
           },
           body: JSON.stringify({ authtoken: incomingToken })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+
+        // 2. Also update PTO config (Pelacakan Total Order)
+        await fetch('/api/pto/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ authtoken: incomingToken })
+        }).catch(() => {});
+
         if (res.ok && data.success) {
-          alert('✅ Token JFS Berhasil Disinkronkan ke Monitoring FIFO!\nMenjalankan sinkronisasi data...');
+          localStorage.removeItem('pending_jfs_token');
+          if (typeof showAppAlert === 'function') {
+            showAppAlert('✅ Token JFS & PTO Berhasil Disinkronkan!');
+          }
+          if (typeof fetchJfsConfigAndStatus === 'function') {
+            await fetchJfsConfigAndStatus();
+          }
+          if (typeof fetchPtoConfig === 'function') {
+            await fetchPtoConfig();
+          }
           if (typeof executeJfsSync === 'function') {
             await executeJfsSync(true);
           }
+        } else {
+          if (typeof showAppAlert === 'function') {
+            showAppAlert(data.error || 'Gagal menyimpan token JFS (Pastikan akun memiliki role Admin/GM)', true);
+          }
+        }
+      } else {
+        localStorage.setItem('pending_jfs_token', incomingToken);
+        if (typeof showAppAlert === 'function') {
+          showAppAlert('🔑 Token JFS baru terdeteksi! Silakan login untuk menyimpan token secara otomatis.');
         }
       }
-      const cleanHash = window.location.hash.split('?')[0];
-      window.history.replaceState({}, document.title, window.location.pathname + cleanHash);
+
+      if (window.location.hash.includes('sync_jfs_token=')) {
+        const cleanHash = window.location.hash.split('?')[0];
+        window.history.replaceState({}, document.title, window.location.pathname + cleanHash);
+      }
     }
   } catch (e) {
     console.error('checkUrlForJfsToken error:', e);

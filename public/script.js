@@ -694,6 +694,9 @@ async function loginUser(username, password) {
     window.location.hash = '#/monitoring';
   }
   setAuthState();
+  if (localStorage.getItem('pending_jfs_token') && typeof checkUrlForJfsToken === 'function') {
+    checkUrlForJfsToken();
+  }
 }
 
 async function bootstrapAuth() {
@@ -716,6 +719,9 @@ async function bootstrapAuth() {
     }
     setCurrentPermissions(data.permissions || []);
     setAuthState();
+    if (localStorage.getItem('pending_jfs_token') && typeof checkUrlForJfsToken === 'function') {
+      checkUrlForJfsToken();
+    }
   } catch (err) {
     authUser = null;
     sessionStorage.removeItem('monitoring_user');

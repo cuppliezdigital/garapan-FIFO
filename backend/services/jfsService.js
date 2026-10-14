@@ -118,7 +118,9 @@ async function setConfigValue(key, value) {
 async function updateConfig(newConfig = {}) {
   await ensureJfsTables();
   if (newConfig.authtoken !== undefined) {
-    await setConfigValue('authtoken', newConfig.authtoken.trim());
+    const cleanToken = newConfig.authtoken.trim();
+    await setConfigValue('authtoken', cleanToken);
+    await setConfigValue('pto_authtoken', cleanToken);
   }
   if (newConfig.scanSiteCode !== undefined) {
     await setConfigValue('scan_site_code', newConfig.scanSiteCode.trim().toUpperCase());
