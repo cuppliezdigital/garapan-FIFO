@@ -8,3 +8,4 @@ server_err.log
 android/.gradle/
 *.xlsx
 *.xls
+cloudflared.exe
