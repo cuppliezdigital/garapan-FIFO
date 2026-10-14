@@ -94,6 +94,13 @@ function applyDetailToRecord(record, detail) {
   if (!detail || !record) return;
   if (detail.senderName) record.senderName = detail.senderName;
   if (detail.receiverName) record.receiverName = detail.receiverName;
+  if (detail.senderCompanyName || detail.customerName) {
+    record.senderCompanyName = detail.senderCompanyName || detail.customerName;
+  }
+  if (detail.receiverCompanyName) record.receiverCompanyName = detail.receiverCompanyName;
+  if (detail.customerOrderNo || detail.customerOrderCode) {
+    record.customerOrderNo = detail.customerOrderNo || detail.customerOrderCode;
+  }
   if (detail.senderDetailedAddress) record.senderDetailedAddress = detail.senderDetailedAddress;
   if (detail.receiverDetailedAddress) record.receiverDetailedAddress = detail.receiverDetailedAddress;
   if (detail.senderMobilePhone || detail.senderTelphone) {
@@ -107,7 +114,25 @@ function applyDetailToRecord(record, detail) {
   if (detail.packageLength) record.packageLength = detail.packageLength;
   if (detail.packageWide) record.packageWide = detail.packageWide;
   if (detail.packageHigh) record.packageHigh = detail.packageHigh;
-  if (detail.goodsValue) record.goodsValue = detail.goodsValue;
+  if (detail.packageTotalWeight && (!record.packageTotalWeight || record.packageTotalWeight === '0.00')) {
+    record.packageTotalWeight = detail.packageTotalWeight;
+  }
+  if (detail.packageNumber && (!record.packageNumber || record.packageNumber === '1')) {
+    record.packageNumber = detail.packageNumber;
+  }
+  if (detail.goodsValue || detail.codAmount) record.goodsValue = detail.goodsValue || detail.codAmount;
+  if (detail.terminalDispatchCode && !record.terminalDispatchCode) record.terminalDispatchCode = detail.terminalDispatchCode;
+  if (detail.dispatchNetworkCode && !record.dispatchNetworkCode) record.dispatchNetworkCode = detail.dispatchNetworkCode;
+  if (detail.dispatchNetworkName && !record.dispatchNetworkName) record.dispatchNetworkName = detail.dispatchNetworkName;
+  if (detail.sendNextstation) record.sourceNetworkCode = detail.sendNextstation;
+  if (detail.destinationDistributionName) record.destGateway = detail.destinationDistributionName;
+  if (detail.transferPath || detail.routeCode) record.transferPath = detail.transferPath || detail.routeCode;
+  if (detail.senderProvinceName) record.senderProvinceName = detail.senderProvinceName;
+  if (detail.senderCityName) record.senderCityName = detail.senderCityName;
+  if (detail.senderAreaName) record.senderAreaName = detail.senderAreaName;
+  if (detail.receiverProvinceName) record.receiverProvinceName = detail.receiverProvinceName;
+  if (detail.receiverCityName) record.receiverCityName = detail.receiverCityName;
+  if (detail.receiverAreaName) record.receiverAreaName = detail.receiverAreaName;
   record._isUnmasked = true;
 }
 
@@ -319,17 +344,30 @@ exports.queryOrders = async (req, res) => {
             id: r.waybill,
             waybillId: r.waybill,
             goodsName: r.nama_barang || '-',
+            goodsTypeName: 'Lainnya',
             packageTotalWeight: '0.00',
             packageNumber: '1',
-            pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
-            dispatchNetworkCode: r.outlet || '-',
-            receiverCityName: '',
-            terminalDispatchCode: r.tlc || '-',
             orderSourceName: 'JFS Live Gateway',
+            customerOrderNo: '-',
+            senderCompanyName: '-',
             senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
-            senderCityName: '',
+            senderMobile: '-',
+            senderProvinceName: 'DKI Jakarta',
+            senderCityName: 'Jakarta Utara',
+            senderAreaName: 'Penjaringan',
+            senderDetailedAddress: `Gateway Origin: ${r.outlet_asal || 'JKT99A'}`,
+            pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
+            terminalDispatchCode: r.tlc || '-',
+            dispatchNetworkCode: r.outlet || '-',
+            dispatchNetworkName: r.outlet || '-',
+            receiverCompanyName: '-',
             receiverName: r.outlet || 'Penerima Cargo',
+            receiverMobile: '-',
+            receiverProvinceName: '-',
             receiverCityName: '',
+            receiverAreaName: '',
+            receiverDetailedAddress: `Outlet Tujuan: ${r.outlet} • Jalur Sorting TLC: ${r.tlc}`,
+            goodsValue: '0.00',
             inputTime: r.tanggal ? String(r.tanggal).slice(0, 10) : String(r.created_at || '').slice(0, 10),
             _isLocalLive: true
           }));
@@ -357,7 +395,10 @@ exports.queryOrders = async (req, res) => {
       if (toFetch.length > 0) {
         await mapConcurrent(toFetch, 15, async (r) => {
           try {
-            const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token);
+            let detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(r.id)}`, 'GET', null, token).catch(() => null);
+            if (!detailRes || !detailRes.data || typeof detailRes.data !== 'object') {
+              detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token).catch(() => null);
+            }
             if (detailRes && detailRes.data && typeof detailRes.data === 'object') {
               detailCache.set(r.id, detailRes.data);
               if (detailCache.size > MAX_CACHE_SIZE) {
@@ -404,8 +445,11 @@ exports.getOrderDetail = async (req, res) => {
 
     const token = await getPtoToken();
     try {
-      const result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token);
-      if ((result.code === 1 || result.code === 200 || result.succ === true) && result.data) {
+      let result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
+      if (!result || (result.code !== 1 && result.code !== 200 && result.succ !== true) || !result.data) {
+        result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
+      }
+      if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data) {
         const detailData = result.data || {};
         detailCache.set(id, detailData);
         return res.json({ success: true, data: detailData });
@@ -423,15 +467,28 @@ exports.getOrderDetail = async (req, res) => {
           goodsTypeName: 'Paket Cargo Instock',
           packageTotalWeight: '0.00',
           packageNumber: '1',
+          orderSourceName: 'JFS Live Gateway (FIFO)',
+          customerOrderNo: '-',
+          senderCompanyName: '-',
+          senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
+          senderMobilePhone: '-',
+          senderProvinceName: 'DKI Jakarta',
+          senderCityName: 'Jakarta Utara',
+          senderAreaName: 'Penjaringan',
+          senderDetailedAddress: `Gateway Origin: ${r.outlet_asal || 'JKT99A'}`,
           pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
           pickStaffName: 'Petugas JFS Gateway',
           dispatchNetworkCode: r.outlet || '-',
           dispatchNetworkName: r.outlet || '-',
           terminalDispatchCode: r.tlc || '-',
-          orderSourceName: 'JFS Live Gateway (FIFO)',
-          senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
+          receiverCompanyName: '-',
           receiverName: r.outlet || 'Penerima Cargo',
-          receiverDetailedAddress: `Outlet Tujuan: ${r.outlet} • Jalur Sorting: ${r.tlc}`,
+          receiverMobilePhone: '-',
+          receiverProvinceName: '-',
+          receiverCityName: '',
+          receiverAreaName: '',
+          receiverDetailedAddress: `Outlet Tujuan: ${r.outlet} • Jalur Sorting TLC: ${r.tlc}`,
+          goodsValue: '0.00',
           inputTime: r.tanggal ? String(r.tanggal).slice(0, 10) : String(r.created_at || '').slice(0, 10),
           dispatchNetworkTime: r.stuck || '-'
         };

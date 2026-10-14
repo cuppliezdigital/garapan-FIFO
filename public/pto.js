@@ -267,17 +267,25 @@ function renderPtoTable() {
     const rowNum = startIdx + idx + 1;
     const awb = r.waybillId || '-';
     const goods = r.goodsName || '-';
+    const goodsType = r.goodsTypeName || '-';
     const weight = r.packageTotalWeight ? `${parseFloat(r.packageTotalWeight).toFixed(2)} kg` : '-';
-    const koli = r.packageNumber ? ` (${r.packageNumber} koli)` : '';
+    const koli = r.packageNumber ? `${r.packageNumber} koli` : '1 koli';
     const origin = r.pickNetworkName || '-';
     const dest = r.dispatchNetworkCode || '-';
     const destCity = r.receiverCityName ? ` • ${r.receiverCityName}` : '';
     const sorting = r.terminalDispatchCode || '-';
     const source = r.orderSourceName || 'Reguler';
+    const orderNo = r.customerOrderNo || r.customerOrderCode || '-';
+    const senderCompany = r.senderCompanyName || r.customerName || '-';
     const sender = r.senderName || '-';
-    const senderCity = r.senderCityName ? `<br><small style="color: #64748b;">${r.senderCityName}</small>` : '';
+    const senderMobile = r.senderMobile || r.senderMobilePhone || '-';
+    const senderCity = r.senderCityName ? `<br><small style="color: #64748b; font-size: 0.72rem;">${r.senderCityName}</small>` : '';
     const receiver = r.receiverName || '-';
-    const receiverCity = r.receiverCityName ? `<br><small style="color: #64748b;">${r.receiverCityName}</small>` : '';
+    const receiverCompany = r.receiverCompanyName || '-';
+    const receiverMobile = r.receiverMobile || r.receiverMobilePhone || '-';
+    const receiverAddress = r.receiverDetailedAddress || '-';
+    const codVal = parseFloat(r.goodsValue || r.codAmount || 0);
+    const codFormatted = codVal > 0 ? `Rp ${formatPtoNumber(codVal)}` : 'Rp 0';
     const inputTime = r.inputTime ? r.inputTime.replace('T', ' ').slice(0, 16) : '-';
 
     // Source platform badge styling
@@ -299,40 +307,54 @@ function renderPtoTable() {
           </div>
         </td>
         <td>
+          <span class="pto-source-badge ${sourceBadgeClass}">${escPtoHtml(source)}</span>
+          ${orderNo && orderNo !== '-' ? `<small style="font-family: monospace; color: #94a3b8; font-size: 0.71rem; display: block; margin-top: 3px;" title="No. Pesanan: ${escPtoHtml(orderNo)}">${escPtoHtml(orderNo)}</small>` : ''}
+        </td>
+        <td>
           <div class="pto-goods-cell" title="${escPtoHtml(goods)}">
             ${escPtoHtml(goods)}
           </div>
+          ${goodsType && goodsType !== '-' ? `<small style="color: #64748b; font-size: 0.71rem; display: block; margin-top: 2px;">${escPtoHtml(goodsType)}</small>` : ''}
         </td>
         <td style="text-align: right; white-space: nowrap;">
           <span style="font-weight: 700; color: #f8fafc;">${weight}</span>
-          <small style="color: #94a3b8;">${koli}</small>
+          <small style="color: #94a3b8; display: block; font-size: 0.72rem;">${koli}</small>
         </td>
         <td>
-          <span class="pto-origin-badge">${escPtoHtml(origin)}</span>
-        </td>
-        <td>
-          <div style="font-weight: 600; color: #e2e8f0;">${escPtoHtml(dest)}</div>
-          <small style="color: #94a3b8; font-size: 0.73rem;">${escPtoHtml(destCity)}</small>
-        </td>
-        <td>
-          <span class="pto-sorting-badge">${escPtoHtml(sorting)}</span>
-        </td>
-        <td style="text-align: center;">
-          <span class="pto-source-badge ${sourceBadgeClass}">${escPtoHtml(source)}</span>
+          <span style="font-weight: 600; color: #38bdf8; font-size: 0.8rem; display: block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escPtoHtml(senderCompany)}">${escPtoHtml(senderCompany)}</span>
         </td>
         <td style="font-size: 0.8rem;">
           <span style="color: #cbd5e1; font-weight: 500;">${escPtoHtml(sender)}</span>
+          ${senderMobile && senderMobile !== '-' ? `<small style="color: #64748b; font-family: monospace; display: block; font-size: 0.72rem;">${escPtoHtml(senderMobile)}</small>` : ''}
           ${senderCity}
         </td>
-        <td style="font-size: 0.8rem;">
-          <span style="color: #cbd5e1; font-weight: 500;">${escPtoHtml(receiver)}</span>
-          ${receiverCity}
+        <td>
+          <span class="pto-origin-badge">${escPtoHtml(origin)}</span>
+          <span class="pto-sorting-badge" style="display: block; margin-top: 3px; font-size: 0.68rem;">${escPtoHtml(sorting)}</span>
         </td>
-        <td style="font-size: 0.76rem; color: #94a3b8; white-space: nowrap;">
-          ${escPtoHtml(inputTime)}
+        <td>
+          <div style="font-weight: 600; color: #e2e8f0; font-size: 0.82rem;">${escPtoHtml(dest)}</div>
+          <small style="color: #94a3b8; font-size: 0.73rem;">${escPtoHtml(destCity)}</small>
+        </td>
+        <td>
+          <strong style="color: #f8fafc; font-weight: 600; font-size: 0.82rem;">${escPtoHtml(receiver)}</strong>
+        </td>
+        <td>
+          <span style="color: #cbd5e1; font-size: 0.8rem; display: block; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escPtoHtml(receiverCompany)}">${escPtoHtml(receiverCompany)}</span>
+        </td>
+        <td style="white-space: nowrap;">
+          <span style="font-family: monospace; font-size: 0.78rem; color: #22d3ee;">${escPtoHtml(receiverMobile)}</span>
+        </td>
+        <td>
+          <div style="max-width: 240px; font-size: 0.76rem; color: #94a3b8; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" title="${escPtoHtml(receiverAddress)}">
+            ${escPtoHtml(receiverAddress)}
+          </div>
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <span style="font-weight: 700; color: #fbbf24; font-size: 0.8rem;">${codFormatted}</span>
         </td>
         <td style="text-align: center;">
-          <button type="button" class="btn-pto-view-detail" onclick="openPtoOrderDetail('${escPtoHtml(r.id)}', ${idx})" title="Lihat Informasi Lengkap">Detail</button>
+          <button type="button" class="btn-pto-view-detail" onclick="openPtoOrderDetail('${escPtoHtml(r.id)}', ${idx})" title="Lihat Rincian Lengkap">Detail</button>
         </td>
       </tr>
     `;
@@ -414,7 +436,7 @@ window.openPtoOrderDetail = async function(id, recordIdx) {
   body.innerHTML = `
     <div style="text-align: center; padding: 30px; color: #38bdf8;">
       <div class="pto-spinner"></div>
-      <p style="margin-top: 10px; font-weight: 600;">Memuat detail lengkap dari OMS JFS...</p>
+      <p style="margin-top: 10px; font-weight: 600;">Memuat detail lengkap dan membuka sensor JFS...</p>
     </div>
   `;
 
@@ -448,6 +470,9 @@ function renderPtoDetailContent(d) {
   const body = document.getElementById('ptoDetailModalBody');
   if (!body) return;
 
+  const codVal = parseFloat(d.goodsValue || d.codAmount || 0);
+  const codFormatted = codVal > 0 ? `Rp ${formatPtoNumber(codVal)}` : 'Rp 0 (Non-COD)';
+
   body.innerHTML = `
     <div class="pto-detail-sections">
       <!-- SECTION 1: FISIK & DESKRIPSI BARANG -->
@@ -462,16 +487,12 @@ function renderPtoDetailContent(d) {
             <strong class="pto-val text-amber" style="font-size: 0.95rem;">${escPtoHtml(d.goodsName || '-')}</strong>
           </div>
           <div class="pto-detail-item">
-            <span class="pto-label">Kategori Barang:</span>
+            <span class="pto-label">Kategori / Jenis Barang:</span>
             <span class="pto-val">${escPtoHtml(d.goodsTypeName || '-')}</span>
           </div>
           <div class="pto-detail-item">
             <span class="pto-label">Total Berat Asli:</span>
             <strong class="pto-val text-cyan">${d.packageTotalWeight ? d.packageTotalWeight + ' kg' : '-'}</strong>
-          </div>
-          <div class="pto-detail-item">
-            <span class="pto-label">Berat Dihitung (Charge):</span>
-            <span class="pto-val">${d.packageChargeWeight ? d.packageChargeWeight + ' kg' : '-'}</span>
           </div>
           <div class="pto-detail-item">
             <span class="pto-label">Jumlah Koli:</span>
@@ -482,8 +503,8 @@ function renderPtoDetailContent(d) {
             <span class="pto-val">${d.packageLength || '0'} × ${d.packageWide || '0'} × ${d.packageHigh || '0'} cm</span>
           </div>
           <div class="pto-detail-item">
-            <span class="pto-label">Nilai Barang:</span>
-            <span class="pto-val">${d.goodsValue ? 'Rp ' + formatPtoNumber(d.goodsValue) : '-'}</span>
+            <span class="pto-label">Jumlah Pembayaran COD:</span>
+            <strong class="pto-val text-amber">${codFormatted}</strong>
           </div>
         </div>
       </div>
@@ -498,19 +519,23 @@ function renderPtoDetailContent(d) {
           </h4>
           <div class="pto-detail-grid single-col">
             <div class="pto-detail-item">
+              <span class="pto-label">Perusahaan / Toko Pengirim:</span>
+              <strong class="pto-val text-cyan">${escPtoHtml(d.senderCompanyName || d.customerName || '-')}</strong>
+            </div>
+            <div class="pto-detail-item">
               <span class="pto-label">Nama Pengirim:</span>
               <strong class="pto-val">${escPtoHtml(d.senderName || '-')}</strong>
             </div>
             <div class="pto-detail-item">
-              <span class="pto-label">Nomor Telepon:</span>
-              <span class="pto-val">${escPtoHtml(d.senderMobilePhone || d.senderTelphone || '-')}</span>
+              <span class="pto-label">Nomor Ponsel Pengirim:</span>
+              <span class="pto-val" style="font-family: monospace;">${escPtoHtml(d.senderMobile || d.senderMobilePhone || d.senderTelphone || '-')}</span>
             </div>
             <div class="pto-detail-item">
-              <span class="pto-label">Kota / Provinsi:</span>
-              <span class="pto-val">${escPtoHtml(d.senderCityName || '-')}, ${escPtoHtml(d.senderProvinceName || '-')}</span>
+              <span class="pto-label">Area / Kota / Provinsi:</span>
+              <span class="pto-val">${escPtoHtml(d.senderAreaName || '-')}, ${escPtoHtml(d.senderCityName || '-')}, ${escPtoHtml(d.senderProvinceName || '-')}</span>
             </div>
             <div class="pto-detail-item">
-              <span class="pto-label">Alamat Lengkap:</span>
+              <span class="pto-label">Alamat Lengkap Pengirim:</span>
               <p class="pto-val-address">${escPtoHtml(d.senderDetailedAddress || '-')}</p>
             </div>
           </div>
@@ -524,20 +549,24 @@ function renderPtoDetailContent(d) {
           </h4>
           <div class="pto-detail-grid single-col">
             <div class="pto-detail-item">
-              <span class="pto-label">Nama Penerima:</span>
-              <strong class="pto-val">${escPtoHtml(d.receiverName || '-')}</strong>
+              <span class="pto-label">Perusahaan Penerima:</span>
+              <strong class="pto-val text-cyan">${escPtoHtml(d.receiverCompanyName || '-')}</strong>
             </div>
             <div class="pto-detail-item">
-              <span class="pto-label">Nomor Telepon:</span>
-              <span class="pto-val">${escPtoHtml(d.receiverMobilePhone || d.receiverTelphone || '-')}</span>
+              <span class="pto-label">Nama Penerima (Asli):</span>
+              <strong class="pto-val text-white" style="font-size: 0.95rem;">${escPtoHtml(d.receiverName || '-')}</strong>
             </div>
             <div class="pto-detail-item">
-              <span class="pto-label">Kota / Provinsi:</span>
-              <span class="pto-val">${escPtoHtml(d.receiverCityName || '-')}, ${escPtoHtml(d.receiverProvinceName || '-')}</span>
+              <span class="pto-label">Nomor Ponsel / Telp Penerima:</span>
+              <span class="pto-val text-cyan" style="font-family: monospace; font-size: 0.9rem; font-weight: 700;">${escPtoHtml(d.receiverMobile || d.receiverMobilePhone || d.receiverTelphone || '-')}</span>
             </div>
             <div class="pto-detail-item">
-              <span class="pto-label">Alamat Lengkap:</span>
-              <p class="pto-val-address">${escPtoHtml(d.receiverDetailedAddress || '-')}</p>
+              <span class="pto-label">Area / Kota / Provinsi:</span>
+              <span class="pto-val">${escPtoHtml(d.receiverAreaName || '-')}, ${escPtoHtml(d.receiverCityName || '-')}, ${escPtoHtml(d.receiverProvinceName || '-')}</span>
+            </div>
+            <div class="pto-detail-item">
+              <span class="pto-label">Alamat Lengkap Tujuan:</span>
+              <p class="pto-val-address" style="color: #f1f5f9; font-weight: 500;">${escPtoHtml(d.receiverDetailedAddress || '-')}</p>
             </div>
           </div>
         </div>
@@ -551,36 +580,36 @@ function renderPtoDetailContent(d) {
         </h4>
         <div class="pto-detail-grid">
           <div class="pto-detail-item">
-            <span class="pto-label">Outlet Penjemput:</span>
+            <span class="pto-label">Outlet Penjemput (Origin):</span>
             <strong class="pto-val">${escPtoHtml(d.pickNetworkName || '-')}</strong>
           </div>
           <div class="pto-detail-item">
-            <span class="pto-label">Kurir Jemput:</span>
-            <span class="pto-val">${escPtoHtml(d.pickStaffName || '-')}</span>
+            <span class="pto-label">Ten Letter Code (TLC):</span>
+            <strong class="pto-val text-cyan">${escPtoHtml(d.terminalDispatchCode || '-')}</strong>
           </div>
           <div class="pto-detail-item">
-            <span class="pto-label">Outlet Tujuan:</span>
+            <span class="pto-label">Outlet Tujuan Delivery:</span>
             <strong class="pto-val">${escPtoHtml(d.dispatchNetworkCode || '-')} (${escPtoHtml(d.dispatchNetworkName || '-')})</strong>
           </div>
           <div class="pto-detail-item">
-            <span class="pto-label">Kode Sorting Gateway:</span>
-            <strong class="pto-val text-cyan">${escPtoHtml(d.terminalDispatchCode || '-')}</strong>
+            <span class="pto-label">Gateway Asal:</span>
+            <span class="pto-val">${escPtoHtml(d.sourceNetworkCode || '-')}</span>
+          </div>
+          <div class="pto-detail-item">
+            <span class="pto-label">Gateway Tujuan:</span>
+            <span class="pto-val">${escPtoHtml(d.destGateway || '-')}</span>
+          </div>
+          <div class="pto-detail-item">
+            <span class="pto-label">Kode Rute:</span>
+            <span class="pto-val" style="font-family: monospace;">${escPtoHtml(d.transferPath || '-')}</span>
+          </div>
+          <div class="pto-detail-item">
+            <span class="pto-label">Nomor Pesanan Pelanggan:</span>
+            <span class="pto-val" style="font-family: monospace;">${escPtoHtml(d.customerOrderNo || d.customerOrderCode || '-')}</span>
           </div>
           <div class="pto-detail-item">
             <span class="pto-label">Waktu Input Order:</span>
             <span class="pto-val">${escPtoHtml(d.inputTime || '-')}</span>
-          </div>
-          <div class="pto-detail-item">
-            <span class="pto-label">Waktu Dispatch:</span>
-            <span class="pto-val">${escPtoHtml(d.dispatchNetworkTime || '-')}</span>
-          </div>
-          <div class="pto-detail-item">
-            <span class="pto-label">Platform Sumber:</span>
-            <span class="pto-val">${escPtoHtml(d.orderSourceName || '-')} (${escPtoHtml(d.customerName || '-')})</span>
-          </div>
-          <div class="pto-detail-item">
-            <span class="pto-label">Metode Pembayaran:</span>
-            <span class="pto-val">${escPtoHtml(d.paymentModeName || d.orderTypeName || '-')}</span>
           </div>
         </div>
       </div>
@@ -601,24 +630,43 @@ function copyPtoSingleDetail() {
   const d = ptoState.selectedRecord;
   if (!d) return;
 
+  const codVal = parseFloat(d.goodsValue || d.codAmount || 0);
+  const codFormatted = codVal > 0 ? `Rp ${formatPtoNumber(codVal)}` : 'Rp 0 (Non-COD)';
+
   const text = `📦 DETAIL ORDER RESI JFS (PTO)
 AWB: ${d.waybillId || '-'}
-Nama Barang: ${d.goodsName || '-'}
+No. Pesanan: ${d.customerOrderNo || '-'}
+Platform: ${d.orderSourceName || '-'}
+Nama Barang: ${d.goodsName || '-'} (${d.goodsTypeName || 'Lainnya'})
 Berat: ${d.packageTotalWeight || '0'} kg (${d.packageNumber || 1} Koli)
+Nilai COD: ${codFormatted}
+
+🏢 PENGIRIM:
+Toko/Perusahaan: ${d.senderCompanyName || d.customerName || '-'}
+Nama Pengirim: ${d.senderName || '-'}
+No. HP: ${d.senderMobile || d.senderMobilePhone || '-'}
+Alamat Asal: ${d.senderDetailedAddress || '-'}
+
+👤 PENERIMA:
+Nama Penerima: ${d.receiverName || '-'}
+Perusahaan Penerima: ${d.receiverCompanyName || '-'}
+No. HP: ${d.receiverMobile || d.receiverMobilePhone || '-'}
+Alamat Lengkap: ${d.receiverDetailedAddress || '-'}
+
+🚚 OPERASIONAL & RUTE:
 Outlet Asal: ${d.pickNetworkName || '-'}
 Outlet Tujuan: ${d.dispatchNetworkCode || '-'} (${d.receiverCityName || '-'})
-Kode Sorting: ${d.terminalDispatchCode || '-'}
-Pengirim: ${d.senderName || '-'} (${d.senderCityName || '-'})
-Penerima: ${d.receiverName || '-'} (${d.receiverCityName || '-'})
-Alamat Tujuan: ${d.receiverDetailedAddress || '-'}
-Sumber: ${d.orderSourceName || '-'}
+TLC (Ten Letter Code): ${d.terminalDispatchCode || '-'}
+Gateway Asal: ${d.sourceNetworkCode || '-'}
+Gateway Tujuan: ${d.destGateway || '-'}
+Kode Rute: ${d.transferPath || '-'}
 Waktu Input: ${d.inputTime || '-'}`;
 
   navigator.clipboard.writeText(text);
   showAppAlert('✅ Rincian order lengkap berhasil disalin ke clipboard!');
 }
 
-// 9. Export Current Table to CSV / Excel
+// 9. Export Current Table to CSV / Excel (36 Kolom Lengkap JFS)
 function exportPtoToExcel() {
   if (!ptoState.records || ptoState.records.length === 0) {
     showAppAlert('Tidak ada data order untuk diekspor.', true);
@@ -626,32 +674,58 @@ function exportPtoToExcel() {
   }
 
   const headers = [
-    'No', 'AWB', 'Nama Barang', 'Berat (kg)', 'Koli',
-    'Outlet Asal', 'Kurir Jemput', 'Outlet Tujuan', 'Kota Tujuan',
-    'Kode Sorting', 'Platform', 'Pengirim', 'Alamat Pengirim',
-    'Penerima', 'Alamat Penerima', 'Waktu Input'
+    'Waybill Utama', 'Nama Barang', 'Sumber Pesanan', 'Outlet Pengirim',
+    'Kode Pos Pengirim', 'Provinsi Pengirim', 'Kota Pengirim', 'Area Pengirim',
+    'Alamat Lengkap Pengirim', 'Pengirim', 'nomor ponsel pengirim', 'Ten letter code',
+    'Nama Outlet Delivery', 'Gateway asal', 'Gateway tujuan', 'Kode rute',
+    'Nomor pesanan pelanggan', 'Perusahaan pengirim', 'Telepon rumah pengirim', 'Kelurahan Pengirim',
+    'Penerima', 'perusahaan penerima paket', 'nomor handphone penerima', 'nomor telepon penerima',
+    'negara penerima', 'Provinsi penerima', 'Kota penerima', 'area penerima',
+    'Kelurahan Penerima', 'jalan penerima paket', 'Alamat Lengkap Penerima', 'Kode Pos Penerima',
+    'jumlah pembayaran COD', 'Jenis Barang', 'Jumlah Koli', 'Berat Pick-up'
   ];
 
   const csvRows = [headers.join('\t')];
 
-  ptoState.records.forEach((r, idx) => {
+  ptoState.records.forEach((r) => {
+    const codVal = parseFloat(r.goodsValue || r.codAmount || 0);
     const row = [
-      idx + 1,
       r.waybillId || '',
       (r.goodsName || '').replace(/[\t\n\r]/g, ' '),
-      r.packageTotalWeight || '0',
-      r.packageNumber || '1',
-      r.pickNetworkName || '',
-      r.pickStaffName || '',
-      r.dispatchNetworkCode || '',
-      r.receiverCityName || '',
-      r.terminalDispatchCode || '',
       r.orderSourceName || '',
-      (r.senderName || '').replace(/[\t\n\r]/g, ' '),
+      r.pickNetworkName || '',
+      r.senderPostcode || '',
+      r.senderProvinceName || '',
+      r.senderCityName || '',
+      r.senderAreaName || '',
       (r.senderDetailedAddress || '').replace(/[\t\n\r]/g, ' '),
+      (r.senderName || '').replace(/[\t\n\r]/g, ' '),
+      r.senderMobile || r.senderMobilePhone || '',
+      r.terminalDispatchCode || '',
+      r.dispatchNetworkCode || '',
+      r.sourceNetworkCode || '',
+      r.destGateway || '',
+      r.transferPath || '',
+      r.customerOrderNo || '',
+      (r.senderCompanyName || r.customerName || '').replace(/[\t\n\r]/g, ' '),
+      r.senderTelphone || '',
+      r.senderTownName || '',
       (r.receiverName || '').replace(/[\t\n\r]/g, ' '),
+      (r.receiverCompanyName || '').replace(/[\t\n\r]/g, ' '),
+      r.receiverMobile || r.receiverMobilePhone || '',
+      r.receiverTelphone || '',
+      'Indonesia',
+      r.receiverProvinceName || '',
+      r.receiverCityName || '',
+      r.receiverAreaName || '',
+      r.receiverTownName || '',
+      r.receiverStreetName || '',
       (r.receiverDetailedAddress || '').replace(/[\t\n\r]/g, ' '),
-      r.inputTime || ''
+      r.receiverPostcode || '',
+      codVal.toFixed(2),
+      r.goodsTypeName || 'Lainnya',
+      r.packageNumber || '1',
+      r.packageTotalWeight || '0.00'
     ];
     csvRows.push(row.join('\t'));
   });
@@ -667,7 +741,7 @@ function exportPtoToExcel() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  showAppAlert(`✅ Berhasil mengunduh ${ptoState.records.length} data order ke file Excel.`);
+  showAppAlert(`✅ Berhasil mengunduh ${ptoState.records.length} data order lengkap (36 kolom) ke file Excel.`);
 }
 
 // 10. Copy Summary of Table Records
