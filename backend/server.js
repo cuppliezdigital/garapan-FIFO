@@ -25,8 +25,31 @@ if (isProduction && (!jwtSecret || jwtSecret.length < 32 || jwtSecret === 'chang
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'https://chedu2.tailad5890.ts.net',
   process.env.CLIENT_URL,
 ].filter(Boolean);
+
+function isOriginAllowed(origin) {
+  if (!origin || origin === 'null') return true;
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.')) return true;
+    if (host.endsWith('.ts.net')) return true;
+    if (host.endsWith('.trycloudflare.com') || host.endsWith('.cloudflare.com')) return true;
+    if (host.endsWith('.up.railway.app') || host.endsWith('.railway.app')) return true;
+    if (host.endsWith('.koyeb.app')) return true;
+    if (host.endsWith('.onrender.com')) return true;
+    if (host.endsWith('.vercel.app')) return true;
+    if (process.env.ALLOWED_ORIGINS) {
+      const extra = process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim().toLowerCase());
+      if (extra.includes(origin.toLowerCase()) || extra.includes(host)) return true;
+    }
+  } catch (_) {}
+  return false;
+}
 
 app.use(helmet({
   crossOriginResourcePolicy: false,
@@ -38,7 +61,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'blob:'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'https:', 'http:'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"],
@@ -48,7 +71,7 @@ app.use(helmet({
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
       return;
     }
@@ -91,8 +114,8 @@ app.use('/api', (req, res, next) => {
   const host = req.headers.host;
   const hostOrigins = host ? [`http://${host}`, `https://${host}`] : [];
 
-  const isAllowedOrigin = !origin || allowedOrigins.includes(origin) || hostOrigins.includes(origin);
-  const isAllowedReferer = !referer || allowedOrigins.some((item) => referer.startsWith(item)) || hostOrigins.some((item) => referer.startsWith(item));
+  const isAllowedOrigin = isOriginAllowed(origin) || hostOrigins.includes(origin);
+  const isAllowedReferer = !referer || isOriginAllowed(referer) || hostOrigins.some((item) => referer.startsWith(item));
 
   if (!isAllowedOrigin && !isAllowedReferer) {
     console.log('Security Blocked API Access:', { origin, referer, host, method: req.method });
