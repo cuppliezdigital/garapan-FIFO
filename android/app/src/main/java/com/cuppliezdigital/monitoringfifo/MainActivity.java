@@ -40,7 +40,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String DEFAULT_SERVER_URL = "https://garapan-fifo-production.up.railway.app";
+    public static final String DEFAULT_SERVER_URL = "https://chedu2.tailad5890.ts.net";
     private static final String PREFS_NAME = "MonitoringPrefs";
     private static final String KEY_SERVER_URL = "server_url";
     private static final int CAMERA_PERMISSION_CODE = 101;
