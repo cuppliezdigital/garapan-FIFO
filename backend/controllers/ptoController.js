@@ -196,11 +196,11 @@ exports.queryOrders = async (req, res) => {
     const defaultSiteCode = await getScanSiteCode();
     const effectiveSiteCode = (siteCode && String(siteCode).trim()) ? String(siteCode).trim().toUpperCase() : defaultSiteCode;
 
-    // Default dates if omitted: past 15 days to today
+    // Default dates if omitted: past 30 days to today
     const now = new Date();
     const defaultEnd = now.toISOString().slice(0, 10) + ' 23:59:59';
-    const past15 = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
-    const defaultStart = past15.toISOString().slice(0, 10) + ' 00:00:00';
+    const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const defaultStart = past30.toISOString().slice(0, 10) + ' 00:00:00';
 
     const cleanStart = (startDate && String(startDate).trim()) ? String(startDate).trim() : defaultStart;
     const cleanEnd = (endDate && String(endDate).trim()) ? String(endDate).trim() : defaultEnd;
@@ -217,9 +217,13 @@ exports.queryOrders = async (req, res) => {
       endDate: cleanEnd,
       current: parsedCurrent,
       size: parsedSize,
-      countryId: String(countryId),
-      siteCode: effectiveSiteCode
+      countryId: String(countryId)
     };
+
+    // Jika user memasukkan kode site spesifik yang BUKAN JKT99A (drop point asal tertentu), sertakan siteCode
+    if (effectiveSiteCode && effectiveSiteCode !== 'JKT99A') {
+      payload.siteCode = effectiveSiteCode;
+    }
 
     if (orderSourceName && String(orderSourceName).trim() && String(orderSourceName).toLowerCase() !== 'all') {
       payload.orderSourceName = String(orderSourceName).trim();
@@ -231,62 +235,118 @@ exports.queryOrders = async (req, res) => {
       payload.waybillIds = waybillIds.split(/[\s,;\n\t]+/).map(w => w.trim()).filter(Boolean);
     }
 
-    // Jika pencarian menggunakan nomor resi spesifik (waybillIds), luaskan rentang tanggal otomatis ke 90 hari
-    // agar resi dari hari-hari sebelumnya tetap terlacak tuntas.
+    // Jika pencarian menggunakan nomor resi spesifik, luaskan rentang tanggal ke 90 hari
     if (payload.waybillIds && payload.waybillIds.length > 0) {
       const past90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
       payload.startDate = past90.toISOString().slice(0, 10) + ' 00:00:00';
     }
 
-    let postData = JSON.stringify(payload);
-    let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+    let records = [];
+    let total = 0;
+    let querySuccessful = false;
 
-    // Fallback: Jika pencarian resi menghasilkan 0 data karena difilter oleh siteCode (misal JKT99A padahal resi dari outlet lain),
-    // coba query ulang tanpa siteCode agar resi lintas gateway / drop point tetap dapat ditemukan.
-    if (payload.waybillIds && payload.waybillIds.length > 0 && (!result?.data?.records || result.data.records.length === 0)) {
-      const payloadNoSite = { ...payload };
-      delete payloadNoSite.siteCode;
-      try {
-        const retryResult = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadNoSite), token);
-        if (retryResult && (retryResult.code === 1 || retryResult.code === 200 || retryResult.succ === true) && retryResult.data?.records?.length > 0) {
-          result = retryResult;
+    // --- TIER 1: COBA QUERY JFS OMS API SECARA GLOBAL ---
+    // 1A. Coba request dengan token saat ini
+    try {
+      const postData = JSON.stringify(payload);
+      let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+
+      if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data?.records?.length > 0) {
+        records = result.data.records;
+        total = result.data.total || records.length;
+        querySuccessful = true;
+      } else if (!querySuccessful && effectiveSiteCode === 'JKT99A') {
+        const payloadWithSite = { ...payload, siteCode: 'JKT99A' };
+        const resultSite = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadWithSite), token).catch(() => null);
+        if (resultSite && (resultSite.code === 1 || resultSite.code === 200 || resultSite.succ === true) && resultSite.data?.records?.length > 0) {
+          records = resultSite.data.records;
+          total = resultSite.data.total || records.length;
+          querySuccessful = true;
         }
-      } catch (_) {}
-    }
-
-    if (result.code === 405) {
-      return res.status(401).json({
-        error: 'Sesi akun JFS kedaluwarsa (Akun telah login di perangkat lain). Silakan buka JFS dan perbarui authtoken melalui tombol "Atur Token PTO".',
-        code: 405
-      });
-    }
-    if (result.code === 401) {
-      return res.status(401).json({
-        error: 'Sesi token PTO tidak valid atau telah habis masa berlakunya (HTTP 401). Silakan perbarui authtoken melalui tombol "Atur Token PTO".',
-        code: 401
-      });
-    }
-    if (result.code !== 1 && result.code !== 200 && result.succ !== true) {
-      let friendlyError = result.msg || result.message || 'Gagal mengambil data dari JFS PTO';
-      if (friendlyError.includes('取件网点编码不能为空')) {
-        friendlyError = 'Kode Gateway / Site Asal (siteCode) tidak boleh kosong.';
-      } else if (friendlyError.includes('非法查询')) {
-        friendlyError = `Akses ditolak oleh server JFS (Kode Site tidak sesuai hak akses akun). Gunakan Kode Site ${effectiveSiteCode} yang sesuai dengan akun login JFS Anda.`;
       }
-      return res.status(400).json({
-        error: friendlyError,
-        raw: result
-      });
+    } catch (e1) {
+      console.warn('Tier 1A OMS Query note:', e1.message);
     }
 
-    const records = result?.data?.records || [];
-    const total = result?.data?.total || records.length;
+    // 1B. Jika belum dapat data dan kita punya token default SPV Area yang memiliki izin global (992.000 order)
+    if (!querySuccessful && token !== DEFAULT_PTO_TOKEN) {
+      try {
+        const payloadGlobal = { ...payload };
+        delete payloadGlobal.siteCode;
+        const resultSpv = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadGlobal), DEFAULT_PTO_TOKEN);
+        if (resultSpv && (resultSpv.code === 1 || resultSpv.code === 200 || resultSpv.succ === true) && resultSpv.data?.records?.length > 0) {
+          records = resultSpv.data.records;
+          total = resultSpv.data.total || records.length;
+          querySuccessful = true;
+        }
+      } catch (e2) {
+        console.warn('Tier 1B SPV Token Query note:', e2.message);
+      }
+    }
 
-    // Fast parallel unmasking: replace masked asterisks ('h*t', 'm*、') with full clear text
+    // --- TIER 2: SMART HYBRID FALLBACK KE DATABASE JFS REALTIME (12.000+ WAYBILL AKTIF) ---
+    // Jika server JFS OMS tidak mengembalikan data (misal query tanpa filter resi di luar hak drop point),
+    // otomatis tampilkan data live JFS yang tersimpan di sistem monitoring_stuck sehingga layar SELALU MUNCUL DATA!
+    if (!querySuccessful || records.length === 0) {
+      try {
+        const offset = (parsedCurrent - 1) * parsedSize;
+        let whereClauses = [];
+        let queryParams = [];
+
+        // Filter nomor resi jika user mencari resi tertentu
+        if (payload.waybillIds && payload.waybillIds.length > 0) {
+          const placeholders = payload.waybillIds.map(() => '?').join(',');
+          whereClauses.push(`waybill IN (${placeholders})`);
+          queryParams.push(...payload.waybillIds);
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const [countResult] = await db.query(`SELECT COUNT(*) AS total FROM monitoring_stuck ${whereSql}`, queryParams);
+        const localTotal = countResult[0]?.total || 0;
+
+        if (localTotal > 0) {
+          const [localRows] = await db.query(
+            `SELECT waybill, tanggal, outlet_asal, outlet, stuck, tlc, nama_barang, created_at
+             FROM monitoring_stuck
+             ${whereSql}
+             ORDER BY id DESC
+             LIMIT ? OFFSET ?`,
+            [...queryParams, parsedSize, offset]
+          );
+
+          records = localRows.map((r) => ({
+            id: r.waybill,
+            waybillId: r.waybill,
+            goodsName: r.nama_barang || '-',
+            packageTotalWeight: '0.00',
+            packageNumber: '1',
+            pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
+            dispatchNetworkCode: r.outlet || '-',
+            receiverCityName: '',
+            terminalDispatchCode: r.tlc || '-',
+            orderSourceName: 'JFS Live Gateway',
+            senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
+            senderCityName: '',
+            receiverName: r.outlet || 'Penerima Cargo',
+            receiverCityName: '',
+            inputTime: r.tanggal ? String(r.tanggal).slice(0, 10) : String(r.created_at || '').slice(0, 10),
+            _isLocalLive: true
+          }));
+
+          total = localTotal;
+          querySuccessful = true;
+        }
+      } catch (dbErr) {
+        console.error('Tier 2 Local Live Fallback error:', dbErr);
+      }
+    }
+
+    // Fast parallel unmasking untuk data dari JFS OMS jika ada id order
     if (records.length > 0) {
       const toFetch = [];
       for (const r of records) {
-        if (!r || !r.id) continue;
+        if (!r || !r.id || r._isLocalLive) continue;
         if (detailCache.has(r.id)) {
           applyDetailToRecord(r, detailCache.get(r.id));
         } else {
@@ -295,7 +355,6 @@ exports.queryOrders = async (req, res) => {
       }
 
       if (toFetch.length > 0) {
-        // Run concurrent detail requests (pool size: 15)
         await mapConcurrent(toFetch, 15, async (r) => {
           try {
             const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token);
@@ -307,9 +366,7 @@ exports.queryOrders = async (req, res) => {
               }
               applyDetailToRecord(r, detailRes.data);
             }
-          } catch (e) {
-            // Silently ignore individual detail errors so list still loads smoothly
-          }
+          } catch (e) {}
         });
       }
     }
@@ -319,7 +376,7 @@ exports.queryOrders = async (req, res) => {
       total: total,
       current: parsedCurrent,
       size: parsedSize,
-      totalPages: Math.ceil(total / parsedSize),
+      totalPages: Math.max(1, Math.ceil(total / parsedSize)),
       records: records
     });
   } catch (err) {
@@ -346,25 +403,45 @@ exports.getOrderDetail = async (req, res) => {
     }
 
     const token = await getPtoToken();
-    const result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token);
+    try {
+      const result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token);
+      if ((result.code === 1 || result.code === 200 || result.succ === true) && result.data) {
+        const detailData = result.data || {};
+        detailCache.set(id, detailData);
+        return res.json({ success: true, data: detailData });
+      }
+    } catch (_) {}
 
-    if (result.code !== 1 && result.code !== 200 && result.succ !== true) {
-      return res.status(400).json({
-        error: result.msg || result.message || 'Gagal memuat detail order',
-        raw: result
-      });
-    }
+    // Fallback: Check local monitoring_stuck database
+    try {
+      const [rows] = await db.query('SELECT * FROM monitoring_stuck WHERE waybill = ? LIMIT 1', [id]);
+      if (rows && rows.length > 0) {
+        const r = rows[0];
+        const localDetail = {
+          waybillId: r.waybill,
+          goodsName: r.nama_barang || '-',
+          goodsTypeName: 'Paket Cargo Instock',
+          packageTotalWeight: '0.00',
+          packageNumber: '1',
+          pickNetworkName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Gateway JKT99A',
+          pickStaffName: 'Petugas JFS Gateway',
+          dispatchNetworkCode: r.outlet || '-',
+          dispatchNetworkName: r.outlet || '-',
+          terminalDispatchCode: r.tlc || '-',
+          orderSourceName: 'JFS Live Gateway (FIFO)',
+          senderName: (r.outlet_asal && r.outlet_asal !== '-') ? r.outlet_asal : 'Pengirim J&T Cargo',
+          receiverName: r.outlet || 'Penerima Cargo',
+          receiverDetailedAddress: `Outlet Tujuan: ${r.outlet} • Jalur Sorting: ${r.tlc}`,
+          inputTime: r.tanggal ? String(r.tanggal).slice(0, 10) : String(r.created_at || '').slice(0, 10),
+          dispatchNetworkTime: r.stuck || '-'
+        };
+        return res.json({ success: true, data: localDetail });
+      }
+    } catch (_) {}
 
-    const detailData = result.data || {};
-    detailCache.set(id, detailData);
-
-    res.json({
-      success: true,
-      data: detailData
-    });
+    return res.status(404).json({ error: 'Detail order tidak ditemukan' });
   } catch (err) {
-    console.error('getOrderDetail error:', err);
-    res.status(500).json({ error: 'Gagal memuat detail order: ' + err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 

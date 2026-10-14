@@ -13,10 +13,18 @@ let ptoState = {
 };
 
 // 1. Initialize PTO Module
+let ptoAutoLoaded = false;
 function initPtoModule() {
   initPtoDates();
   initPtoEventListeners();
   fetchPtoConfig();
+  // Otomatis tarik data pertama kali agar tabel langsung terisi ribuan data live
+  if (!ptoAutoLoaded) {
+    ptoAutoLoaded = true;
+    setTimeout(() => {
+      executePtoQuery(1);
+    }, 250);
+  }
 }
 
 // Format number with Indonesian thousand separator
@@ -45,17 +53,17 @@ function getPtoDateStr(date) {
   return `${y}-${m}-${d}`;
 }
 
-// Set up Default Dates
+// Set up Default Dates (Default 30 Hari agar mencakup seluruh order aktif)
 function initPtoDates() {
   const startInput = document.getElementById('ptoStartDate');
   const endInput = document.getElementById('ptoEndDate');
   if (!startInput || !endInput) return;
 
   const now = new Date();
-  const past7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   endInput.value = getPtoDateStr(now);
-  startInput.value = getPtoDateStr(past7);
+  startInput.value = getPtoDateStr(past30);
 }
 
 // 2. Fetch Account Config & Token Status
@@ -790,8 +798,8 @@ function initPtoEventListeners() {
       const search = document.getElementById('ptoWaybillSearch');
       if (search) search.value = '';
       document.querySelectorAll('#ptoDatePresets .pto-chip').forEach(c => c.classList.remove('active'));
-      const chip7 = document.querySelector('#ptoDatePresets .pto-chip[data-days="7"]');
-      if (chip7) chip7.classList.add('active');
+      const chip30 = document.querySelector('#ptoDatePresets .pto-chip[data-days="30"]');
+      if (chip30) chip30.classList.add('active');
       executePtoQuery(1);
     });
   }
