@@ -231,8 +231,28 @@ exports.queryOrders = async (req, res) => {
       payload.waybillIds = waybillIds.split(/[\s,;\n\t]+/).map(w => w.trim()).filter(Boolean);
     }
 
-    const postData = JSON.stringify(payload);
-    const result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+    // Jika pencarian menggunakan nomor resi spesifik (waybillIds), luaskan rentang tanggal otomatis ke 90 hari
+    // agar resi dari hari-hari sebelumnya tetap terlacak tuntas.
+    if (payload.waybillIds && payload.waybillIds.length > 0) {
+      const past90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      payload.startDate = past90.toISOString().slice(0, 10) + ' 00:00:00';
+    }
+
+    let postData = JSON.stringify(payload);
+    let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+
+    // Fallback: Jika pencarian resi menghasilkan 0 data karena difilter oleh siteCode (misal JKT99A padahal resi dari outlet lain),
+    // coba query ulang tanpa siteCode agar resi lintas gateway / drop point tetap dapat ditemukan.
+    if (payload.waybillIds && payload.waybillIds.length > 0 && (!result?.data?.records || result.data.records.length === 0)) {
+      const payloadNoSite = { ...payload };
+      delete payloadNoSite.siteCode;
+      try {
+        const retryResult = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadNoSite), token);
+        if (retryResult && (retryResult.code === 1 || retryResult.code === 200 || retryResult.succ === true) && retryResult.data?.records?.length > 0) {
+          result = retryResult;
+        }
+      } catch (_) {}
+    }
 
     if (result.code === 405) {
       return res.status(401).json({

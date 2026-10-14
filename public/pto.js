@@ -228,12 +228,24 @@ function renderPtoTable() {
   if (!tbody) return;
 
   if (!ptoState.records || ptoState.records.length === 0) {
+    const siteVal = (document.getElementById('ptoSiteCode')?.value || '').trim().toUpperCase();
+    const isGatewaySite = siteVal === 'JKT99A';
+    const isSearchEmpty = !(document.getElementById('ptoWaybillSearch')?.value || '').trim();
+
     tbody.innerHTML = `
       <tr>
         <td colspan="12" class="pto-empty-state">
-          <div class="pto-empty-content">
-            <p style="font-weight: 600; color: #cbd5e1;">Tidak Ada Data yang Sesuai</p>
-            <span style="font-size: 0.8rem; color: #94a3b8;">Tidak ditemukan order pada rentang tanggal atau nomor resi yang dimasukkan.</span>
+          <div class="pto-empty-content" style="padding: 30px 20px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8" style="margin-bottom: 8px;">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <p style="font-weight: 700; color: #cbd5e1; font-size: 1rem; margin-bottom: 4px;">Tidak Ada Data Order yang Ditemukan</p>
+            <span style="font-size: 0.84rem; color: #94a3b8; max-width: 600px; display: inline-block; line-height: 1.5;">
+              ${(isGatewaySite && isSearchEmpty)
+                ? 'ℹ️ <strong>Kode Site JKT99A</strong> adalah Pusat Transit Gateway (bukan outlet drop point pengambilan paket).<br>👉 Masukkan <strong>Nomor Resi / AWB</strong> di kolom pencarian di atas untuk melacak paket, atau masukkan <strong>Kode Outlet / Drop Point</strong> asal Anda.'
+                : 'Tidak ditemukan order pada rentang tanggal atau nomor resi yang dimasukkan. Coba luaskan rentang tanggal atau periksa nomor resi.'}
+            </span>
           </div>
         </td>
       </tr>
