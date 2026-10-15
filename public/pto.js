@@ -277,7 +277,7 @@ function renderPtoTable() {
     const destCity = r.receiverCityName ? ` • ${r.receiverCityName}` : '';
     const sorting = r.terminalDispatchCode || '-';
     const source = r.orderSourceName || 'Reguler';
-    const orderNo = r.customerOrderNo || r.customerOrderCode || '-';
+    const orderNo = r.customerOrderNo || r.customerOrderId || r.customerOrderCode || '-';
     const senderCompany = r.senderCompanyName || r.customerName || '-';
     const sender = r.senderName || '-';
     const senderMobile = r.senderMobile || r.senderMobilePhone || '-';
@@ -607,7 +607,7 @@ function renderPtoDetailContent(d) {
           </div>
           <div class="pto-detail-item">
             <span class="pto-label">Nomor Pesanan Pelanggan:</span>
-            <span class="pto-val" style="font-family: monospace;">${escPtoHtml(d.customerOrderNo || d.customerOrderCode || '-')}</span>
+            <span class="pto-val" style="font-family: monospace;">${escPtoHtml(d.customerOrderNo || d.customerOrderId || d.customerOrderCode || '-')}</span>
           </div>
           <div class="pto-detail-item">
             <span class="pto-label">Waktu Input Order:</span>
@@ -637,7 +637,7 @@ function copyPtoSingleDetail() {
 
   const text = `📦 DETAIL ORDER RESI JFS (PTO)
 AWB: ${d.waybillId || '-'}
-No. Pesanan: ${d.customerOrderNo || '-'}
+No. Pesanan: ${d.customerOrderNo || d.customerOrderId || '-'}
 Platform: ${d.orderSourceName || '-'}
 Nama Barang: ${d.goodsName || '-'} (${d.goodsTypeName || 'Lainnya'})
 Berat: ${d.packageTotalWeight || '0'} kg (${d.packageNumber || 1} Koli)
@@ -708,7 +708,7 @@ function exportPtoToExcel() {
       r.sourceNetworkCode || '',
       r.destGateway || '',
       r.transferPath || '',
-      r.customerOrderNo || '',
+      r.customerOrderNo || r.customerOrderId || '',
       (r.senderCompanyName || r.customerName || '').replace(/[\t\n\r]/g, ' '),
       r.senderTelphone || '',
       r.senderTownName || '',

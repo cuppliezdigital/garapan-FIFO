@@ -101,6 +101,7 @@ function mapPtoDbRowToRecord(r) {
     packageNumber: String(r.jumlah_koli || '1'),
     orderSourceName: r.sumber_pesanan || 'JFS',
     customerOrderNo: r.nomor_pesanan_pelanggan || '-',
+    customerOrderId: r.nomor_pesanan_pelanggan || '-',
     senderCompanyName: r.perusahaan_pengirim || '-',
     senderName: r.pengirim || '-',
     senderMobile: r.nomor_ponsel_pengirim || '-',
@@ -206,8 +207,10 @@ function applyDetailToRecord(record, detail) {
     record.senderCompanyName = detail.senderCompanyName || detail.customerName;
   }
   if (detail.receiverCompanyName) record.receiverCompanyName = detail.receiverCompanyName;
-  if (detail.customerOrderNo || detail.customerOrderCode) {
-    record.customerOrderNo = detail.customerOrderNo || detail.customerOrderCode;
+  const resolvedOrderNo = detail.customerOrderId || detail.customerOrderNo || detail.customerOrderCode || record.customerOrderId || record.customerOrderNo;
+  if (resolvedOrderNo) {
+    record.customerOrderNo = resolvedOrderNo;
+    record.customerOrderId = resolvedOrderNo;
   }
   if (detail.senderDetailedAddress) record.senderDetailedAddress = detail.senderDetailedAddress;
   if (detail.receiverDetailedAddress) record.receiverDetailedAddress = detail.receiverDetailedAddress;
@@ -517,6 +520,9 @@ exports.queryOrders = async (req, res) => {
             const liveRes = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(awbPayload), token).catch(() => null);
             if (liveRes && (liveRes.code === 1 || liveRes.succ === true) && liveRes.data?.records?.length > 0) {
               for (const r of liveRes.data.records) {
+                if (r.customerOrderId && !r.customerOrderNo) {
+                  r.customerOrderNo = r.customerOrderId;
+                }
                 // Unmask detail immediately
                 if (r.id) {
                   const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
@@ -524,6 +530,9 @@ exports.queryOrders = async (req, res) => {
                     applyDetailToRecord(r, detailRes.data);
                     await autoPersistOrderDetail(detailRes.data);
                   }
+                }
+                if (!r.customerOrderNo && r.customerOrderId) {
+                  r.customerOrderNo = r.customerOrderId;
                 }
                 foundLiveRecords.push(r);
               }
