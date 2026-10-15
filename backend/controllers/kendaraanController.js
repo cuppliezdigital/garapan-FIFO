@@ -214,9 +214,9 @@ exports.getList = async (req, res) => {
     }
 
     if (search) {
-      query += ` AND (k.awb LIKE ? OR k.keterangan LIKE ? OR k.spot_petugas LIKE ?)`;
+      query += ` AND (k.awb LIKE ? OR k.keterangan LIKE ? OR k.spot_petugas LIKE ? OR k.kode_outlet LIKE ? OR COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) LIKE ? OR COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) LIKE ?)`;
       const kw = `%${search}%`;
-      params.push(kw, kw, kw);
+      params.push(kw, kw, kw, kw, kw, kw);
     }
 
     query += ` ORDER BY k.tanggal_input DESC`;

@@ -213,11 +213,26 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   const paneJfs = document.getElementById('viewJfs');
   const panePto = document.getElementById('viewPto');
 
-  if (paneReconcile) paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
-  if (paneKendaraan) paneKendaraan.classList.toggle('hidden', tab !== 'kendaraan');
-  if (paneFeishu) paneFeishu.classList.toggle('hidden', tab !== 'generator-feishu');
-  if (paneJfs) paneJfs.classList.toggle('hidden', tab !== 'jfs');
-  if (panePto) panePto.classList.toggle('hidden', tab !== 'pto');
+  if (paneReconcile) {
+    paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
+    paneReconcile.classList.toggle('active', tab === 'reconcile');
+  }
+  if (paneKendaraan) {
+    paneKendaraan.classList.toggle('hidden', tab !== 'kendaraan');
+    paneKendaraan.classList.toggle('active', tab === 'kendaraan');
+  }
+  if (paneFeishu) {
+    paneFeishu.classList.toggle('hidden', tab !== 'generator-feishu');
+    paneFeishu.classList.toggle('active', tab === 'generator-feishu');
+  }
+  if (paneJfs) {
+    paneJfs.classList.toggle('hidden', tab !== 'jfs');
+    paneJfs.classList.toggle('active', tab === 'jfs');
+  }
+  if (panePto) {
+    panePto.classList.toggle('hidden', tab !== 'pto');
+    panePto.classList.toggle('active', tab === 'pto');
+  }
 
   if (updateUrl) {
     history.replaceState(null, '', `#/advance?tab=${tab}`);
