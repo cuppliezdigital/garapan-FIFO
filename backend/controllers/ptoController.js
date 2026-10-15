@@ -289,7 +289,7 @@ async function autoPersistOrderDetail(detailData) {
       detailData.senderMobilePhone || detailData.senderTelphone || '',
       detailData.terminalDispatchCode || detailData.receiverSortingCode || '',
       detailData.dispatchNetworkCode || detailData.dispatchCode || '',
-      detailData.customerOrderNo || String(detailData.id || ''),
+      detailData.customerOrderId || detailData.customerOrderNo || String(detailData.id || ''),
       detailData.senderCompany || '',
       detailData.receiverName || '',
       detailData.receiverCompany || '',
@@ -452,9 +452,14 @@ exports.queryOrders = async (req, res) => {
       let ptoQueryParams = [];
 
       if (payload.waybillIds && payload.waybillIds.length > 0) {
-        const placeholders = payload.waybillIds.map(() => '?').join(',');
-        ptoWhereClauses.push(`waybill IN (${placeholders})`);
-        ptoQueryParams.push(...payload.waybillIds);
+        const clauses = [];
+        const params = [];
+        for (const term of payload.waybillIds) {
+          clauses.push(`(waybill = ? OR nomor_pesanan_pelanggan = ? OR nomor_pesanan_pelanggan LIKE ? OR waybill LIKE ?)`);
+          params.push(term, term, `%${term}%`, `%${term}%`);
+        }
+        ptoWhereClauses.push(`(${clauses.join(' OR ')})`);
+        ptoQueryParams.push(...params);
       }
 
       const ptoWhereSql = ptoWhereClauses.length > 0 ? `WHERE ${ptoWhereClauses.join(' AND ')}` : '';
@@ -719,8 +724,8 @@ exports.getOrderDetail = async (req, res) => {
     try {
       await ensurePtoOrdersTable();
       const [ptoRows] = await db.query(
-        'SELECT * FROM pto_orders WHERE waybill = ? OR nomor_pesanan_pelanggan = ? LIMIT 1',
-        [id, id]
+        'SELECT * FROM pto_orders WHERE waybill = ? OR nomor_pesanan_pelanggan = ? OR nomor_pesanan_pelanggan LIKE ? LIMIT 1',
+        [id, id, `%${id}%`]
       );
       if (ptoRows && ptoRows.length > 0) {
         const row = ptoRows[0];
@@ -857,7 +862,7 @@ exports.importOrders = async (req, res) => {
       const gatewayAsal = r.gateway_asal || r.sourceNetworkCode || r['Gateway asal'] || '';
       const gatewayTujuan = r.gateway_tujuan || r.destGateway || r['Gateway tujuan'] || '';
       const kodeRute = r.kode_rute || r.transferPath || r['Kode rute'] || '';
-      const nomorPesananPelanggan = r.nomor_pesanan_pelanggan || r.customerOrderNo || r['Nomor pesanan pelanggan'] || '';
+      const nomorPesananPelanggan = r.nomor_pesanan_pelanggan || r.customerOrderId || r.customerOrderNo || r['Nomor pesanan pelanggan'] || r['No. Pesanan'] || r['No Pesanan'] || r['Order SN'] || r['Order ID'] || r['No Order'] || r['Nomor Pesanan'] || '';
       const perusahaanPengirim = r.perusahaan_pengirim || r.senderCompanyName || r['Perusahaan pengirim'] || '';
       const teleponRumahPengirim = r.telepon_rumah_pengirim || r['Telepon rumah pengirim'] || '';
       const kelurahanPengirim = r.kelurahan_pengirim || r['Kelurahan Pengirim'] || '';
