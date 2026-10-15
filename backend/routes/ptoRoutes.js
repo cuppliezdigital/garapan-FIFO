@@ -10,6 +10,8 @@ router.get('/detail/:id', authMiddleware, requireAdminOrGm, ptoController.getOrd
 router.get('/config', authMiddleware, requireAdminOrGm, ptoController.getConfig);
 router.post('/config', authMiddleware, requireAdminOrGm, ptoController.saveConfig);
 router.post('/import', authMiddleware, requireAdminOrGm, ptoController.importOrders);
+router.post('/sync', authMiddleware, requireAdminOrGm, ptoController.triggerSync);
+router.get('/sync-status', authMiddleware, requireAdminOrGm, ptoController.getSyncStatus);
 
 module.exports = router;
 

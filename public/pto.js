@@ -18,6 +18,8 @@ function initPtoModule() {
   initPtoDates();
   initPtoEventListeners();
   fetchPtoConfig();
+  fetchPtoSyncStatus();
+  setInterval(fetchPtoSyncStatus, 30000);
   // Otomatis tarik data pertama kali agar tabel langsung terisi ribuan data live
   if (!ptoAutoLoaded) {
     ptoAutoLoaded = true;
@@ -884,6 +886,63 @@ function initPtoImportHandler() {
         showAppAlert(`❌ Gagal import: ${err.message}`, true);
       }
     });
+  }
+}
+
+// 11C. Sinkronisasi PTO Otomatis (Live JFS OMS)
+async function fetchPtoSyncStatus() {
+  try {
+    const token = getToken();
+    const res = await fetch('/api/pto/sync-status', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const statusText = document.getElementById('ptoSyncStatusText');
+      if (statusText) {
+        if (data.isSyncInProgress) {
+          statusText.textContent = 'Menyinkronkan...';
+        } else if (data.totalOrders > 0) {
+          statusText.textContent = `Auto-Sync Aktif (${formatPtoNumber(data.totalOrders)} Order)`;
+        } else {
+          statusText.textContent = 'Auto-Sync Aktif';
+        }
+      }
+    }
+  } catch (_) {}
+}
+
+async function triggerPtoManualSync() {
+  const btn = document.getElementById('btnSyncPtoLive');
+  const textSpan = document.getElementById('btnSyncPtoLiveText');
+  const origText = textSpan ? textSpan.textContent : 'Sinkronkan PTO';
+
+  if (btn) btn.disabled = true;
+  if (textSpan) textSpan.textContent = 'Menyinkronkan...';
+  showAppAlert('⏳ Sedang menyinkronkan data PTO langsung dari JFS...');
+
+  try {
+    const token = getToken();
+    const res = await fetch('/api/pto/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    const result = await res.json();
+    if (!res.ok || result.success === false) {
+      throw new Error(result.message || result.error || 'Gagal sinkronisasi PTO');
+    }
+
+    showAppAlert(`✅ ${result.message}`);
+    await fetchPtoSyncStatus();
+    await executePtoQuery(1);
+  } catch (err) {
+    showAppAlert(`❌ Gagal sinkron PTO: ${err.message}`, true);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (textSpan) textSpan.textContent = origText;
   }
 }
 

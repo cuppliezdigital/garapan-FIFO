@@ -182,6 +182,7 @@ async function initDatabase() {
     await require('./services/logoService').ensureBackgroundTable();
     await require('./services/kendaraanInitService').ensureKendaraanTables();
     await require('./services/jfsService').initJfs();
+    require('./controllers/ptoController').initPtoScheduler();
     console.log('✅ Inisialisasi struktur database selesai.');
   } catch (err) {
     console.error('❌ Gagal inisialisasi database:', err.message);

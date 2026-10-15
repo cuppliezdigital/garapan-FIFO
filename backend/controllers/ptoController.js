@@ -875,3 +875,250 @@ exports.importOrders = async (req, res) => {
   }
 };
 
+// 6. PTO Automatic Background Synchronizer
+let isPtoSyncInProgress = false;
+let ptoSyncTimer = null;
+
+async function syncPtoOrdersAutomatically(triggerType = 'auto') {
+  if (isPtoSyncInProgress) {
+    return { success: false, message: 'Sinkronisasi PTO sedang berlangsung di latar belakang.' };
+  }
+  isPtoSyncInProgress = true;
+  await ensurePtoOrdersTable();
+
+  try {
+    const token = await getPtoToken();
+    const now = new Date();
+    const endDate = now.toISOString().slice(0, 10) + ' 23:59:59';
+    const past7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startDate = past7.toISOString().slice(0, 10) + ' 00:00:00';
+
+    let totalFetched = 0;
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    // Helper: upsert batch of OMS records to pto_orders
+    async function saveBatch(records) {
+      for (const r of records) {
+        if (!r || !r.waybillId) continue;
+        const res = await db.query(`
+          INSERT INTO pto_orders (
+            waybill, nama_barang, sumber_pesanan, outlet_pengirim, kode_pos_pengirim,
+            provinsi_pengirim, kota_pengirim, area_pengirim, alamat_lengkap_pengirim,
+            pengirim, nomor_ponsel_pengirim, ten_letter_code, nama_outlet_delivery,
+            nomor_pesanan_pelanggan, perusahaan_pengirim,
+            penerima, perusahaan_penerima_paket, nomor_handphone_penerima,
+            negara_penerima, provinsi_penerima, kota_penerima, area_penerima,
+            alamat_lengkap_penerima, kode_pos_penerima, jumlah_pembayaran_cod,
+            jenis_barang, jumlah_koli, berat_pickup, waktu_input_pesanan
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            nama_barang = VALUES(nama_barang),
+            sumber_pesanan = VALUES(sumber_pesanan),
+            outlet_pengirim = VALUES(outlet_pengirim),
+            pengirim = VALUES(pengirim),
+            ten_letter_code = VALUES(ten_letter_code),
+            nama_outlet_delivery = VALUES(nama_outlet_delivery),
+            penerima = VALUES(penerima),
+            alamat_lengkap_penerima = VALUES(alamat_lengkap_penerima),
+            berat_pickup = VALUES(berat_pickup),
+            waktu_input_pesanan = VALUES(waktu_input_pesanan)
+        `, [
+          r.waybillId,
+          r.goodsName || '',
+          r.orderSourceName || '',
+          r.pickNetworkName || r.sendCode || '',
+          r.senderPostalCode || '',
+          r.senderProvinceName || '',
+          r.senderCityName || '',
+          r.senderAreaName || '',
+          r.senderDetailedAddress || '',
+          r.senderName || '',
+          r.senderMobilePhone || r.senderTelphone || '',
+          r.terminalDispatchCode || '',
+          r.dispatchNetworkName || r.dispatchNetworkCode || '',
+          r.customerOrderId || '',
+          r.senderCompany || '',
+          r.receiverName || '',
+          r.receiverCompany || '',
+          r.receiverMobilePhone || r.receiverTelphone || '',
+          r.receiverCountryName || 'Indonesia',
+          r.receiverProvinceName || '',
+          r.receiverCityName || '',
+          r.receiverAreaName || '',
+          r.receiverDetailedAddress || '',
+          r.receiverPostalCode || '',
+          parseFloat(r.codMoney || r.goodsValue || 0) || 0,
+          r.goodsTypeName || '',
+          parseInt(r.packageNumber || 1, 10) || 1,
+          parseFloat(r.packageTotalWeight || 0) || 0,
+          r.inputTime || ''
+        ]);
+        if (res[0].affectedRows === 1) insertedCount++;
+        else if (res[0].affectedRows === 2) updatedCount++;
+      }
+    }
+
+    // 1. Coba Global Query (Khusus jika token SPV / Akun Indra terpasang)
+    let isGlobalQueryWorking = false;
+    try {
+      const globalRes = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify({
+        startDate,
+        endDate,
+        current: 1,
+        size: 200,
+        countryId: '1'
+      }), token);
+
+      if (globalRes && (globalRes.code === 1 || globalRes.succ === true) && globalRes.data?.records?.length > 0) {
+        isGlobalQueryWorking = true;
+        totalFetched += globalRes.data.records.length;
+        await saveBatch(globalRes.data.records);
+      }
+    } catch (_) {}
+
+    // 2. Jika bukan token SPV global (misal token akun user / outlet), sedot per outlet aktif
+    if (!isGlobalQueryWorking) {
+      let outletList = [];
+      try {
+        const [outletRows] = await db.query(`
+          SELECT outlet_asal, COUNT(*) as cnt
+          FROM monitoring_stuck
+          WHERE outlet_asal IS NOT NULL AND outlet_asal != '-' AND outlet_asal != '' AND outlet_asal != 'JKT99A'
+          GROUP BY outlet_asal
+          ORDER BY cnt DESC
+          LIMIT 25
+        `);
+        outletList = outletRows.map(r => r.outlet_asal).filter(Boolean);
+      } catch (_) {}
+
+      if (outletList.length === 0) {
+        outletList = ['JKT006J', 'JKT085A', 'JKT160A', 'JKT187A', 'JKT218A', 'JKT157A', 'JKT219A', 'JKT256A', 'JKT081A', 'JKT109B', 'JKT114A', 'JKT074A'];
+      }
+
+      for (const outlet of outletList) {
+        try {
+          const res = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify({
+            startDate,
+            endDate,
+            current: 1,
+            size: 100,
+            countryId: '1',
+            siteCode: outlet
+          }), token);
+
+          if (res && res.code === 1 && res.data?.records?.length > 0) {
+            totalFetched += res.data.records.length;
+            await saveBatch(res.data.records);
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 3. Simpan status sinkronisasi ke jfs_config
+    const [totalRows] = await db.query('SELECT COUNT(*) as cnt FROM pto_orders');
+    const currentTotal = totalRows[0]?.cnt || 0;
+    const msg = `Sinkronisasi PTO sukses: ${insertedCount} order baru, ${updatedCount} diperbarui (Total: ${currentTotal} order)`;
+
+    await db.query(`
+      INSERT INTO jfs_config (config_key, config_value)
+      VALUES ('pto_last_sync_time', NOW()),
+             ('pto_last_sync_status', 'success'),
+             ('pto_last_sync_message', ?),
+             ('pto_last_sync_count', ?)
+      ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)
+    `, [msg, String(currentTotal)]);
+
+    console.log(`🤖 [PTO Sync] ${msg}`);
+    return {
+      success: true,
+      message: msg,
+      totalFetched,
+      insertedCount,
+      updatedCount,
+      totalInDatabase: currentTotal
+    };
+  } catch (err) {
+    console.error('⚠️ [PTO Sync] Error:', err.message);
+    try {
+      await db.query(`
+        INSERT INTO jfs_config (config_key, config_value)
+        VALUES ('pto_last_sync_time', NOW()),
+               ('pto_last_sync_status', 'error'),
+               ('pto_last_sync_message', ?)
+        ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)
+      `, [`Sinkronisasi PTO gagal: ${err.message}`]);
+    } catch (_) {}
+    return { success: false, message: err.message };
+  } finally {
+    isPtoSyncInProgress = false;
+  }
+}
+
+function initPtoScheduler() {
+  if (ptoSyncTimer) {
+    clearInterval(ptoSyncTimer);
+    ptoSyncTimer = null;
+  }
+
+  // Interval check every 5 minutes
+  ptoSyncTimer = setInterval(async () => {
+    try {
+      console.log('⏰ [PTO Worker] Menjalankan auto-sync PTO terjadwal...');
+      await syncPtoOrdersAutomatically('auto');
+    } catch (e) {
+      console.warn('⚠️ [PTO Worker] Scheduler error:', e.message);
+    }
+  }, 5 * 60 * 1000);
+
+  // Trigger once on startup after 15 seconds
+  setTimeout(async () => {
+    try {
+      console.log('🔄 [PTO Startup] Memulai auto-sync awal PTO...');
+      await syncPtoOrdersAutomatically('startup');
+    } catch (e) {
+      console.warn('⚠️ [PTO Startup] Error:', e.message);
+    }
+  }, 15000);
+
+  console.log('🤖 PTO Background Scheduler telah aktif (interval: 5 menit).');
+}
+
+exports.triggerSync = async (req, res) => {
+  try {
+    const result = await syncPtoOrdersAutomatically('manual');
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getSyncStatus = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT config_key, config_value
+      FROM jfs_config
+      WHERE config_key IN ('pto_last_sync_time', 'pto_last_sync_status', 'pto_last_sync_message', 'pto_last_sync_count')
+    `);
+    const statusMap = {};
+    for (const r of rows) {
+      statusMap[r.config_key] = r.config_value;
+    }
+    const [countRows] = await db.query('SELECT COUNT(*) as cnt FROM pto_orders');
+    res.json({
+      success: true,
+      lastSyncTime: statusMap.pto_last_sync_time || null,
+      lastSyncStatus: statusMap.pto_last_sync_status || 'idle',
+      lastSyncMessage: statusMap.pto_last_sync_message || 'Belum ada riwayat sinkronisasi PTO.',
+      totalOrders: countRows[0]?.cnt || 0,
+      isSyncInProgress: isPtoSyncInProgress
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.syncPtoOrdersAutomatically = syncPtoOrdersAutomatically;
+exports.initPtoScheduler = initPtoScheduler;
+
+
