@@ -244,6 +244,73 @@ function applyDetailToRecord(record, detail) {
   record._isUnmasked = true;
 }
 
+// Auto-persist live detail to pto_orders database
+async function autoPersistOrderDetail(detailData) {
+  if (!detailData || !detailData.waybillId) return;
+  try {
+    await ensurePtoOrdersTable();
+    await db.query(`
+      INSERT INTO pto_orders (
+        waybill, nama_barang, sumber_pesanan, outlet_pengirim, kode_pos_pengirim,
+        provinsi_pengirim, kota_pengirim, area_pengirim, alamat_lengkap_pengirim,
+        pengirim, nomor_ponsel_pengirim, ten_letter_code, nama_outlet_delivery,
+        nomor_pesanan_pelanggan, perusahaan_pengirim,
+        penerima, perusahaan_penerima_paket, nomor_handphone_penerima,
+        negara_penerima, provinsi_penerima, kota_penerima, area_penerima,
+        alamat_lengkap_penerima, kode_pos_penerima, jumlah_pembayaran_cod,
+        jenis_barang, jumlah_koli, berat_pickup, waktu_input_pesanan
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        nama_barang = VALUES(nama_barang),
+        sumber_pesanan = VALUES(sumber_pesanan),
+        outlet_pengirim = VALUES(outlet_pengirim),
+        pengirim = VALUES(pengirim),
+        nomor_ponsel_pengirim = VALUES(nomor_ponsel_pengirim),
+        ten_letter_code = VALUES(ten_letter_code),
+        nama_outlet_delivery = VALUES(nama_outlet_delivery),
+        nomor_pesanan_pelanggan = VALUES(nomor_pesanan_pelanggan),
+        penerima = VALUES(penerima),
+        nomor_handphone_penerima = VALUES(nomor_handphone_penerima),
+        alamat_lengkap_penerima = VALUES(alamat_lengkap_penerima),
+        jenis_barang = VALUES(jenis_barang),
+        berat_pickup = VALUES(berat_pickup),
+        waktu_input_pesanan = VALUES(waktu_input_pesanan)
+    `, [
+      detailData.waybillId,
+      detailData.goodsName || '',
+      detailData.orderSourceName || '',
+      detailData.pickNetworkName || detailData.sendCode || '',
+      detailData.senderPostalCode || '',
+      detailData.senderProvinceName || '',
+      detailData.senderCityName || '',
+      detailData.senderAreaName || '',
+      detailData.senderDetailedAddress || '',
+      detailData.senderName || '',
+      detailData.senderMobilePhone || detailData.senderTelphone || '',
+      detailData.terminalDispatchCode || detailData.receiverSortingCode || '',
+      detailData.dispatchNetworkCode || detailData.dispatchCode || '',
+      detailData.customerOrderNo || String(detailData.id || ''),
+      detailData.senderCompany || '',
+      detailData.receiverName || '',
+      detailData.receiverCompany || '',
+      detailData.receiverMobilePhone || detailData.receiverTelphone || '',
+      detailData.receiverCountryName || 'Indonesia',
+      detailData.receiverProvinceName || '',
+      detailData.receiverCityName || '',
+      detailData.receiverAreaName || '',
+      detailData.receiverDetailedAddress || '',
+      detailData.receiverPostalCode || '',
+      parseFloat(detailData.codMoney || detailData.goodsValue || 0) || 0,
+      detailData.goodsTypeName || '',
+      parseInt(detailData.packageNumber || 1, 10) || 1,
+      parseFloat(detailData.packageTotalWeight || 0) || 0,
+      detailData.customerOrderTime || detailData.inputTime || ''
+    ]);
+  } catch (e) {
+    console.warn('autoPersistOrderDetail warning:', e.message);
+  }
+}
+
 // Helper: HTTP Request to JFS Gateway
 function makeJfsPtoRequest(path, method, postData, token) {
   return new Promise((resolve, reject) => {
@@ -416,41 +483,86 @@ exports.queryOrders = async (req, res) => {
 
     // --- TIER 1: COBA QUERY JFS OMS API JIKA BELUM ADA DI DATABASE PTO ---
     if (!querySuccessful) {
-      // 1A. Coba request dengan token saat ini
-      try {
-        const postData = JSON.stringify(payload);
-        let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
-
-        if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data?.records?.length > 0) {
-          records = result.data.records;
-          total = result.data.total || records.length;
-          querySuccessful = true;
-        } else if (!querySuccessful && effectiveSiteCode === 'JKT99A') {
-          const payloadWithSite = { ...payload, siteCode: 'JKT99A' };
-          const resultSite = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadWithSite), token).catch(() => null);
-          if (resultSite && (resultSite.code === 1 || resultSite.code === 200 || resultSite.succ === true) && resultSite.data?.records?.length > 0) {
-            records = resultSite.data.records;
-            total = resultSite.data.total || records.length;
-            querySuccessful = true;
+      // 1A. Jika user mencari nomor resi tertentu (AWB Hunter):
+      // Gunakan parameter sakti JFS: p_billType: 1, p_billNo: w, lowerSiteQuery: true, siteCode: 'JKT99A'
+      if (payload.waybillIds && payload.waybillIds.length > 0) {
+        const foundLiveRecords = [];
+        for (const wb of payload.waybillIds) {
+          try {
+            const awbPayload = {
+              siteCode: effectiveSiteCode || 'JKT99A',
+              startDate: payload.startDate,
+              endDate: payload.endDate,
+              p_billType: 1,
+              p_billNo: wb,
+              current: 1,
+              size: 20,
+              lowerSiteQuery: true,
+              countryId: String(countryId)
+            };
+            const liveRes = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(awbPayload), token).catch(() => null);
+            if (liveRes && (liveRes.code === 1 || liveRes.succ === true) && liveRes.data?.records?.length > 0) {
+              for (const r of liveRes.data.records) {
+                // Unmask detail immediately
+                if (r.id) {
+                  const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
+                  if (detailRes && (detailRes.code === 1 || detailRes.succ === true) && detailRes.data) {
+                    applyDetailToRecord(r, detailRes.data);
+                    await autoPersistOrderDetail(detailRes.data);
+                  }
+                }
+                foundLiveRecords.push(r);
+              }
+            }
+          } catch (awbErr) {
+            console.warn('AWB Live Query warning:', awbErr.message);
           }
         }
-      } catch (e1) {
-        console.warn('Tier 1A OMS Query note:', e1.message);
+
+        if (foundLiveRecords.length > 0) {
+          records = foundLiveRecords;
+          total = foundLiveRecords.length;
+          querySuccessful = true;
+        }
       }
 
-      // 1B. Jika belum dapat data dan kita punya token default SPV Area
-      if (!querySuccessful && token !== DEFAULT_PTO_TOKEN) {
+      // 1B. Jika pencarian umum (tanpa nomor resi) atau 1A belum menghasilkan:
+      if (!querySuccessful) {
         try {
-          const payloadGlobal = { ...payload };
-          delete payloadGlobal.siteCode;
-          const resultSpv = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadGlobal), DEFAULT_PTO_TOKEN);
-          if (resultSpv && (resultSpv.code === 1 || resultSpv.code === 200 || resultSpv.succ === true) && resultSpv.data?.records?.length > 0) {
-            records = resultSpv.data.records;
-            total = resultSpv.data.total || records.length;
+          const postData = JSON.stringify(payload);
+          let result = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', postData, token);
+
+          if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data?.records?.length > 0) {
+            records = result.data.records;
+            total = result.data.total || records.length;
             querySuccessful = true;
+          } else if (!querySuccessful && effectiveSiteCode === 'JKT99A') {
+            const payloadWithSite = { ...payload, siteCode: 'JKT99A' };
+            const resultSite = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadWithSite), token).catch(() => null);
+            if (resultSite && (resultSite.code === 1 || resultSite.code === 200 || resultSite.succ === true) && resultSite.data?.records?.length > 0) {
+              records = resultSite.data.records;
+              total = resultSite.data.total || records.length;
+              querySuccessful = true;
+            }
           }
-        } catch (e2) {
-          console.warn('Tier 1B SPV Token Query note:', e2.message);
+        } catch (e1) {
+          console.warn('Tier 1B OMS Query note:', e1.message);
+        }
+
+        // 1C. Jika belum dapat data dan kita punya token default SPV Area
+        if (!querySuccessful && token !== DEFAULT_PTO_TOKEN) {
+          try {
+            const payloadGlobal = { ...payload };
+            delete payloadGlobal.siteCode;
+            const resultSpv = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(payloadGlobal), DEFAULT_PTO_TOKEN);
+            if (resultSpv && (resultSpv.code === 1 || resultSpv.code === 200 || resultSpv.succ === true) && resultSpv.data?.records?.length > 0) {
+              records = resultSpv.data.records;
+              total = resultSpv.data.total || records.length;
+              querySuccessful = true;
+            }
+          } catch (e2) {
+            console.warn('Tier 1C SPV Token Query note:', e2.message);
+          }
         }
       }
     }
@@ -609,77 +721,42 @@ exports.getOrderDetail = async (req, res) => {
     // 2. Coba request ke JFS OMS API
     const token = await getPtoToken();
     try {
-      let result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
+      let result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
       if (!result || (result.code !== 1 && result.code !== 200 && result.succ !== true) || !result.data) {
-        result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token).catch(() => null);
+        result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
       }
+
+      // Jika masih gagal (karena ID berupa nomor resi AWB, bukan 18-digit internal order ID):
+      if (!result || (result.code !== 1 && result.code !== 200 && result.succ !== true) || !result.data) {
+        const now = new Date();
+        const past90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        const searchStatusRes = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify({
+          siteCode: 'JKT99A',
+          startDate: past90.toISOString().slice(0, 10) + ' 00:00:00',
+          endDate: now.toISOString().slice(0, 10) + ' 23:59:59',
+          p_billType: 1,
+          p_billNo: String(id).trim(),
+          current: 1,
+          size: 20,
+          lowerSiteQuery: true,
+          countryId: '1'
+        }), token).catch(() => null);
+
+        if (searchStatusRes && searchStatusRes.code === 1 && searchStatusRes.data?.records?.length > 0) {
+          const internalId = searchStatusRes.data.records[0].id;
+          if (internalId) {
+            result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(internalId)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
+          }
+        }
+      }
+
       if (result && (result.code === 1 || result.code === 200 || result.succ === true) && result.data) {
         const detailData = result.data || {};
         detailCache.set(id, detailData);
+        if (detailData.waybillId) detailCache.set(detailData.waybillId, detailData);
 
         // Auto-persist live detail to pto_orders database
-        if (detailData.waybillId) {
-          try {
-            await db.query(`
-              INSERT INTO pto_orders (
-                waybill, nama_barang, sumber_pesanan, outlet_pengirim, kode_pos_pengirim,
-                provinsi_pengirim, kota_pengirim, area_pengirim, alamat_lengkap_pengirim,
-                pengirim, nomor_ponsel_pengirim, ten_letter_code, nama_outlet_delivery,
-                nomor_pesanan_pelanggan, perusahaan_pengirim,
-                penerima, perusahaan_penerima_paket, nomor_handphone_penerima,
-                negara_penerima, provinsi_penerima, kota_penerima, area_penerima,
-                alamat_lengkap_penerima, kode_pos_penerima, jumlah_pembayaran_cod,
-                jenis_barang, jumlah_koli, berat_pickup, waktu_input_pesanan
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              ON DUPLICATE KEY UPDATE
-                nama_barang = VALUES(nama_barang),
-                sumber_pesanan = VALUES(sumber_pesanan),
-                outlet_pengirim = VALUES(outlet_pengirim),
-                pengirim = VALUES(pengirim),
-                nomor_ponsel_pengirim = VALUES(nomor_ponsel_pengirim),
-                ten_letter_code = VALUES(ten_letter_code),
-                nama_outlet_delivery = VALUES(nama_outlet_delivery),
-                nomor_pesanan_pelanggan = VALUES(nomor_pesanan_pelanggan),
-                penerima = VALUES(penerima),
-                nomor_handphone_penerima = VALUES(nomor_handphone_penerima),
-                alamat_lengkap_penerima = VALUES(alamat_lengkap_penerima),
-                jenis_barang = VALUES(jenis_barang),
-                berat_pickup = VALUES(berat_pickup)
-            `, [
-              detailData.waybillId,
-              detailData.goodsName || '',
-              detailData.orderSourceName || '',
-              detailData.pickNetworkName || detailData.sendCode || '',
-              detailData.senderPostalCode || '',
-              detailData.senderProvinceName || '',
-              detailData.senderCityName || '',
-              detailData.senderAreaName || '',
-              detailData.senderDetailedAddress || '',
-              detailData.senderName || '',
-              detailData.senderMobilePhone || detailData.senderTelphone || '',
-              detailData.terminalDispatchCode || detailData.receiverSortingCode || '',
-              detailData.dispatchNetworkCode || detailData.dispatchCode || '',
-              detailData.customerOrderNo || String(detailData.id || ''),
-              detailData.senderCompany || '',
-              detailData.receiverName || '',
-              detailData.receiverCompany || '',
-              detailData.receiverMobilePhone || detailData.receiverTelphone || '',
-              detailData.receiverCountryName || 'Indonesia',
-              detailData.receiverProvinceName || '',
-              detailData.receiverCityName || '',
-              detailData.receiverAreaName || '',
-              detailData.receiverDetailedAddress || '',
-              detailData.receiverPostalCode || '',
-              parseFloat(detailData.codMoney || detailData.goodsValue || 0) || 0,
-              detailData.goodsTypeName || '',
-              parseInt(detailData.packageNumber || 1, 10) || 1,
-              parseFloat(detailData.packageTotalWeight || 0) || 0,
-              detailData.customerOrderTime || ''
-            ]);
-          } catch(e) {
-            console.warn('Failed auto-persisting live detail to pto_orders:', e.message);
-          }
-        }
+        await autoPersistOrderDetail(detailData);
 
         return res.json({ success: true, data: detailData });
       }
