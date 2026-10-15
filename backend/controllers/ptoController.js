@@ -475,6 +475,15 @@ exports.queryOrders = async (req, res) => {
           records = ptoRows.map(mapPtoDbRowToRecord);
           total = ptoTotal;
           querySuccessful = true;
+
+          // Jika pencarian nomor resi spesifik dan data di DB masih mengandung bintang (*),
+          // jangan berhenti di DB, lanjutkan ke Tier 1 agar otomatis di-unmask dari JFS!
+          if (payload.waybillIds && payload.waybillIds.length > 0) {
+            const hasMasked = ptoRows.some(r => (r.penerima && r.penerima.includes('*')) || (r.pengirim && r.pengirim.includes('*')));
+            if (hasMasked) {
+              querySuccessful = false;
+            }
+          }
         }
       }
     } catch (ptoDbErr) {
@@ -693,16 +702,20 @@ exports.getOrderDetail = async (req, res) => {
       return res.status(400).json({ error: 'Order ID wajib disertakan' });
     }
 
-    // Check memory cache first
+    // Check memory cache first (hanya jika data sudah unmasked / tanpa bintang)
     if (detailCache.has(id)) {
-      return res.json({
-        success: true,
-        data: detailCache.get(id),
-        fromCache: true
-      });
+      const cached = detailCache.get(id);
+      const isClean = cached && cached.receiverName && !cached.receiverName.includes('*') && cached.senderName && !cached.senderName.includes('*');
+      if (isClean) {
+        return res.json({
+          success: true,
+          data: cached,
+          fromCache: true
+        });
+      }
     }
 
-    // 1. Cek pto_orders database resmi JFS PTO terlebih dahulu
+    // 1. Cek pto_orders database resmi JFS PTO terlebih dahulu (hanya jika nama sudah terbuka tanpa bintang)
     try {
       await ensurePtoOrdersTable();
       const [ptoRows] = await db.query(
@@ -710,9 +723,14 @@ exports.getOrderDetail = async (req, res) => {
         [id, id]
       );
       if (ptoRows && ptoRows.length > 0) {
-        const detailData = mapPtoDbRowToRecord(ptoRows[0]);
-        detailCache.set(id, detailData);
-        return res.json({ success: true, data: detailData, fromPtoDb: true });
+        const row = ptoRows[0];
+        const isReceiverClean = row.penerima && !row.penerima.includes('*') && row.penerima !== '-';
+        const isSenderClean = row.pengirim && !row.pengirim.includes('*') && row.pengirim !== '-';
+        if (isReceiverClean && isSenderClean) {
+          const detailData = mapPtoDbRowToRecord(row);
+          detailCache.set(id, detailData);
+          return res.json({ success: true, data: detailData, fromPtoDb: true });
+        }
       }
     } catch (e) {
       console.warn('pto_orders lookup warning:', e.message);
