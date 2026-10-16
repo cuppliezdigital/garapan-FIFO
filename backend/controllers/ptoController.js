@@ -506,18 +506,33 @@ exports.queryOrders = async (req, res) => {
         const foundLiveRecords = [];
         for (const wb of payload.waybillIds) {
           try {
-            const awbPayload = {
-              siteCode: effectiveSiteCode || 'JKT99A',
-              startDate: payload.startDate,
-              endDate: payload.endDate,
-              p_billType: 1,
-              p_billNo: wb,
-              current: 1,
-              size: 20,
-              lowerSiteQuery: true,
-              countryId: String(countryId)
-            };
-            const liveRes = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(awbPayload), token).catch(() => null);
+            // JFS p_billType options discovered from frontend code:
+            // 1 = Waybill / AWB (运单)
+            // 3 = Customer Order Number / No Pesanan Pelanggan (客户订单号)
+            // 0 = Order ID (订单编号)
+            // 2 = Third-party Waybill (三方运单)
+            const isCustomerOrderFormat = /^[a-zA-Z]/.test(wb) || wb.startsWith('ID') || wb.startsWith('26') || /[a-zA-Z]/.test(wb);
+            const billTypesToTry = isCustomerOrderFormat ? [3, 1, 0] : [1, 3, 0];
+
+            let liveRes = null;
+            for (const bt of billTypesToTry) {
+              const awbPayload = {
+                siteCode: effectiveSiteCode || 'JKT99A',
+                startDate: payload.startDate,
+                endDate: payload.endDate,
+                p_billType: bt,
+                p_billNo: wb,
+                current: 1,
+                size: 20,
+                lowerSiteQuery: true,
+                countryId: String(countryId)
+              };
+              const res = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(awbPayload), token).catch(() => null);
+              if (res && (res.code === 1 || res.succ === true) && res.data?.records?.length > 0) {
+                liveRes = res;
+                break;
+              }
+            }
             if (liveRes && (liveRes.code === 1 || liveRes.succ === true) && liveRes.data?.records?.length > 0) {
               for (const r of liveRes.data.records) {
                 if (r.customerOrderId && !r.customerOrderNo) {
@@ -758,21 +773,32 @@ exports.getOrderDetail = async (req, res) => {
         result = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
       }
 
-      // Jika masih gagal (karena ID berupa nomor resi AWB, bukan 18-digit internal order ID):
       if (!result || (result.code !== 1 && result.code !== 200 && result.succ !== true) || !result.data) {
         const now = new Date();
         const past90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        const searchStatusRes = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify({
-          siteCode: 'JKT99A',
-          startDate: past90.toISOString().slice(0, 10) + ' 00:00:00',
-          endDate: now.toISOString().slice(0, 10) + ' 23:59:59',
-          p_billType: 1,
-          p_billNo: String(id).trim(),
-          current: 1,
-          size: 20,
-          lowerSiteQuery: true,
-          countryId: '1'
-        }), token).catch(() => null);
+        const cleanTargetId = String(id).trim();
+        const isCustomerOrderFormat = /^[a-zA-Z]/.test(cleanTargetId) || cleanTargetId.startsWith('ID') || cleanTargetId.startsWith('26') || /[a-zA-Z]/.test(cleanTargetId);
+        const billTypesToTry = isCustomerOrderFormat ? [3, 1, 0] : [1, 3, 0];
+
+        let searchStatusRes = null;
+        for (const bt of billTypesToTry) {
+          const res = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify({
+            siteCode: 'JKT99A',
+            startDate: past90.toISOString().slice(0, 10) + ' 00:00:00',
+            endDate: now.toISOString().slice(0, 10) + ' 23:59:59',
+            p_billType: bt,
+            p_billNo: cleanTargetId,
+            current: 1,
+            size: 20,
+            lowerSiteQuery: true,
+            countryId: '1'
+          }), token).catch(() => null);
+
+          if (res && res.code === 1 && res.data?.records?.length > 0) {
+            searchStatusRes = res;
+            break;
+          }
+        }
 
         if (searchStatusRes && searchStatusRes.code === 1 && searchStatusRes.data?.records?.length > 0) {
           const internalId = searchStatusRes.data.records[0].id;
