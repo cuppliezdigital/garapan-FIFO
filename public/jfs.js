@@ -278,16 +278,22 @@ async function executeJfsSync(isQuickBtn = false) {
 
   const bigBtn = document.getElementById('btnJfsTriggerSync');
   const quickBtn = document.getElementById('btnQuickSyncJfs');
+  const mobileBtn = document.getElementById('btnMobileQuickSync');
   const iconBig = bigBtn?.querySelector('.btn-jfs-icon');
   const iconQuick = quickBtn?.querySelector('.jfs-spin-icon');
+  const iconMobile = document.getElementById('mobileSyncSpinIcon');
+  const mobileText = document.getElementById('mobileSyncBtnText');
   const mainText = document.getElementById('btnJfsSyncTextMain');
   const subText = document.getElementById('btnJfsSyncTextSub');
   const resultBox = document.getElementById('jfsSyncResultBox');
 
   if (bigBtn) bigBtn.disabled = true;
   if (quickBtn) quickBtn.disabled = true;
+  if (mobileBtn) mobileBtn.disabled = true;
   if (iconBig) iconBig.classList.add('is-spinning');
   if (iconQuick) iconQuick.classList.add('is-spinning');
+  if (iconMobile) iconMobile.classList.add('is-spinning');
+  if (mobileText) mobileText.textContent = 'Syncing...';
   if (mainText) mainText.textContent = '⚡ Sedang Menarik Data JFS...';
   if (subText) subText.textContent = 'Mengambil inventaris realtime & mencocokkan database FIFO...';
 
@@ -374,7 +380,12 @@ async function executeJfsSync(isQuickBtn = false) {
     }
 
     if (isQuickBtn) {
-      alert(`✅ Sinkronisasi JFS Berhasil (${duration}s)!\n${(result.totalFetched || 0).toLocaleString('id-ID')} waybill JFS (${(result.importedCount || 0).toLocaleString('id-ID')} baru, ${(result.archivedCount || 0).toLocaleString('id-ID')} diarsip, ${(result.deletedCount || 0).toLocaleString('id-ID')} selesai/keluar).`);
+      const summaryMsg = `⚡ Sinkronisasi JFS Sukses (${duration}s): ${(result.totalFetched || 0).toLocaleString('id-ID')} waybill (${(result.importedCount || 0).toLocaleString('id-ID')} baru, ${(result.updatedAgingCount || 0).toLocaleString('id-ID')} update, ${(result.deletedCount || 0).toLocaleString('id-ID')} keluar)`;
+      if (typeof showAppAlert === 'function') {
+        showAppAlert(summaryMsg);
+      } else {
+        alert(summaryMsg);
+      }
     }
 
     // Refresh monitoring tables and KPI
@@ -395,12 +406,20 @@ async function executeJfsSync(isQuickBtn = false) {
       const msg = document.getElementById('jfsResultMsg');
       if (msg) msg.textContent = err.message;
     }
-    alert(`❌ Sinkronisasi Gagal: ${err.message}`);
+    const failMsg = `❌ Sinkronisasi Gagal: ${err.message}`;
+    if (typeof showAppAlert === 'function') {
+      showAppAlert(failMsg, true);
+    } else {
+      alert(failMsg);
+    }
   } finally {
     if (bigBtn) bigBtn.disabled = false;
     if (quickBtn) quickBtn.disabled = false;
+    if (mobileBtn) mobileBtn.disabled = false;
     if (iconBig) iconBig.classList.remove('is-spinning');
     if (iconQuick) iconQuick.classList.remove('is-spinning');
+    if (iconMobile) iconMobile.classList.remove('is-spinning');
+    if (mobileText) mobileText.textContent = 'Sync';
     if (mainText) mainText.textContent = '⚡ Tarik & Sinkronkan Data JFS Sekarang';
     if (subText) subText.textContent = 'Langsung update tabel FIFO & kalkulasi KPI';
   }
@@ -420,6 +439,12 @@ function initJfsEventListeners() {
   const quickSyncBtn = document.getElementById('btnQuickSyncJfs');
   if (quickSyncBtn) {
     quickSyncBtn.addEventListener('click', () => executeJfsSync(true));
+  }
+
+  // Mobile / universal quick sync button in topbar
+  const mobileSyncBtn = document.getElementById('btnMobileQuickSync');
+  if (mobileSyncBtn) {
+    mobileSyncBtn.addEventListener('click', () => executeJfsSync(true));
   }
 
   // Save config form

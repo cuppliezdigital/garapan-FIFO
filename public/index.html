@@ -10,17 +10,20 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.7.0" />
+    <link rel="stylesheet" href="style.css?v=2.7.2" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.7.0" defer></script>
-    <script src="monitoring-view.js?v=2.7.0" defer></script>
-    <script src="branding.js?v=2.7.0" defer></script>
-    <script src="scanner.js?v=2.7.0" defer></script>
-    <script src="reconcile.js?v=2.7.0" defer></script>
-    <script src="jfs.js?v=2.7.0" defer></script>
-    <script src="kendaraan.js?v=2.7.0" defer></script>
-    <script src="feishu.js?v=2.7.0" defer></script>
-    <script src="pto.js?v=2.7.0" defer></script>
+    <script src="script.js?v=2.7.2" defer></script>
+    <script src="monitoring-view.js?v=2.7.2" defer></script>
+    <script src="branding.js?v=2.7.2" defer></script>
+    <script src="scanner.js?v=2.7.2" defer></script>
+    <script src="reconcile.js?v=2.7.2" defer></script>
+    <script src="jfs.js?v=2.7.2" defer></script>
+    <script src="kendaraan.js?v=2.7.2" defer></script>
+    <script src="feishu.js?v=2.7.2" defer></script>
+    <script src="jsbarcode.min.js"></script>
+    <script src="barcode-gen.js?v=2.7.2" defer></script>
+    <script src="pto.js?v=2.7.2" defer></script>
+    <script src="print-awb.js?v=2.7.2" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -363,6 +366,15 @@
           </div>
 
           <div class="topbar-actions">
+            <!-- TOMBOL SYNC MANDIRI (UNIVERSAL & MOBILE FRIENDLY UNTUK SEMUA AKUN) -->
+            <button class="mobile-sync-btn" id="btnMobileQuickSync" type="button" title="Sinkronkan Data JFS Realtime">
+              <span class="mobile-sync-spin-icon" id="mobileSyncSpinIcon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+              </span>
+              <span class="mobile-sync-text" id="mobileSyncBtnText">Sync</span>
+            </button>
             <span id="userPill" class="user-pill">User</span>
             <button class="auto-refresh-toggle-btn" id="autoRefreshToggleBtn" type="button" title="Auto-Refresh tiap 60 detik (cocok untuk layar display gudang)" aria-pressed="false">
               <span class="auto-refresh-pulse-dot" aria-hidden="true"></span>
@@ -1027,21 +1039,54 @@
                 </div>
               </div>
 
+              <!-- TIP PENCARIAN CERDAS (SHOPEE TORN LABEL SAVER) -->
+              <div id="monitoringSearchTip" class="monitoring-search-tip hidden"></div>
+
               <div class="table-wrap">
                 <table class="monitoring-table">
                   <thead>
                     <tr>
                       <th><input type="checkbox" id="selectAllMonitoring" aria-label="Pilih semua data halaman" /></th>
-                      <th>Waybill</th>
-                      <th>Tanggal</th>
-                      <th>Outlet Asal</th>
-                      <th>Outlet Tujuan</th>
-                      <th>Stuck</th>
-                      <th>TLC</th>
-                      <th>Status</th>
-                      <th>Aksi</th>
-                      <th>Nama Barang</th>
-                      <th>Updated By</th>
+                      <th class="sortable-th" data-sort="waybill" title="Klik untuk mengurutkan Waybill"><span>Waybill</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="tanggal" title="Klik untuk mengurutkan Tanggal"><span>Tanggal</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="outlet_asal" title="Klik untuk mengurutkan Outlet Asal"><span>Outlet Asal</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="outlet" title="Klik untuk mengurutkan Outlet Tujuan"><span>Outlet Tujuan</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="stuck" title="Klik untuk mengurutkan Durasi Stuck"><span>Stuck</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="tlc" title="Klik untuk mengurutkan TLC"><span>TLC</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="status" title="Klik untuk mengurutkan Status"><span>Status</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="aksi" title="Klik untuk mengurutkan Aksi"><span>Aksi</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="nama_barang" title="Klik untuk mengurutkan Nama Barang"><span>Nama Barang</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="updated_by" title="Klik untuk mengurutkan Updated By"><span>Updated By</span><span class="sort-indicator">↕</span></th>
+                    </tr>
+                    <tr class="table-column-filter-row">
+                      <th style="text-align: center;"><button type="button" class="btn-clear-col-filters" id="btnClearColumnFilters" title="Hapus semua filter kolom">✕</button></th>
+                      <th><input type="text" class="col-filter-input" data-col="waybill" placeholder="Filter resi..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="tanggal" placeholder="YYYY-MM-DD..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="outlet_asal" placeholder="Outlet asal..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="outlet" placeholder="Outlet tujuan..." autocomplete="off" /></th>
+                      <th>
+                        <select class="col-filter-select" data-col="stuck">
+                          <option value="">Semua</option>
+                          <option value="1-12">1-12 Jam</option>
+                          <option value="12-24">12-24 Jam</option>
+                          <option value="24-36">24-36 Jam</option>
+                          <option value="36-48">36-48 Jam</option>
+                          <option value="48-60">48-60 Jam</option>
+                          <option value="60-72">60-72 Jam</option>
+                          <option value="72">72 Jam UP</option>
+                        </select>
+                      </th>
+                      <th><input type="text" class="col-filter-input" data-col="tlc" placeholder="TLC..." autocomplete="off" /></th>
+                      <th>
+                        <select class="col-filter-select" data-col="status">
+                          <option value="">Semua</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Sudah Diupdate">Sudah Diupdate</option>
+                        </select>
+                      </th>
+                      <th><input type="text" class="col-filter-input" data-col="aksi" placeholder="Aksi..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="nama_barang" placeholder="Nama barang..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="updated_by" placeholder="User..." autocomplete="off" /></th>
                     </tr>
                   </thead>
                   <tbody id="tabel-monitoring"></tbody>
@@ -1616,6 +1661,26 @@
                   </span>
                   <span class="tab-label">Pelacakan PTO</span>
                   <span class="advance-tab-pill pill-cyan">Order</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="barcode" id="tabBtnAdvanceBarcode" title="Barcode Generator Code 128 (Standar J&T Cargo)">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Barcode Generator</span>
+                  <span class="advance-tab-pill pill-purple">Code 128</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="print-awb" id="tabBtnAdvancePrintAwb" title="Cetak Label Resi &amp; Kolian Resmi JFS (PDF Thermal / TTD)">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                      <rect width="12" height="8" x="6" y="14"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Cetak AWB JFS</span>
+                  <span class="advance-tab-pill pill-pink">Thermal &amp; TTD</span>
                 </button>
               </div>
             </div>
@@ -2712,17 +2777,20 @@
 
                   <div class="pto-field-group full-width">
                     <label for="ptoWaybillSearch">
-                      <span style="display: flex; align-items: center; gap: 8px;">
-                        <span>Cari Nomor Resi (AWB) ATAU Nomor Pesanan Marketplace (Resi Sobek)</span>
-                        <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">DETEKSI RESI SOBEK</span>
+                      <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                          <span>Cari Nomor Resi (AWB) ATAU Nomor Pesanan Marketplace (Resi Sobek)</span>
+                          <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">MULTI-AWB SUPPORT</span>
+                        </span>
+                        <span id="ptoSearchCountBadge" class="pto-search-count-badge hidden">0 Resi</span>
                       </span>
-                      <small class="text-muted">(Bisa masukkan No. Resi ATAU No. Pesanan Shopee / TikTok / ID Booking / Lazada)</small>
+                      <small class="text-muted">(Bisa masukkan 1 atau BANYAK resi sekaligus! Copy-paste kolom Excel, pisah Enter/baris baru, spasi, atau koma)</small>
                     </label>
                     <div class="pto-search-input-wrap">
-                      <input type="text" id="ptoWaybillSearch" class="pto-input" placeholder="Masukkan No. Resi (contoh: 201692897928) ATAU No. Pesanan (contoh: 260806M9RHMW78, ID266645347008T)..." />
+                      <textarea id="ptoWaybillSearch" class="pto-input pto-search-textarea" rows="2" placeholder="Masukkan 1 atau banyak No. Resi / No. Pesanan (contoh: 201692897928, ID266645347008T)... Bisa copy-paste 1 kolom Excel langsung tanpa koma!"></textarea>
                       <button type="button" class="btn-clear-input" id="btnClearPtoSearch" title="Bersihkan input">✕</button>
                     </div>
-                    <span style="font-size: 0.74rem; color: #94a3b8; margin-top: 5px; display: block;">💡 <strong>Deteksi Resi Sobek:</strong> Jika label resi rusak/sobek dan barcode hilang, masukkan nomor pesanan marketplace yang tersisa (seperti Shopee Order SN, ID Booking, atau No Pesanan TikTok) untuk menemukan nomor AWB dan membuka data tujuan lengkapnya.</span>
+                    <span style="font-size: 0.74rem; color: #94a3b8; margin-top: 5px; display: block;">💡 <strong>Multi-AWB & Resi Sobek:</strong> Bisa cari banyak resi sekaligus tanpa koma (cukup pisah Enter/baris baru). Tekan <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Ctrl</kbd> + <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Enter</kbd> untuk langsung cari.</span>
                   </div>
 
                   <div class="pto-actions-row full-width">
@@ -2827,6 +2895,323 @@
                     <div class="pto-page-numbers" id="ptoPageNumbers"></div>
                     <button type="button" class="btn-page" id="btnPtoNextPage" disabled title="Halaman Berikutnya">&rsaquo;</button>
                     <button type="button" class="btn-page" id="btnPtoLastPage" disabled title="Halaman Terakhir">&raquo;</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- TAB PANE 6: BARCODE GENERATOR CODE 128 -->
+          <div id="viewBarcodeGen" class="advance-pane hidden">
+            <section class="panel">
+              <div class="barcode-gen-container">
+                <div class="barcode-gen-card">
+                  <div class="barcode-gen-header">
+                    <div class="barcode-gen-title-wrap">
+                      <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.2">
+                          <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
+                        </svg>
+                        <span>Code 128 Barcode Generator</span>
+                        <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); font-size: 0.72rem;">Standar J&amp;T Cargo</span>
+                      </h4>
+                      <p>Generate barcode laser scanner resolusi tinggi dari nomor AWB atau Koli. Salin gambar barcode langsung ke clipboard untuk ditempel di WhatsApp, Excel, Feishu, atau cetak ke printer thermal.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <span class="badge" id="barcodeItemsCountBadge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 700;">0 Barcode</span>
+                      <button type="button" class="secondary-btn" id="btnClearBarcodeGen" style="padding: 6px 12px; font-size: 0.78rem;">Bersihkan</button>
+                    </div>
+                  </div>
+
+                  <div class="barcode-input-wrapper">
+                    <label for="barcodeGenInput" style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: flex; justify-content: space-between;">
+                      <span>Masukkan Nomor AWB / Koli:</span>
+                      <span style="font-weight: normal; color: #94a3b8; font-size: 0.75rem;">Bisa ketik 1 nomor atau paste banyak nomor (pisahkan baris baru / koma)</span>
+                    </label>
+                    <textarea id="barcodeGenInput" class="barcode-textarea" placeholder="Contoh: 201827854164003 (AWB 12 digit + Koli 3 digit)&#10;Ketik atau paste nomor resi disini..."></textarea>
+                    
+                    <div class="barcode-quick-samples-bar">
+                      <span>Coba Contoh:</span>
+                      <button type="button" class="quick-sample-barcode-btn" data-sample="201827854164003">201827854164003 (AWB+Koli)</button>
+                      <button type="button" class="quick-sample-barcode-btn" data-sample="201819982515">201819982515 (AWB Standard)</button>
+                      <button type="button" class="quick-sample-barcode-btn" data-sample="201827854164001&#10;201827854164002&#10;201827854164003">Multi-Koli (1-3)</button>
+                    </div>
+                  </div>
+
+                  <!-- SINGLE BARCODE RESULT CARD -->
+                  <div id="barcodeSingleResultCard" class="barcode-single-card hidden">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; border-bottom: 1px solid rgba(148, 163, 184, 0.1); padding-bottom: 10px;">
+                      <div>
+                        <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Nomor Resi / Koli</span>
+                        <h3 id="barcodeSingleLabelText" style="margin: 2px 0 0 0; font-family: monospace; color: #f8fafc; font-size: 1.25rem;">-</h3>
+                      </div>
+                      <span id="barcodeSingleCharCount" style="font-size: 0.76rem; color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 4px; font-family: monospace;">-</span>
+                    </div>
+
+                    <!-- White Canvas Container (High Contrast for Laser/PDA Scanner) -->
+                    <div class="barcode-canvas-white-box">
+                      <canvas id="barcodeSingleCanvas"></canvas>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="barcode-actions-bar">
+                      <button type="button" class="btn-barcode-copy" id="btnCopyBarcodeImage" title="Salin Gambar Barcode ke Clipboard (Siap Paste di WA/Excel)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                        </svg>
+                        <span>📋 Salin Gambar Barcode</span>
+                      </button>
+                      <button type="button" class="btn-barcode-download" id="btnDownloadBarcodeImage" title="Unduh File Gambar PNG">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="7 10 12 15 17 10"/>
+                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Unduh PNG</span>
+                      </button>
+                      <button type="button" class="btn-barcode-print" id="btnPrintBarcodeLabel" title="Cetak ke Printer Thermal (Simpel)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                          <polyline points="6 9 6 2 18 2 18 9"/>
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                          <rect width="12" height="8" x="6" y="14"/>
+                        </svg>
+                        <span>Cetak Barcode</span>
+                      </button>
+                      <button type="button" class="btn-barcode-official-pdf" id="btnPrintOfficialJfsPdf" title="Cetak / Buka Label Thermal PDF Resmi dari JFS J&T Cargo">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/>
+                          <line x1="16" y1="17" x2="8" y2="17"/>
+                          <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        <span>🖨️ Cetak Label JFS (PDF)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- BATCH MULTI BARCODE RESULTS -->
+                  <div id="barcodeBatchResultList" class="barcode-batch-list hidden"></div>
+
+                  <!-- EMPTY STATE -->
+                  <div id="barcodeEmptyState" style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8" style="margin-bottom: 12px; opacity: 0.6;">
+                      <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
+                    </svg>
+                    <p style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px;">Belum Ada Barcode yang Dibuat</p>
+                    <span style="font-size: 0.82rem;">Ketik nomor resi atau koli pada kotak di atas, atau klik salah satu contoh di atas untuk langsung melihat barcode.</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- TAB PANE 7: CETAK AWB & KOLI RESMI JFS -->
+          <div id="viewPrintAwb" class="advance-pane hidden">
+            <section class="panel print-awb-panel">
+              <div class="print-awb-container">
+                <!-- HEADER & STATUS BAR -->
+                <div class="print-awb-header-card">
+                  <div class="print-awb-header-left">
+                    <div class="print-awb-badge-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect width="12" height="8" x="6" y="14"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="print-awb-eyebrow">
+                        <span class="live-dot pulse-purple"></span>
+                        <span>JFS OFFICIAL CLOUD PRINT • THERMAL &amp; TTD</span>
+                      </div>
+                      <h2 class="print-awb-title">Pusat Cetak AWB &amp; Kolian Resmi JFS</h2>
+                      <p class="print-awb-subtitle">
+                        Cetak label thermal asli J&amp;T Cargo (PDF Alibaba Cloud OSS): Resi Utama, Label Kolian Lengkap, dan Resi dengan Kolom TTD / Bukti Tanda Terima.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="print-awb-header-right">
+                    <div class="print-awb-format-pill">
+                      <span class="pill-dot"></span>
+                      <span>Format Thermal 100×100 / 100×150 / 100×180mm</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- MAIN CONTROLS CARD -->
+                <div class="print-awb-controls-card">
+                  <!-- PILIHAN TIPE CETAK -->
+                  <div class="print-awb-form-section">
+                    <label class="print-awb-label">
+                      <span>1. Pilih Tipe Dokumen Label yang Ingin Dicetak</span>
+                    </label>
+                    <div class="print-type-selector-grid">
+                      <label class="print-type-card active">
+                        <input type="radio" name="printDocType" value="4,5" checked />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-popular">Rekomendasi</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                                <polyline points="2 17 12 22 22 17"/>
+                                <polyline points="2 12 12 17 22 12"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Resi Utama + Semua Kolian</strong>
+                          <span class="print-type-desc">Mencetak label resi induk dan seluruh lembar koli (misal: 5 koli = 5 lembar).</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="4" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-master">Induk</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Resi Utama Saja</strong>
+                          <span class="print-type-desc">Hanya mencetak 1 lembar label induk (Master AWB) tanpa lembar koli anak.</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="5" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-koli">Koli</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Label Kolian Saja</strong>
+                          <span class="print-type-desc">Khusus paket multi-koli: hanya mencetak label koli anak tanpa resi utama.</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="2" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-ttd">TTD / POD</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <path d="M9 15l2 2 4-4"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Resi Lengkap + Kolom TTD</strong>
+                          <span class="print-type-desc">Format 3 rangkap (100x180mm) dilengkapi kolom tanda tangan &amp; cap serah terima.</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="1" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-manifest">Surat Jalan</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Surat Jalan / Manifest A4</strong>
+                          <span class="print-type-desc">Format tanda terima serah terima dokumen ekspedisi ukuran penuh (A4).</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- INPUT MULTI-AWB -->
+                  <div class="print-awb-form-section">
+                    <div class="print-awb-input-header">
+                      <label for="printAwbInput" class="print-awb-label">
+                        <span>2. Masukkan Nomor Resi (AWB)</span>
+                        <small class="text-muted">(Bisa copy-paste 1 kolom Excel langsung, dipisah enter/baris baru, spasi, atau koma)</small>
+                      </label>
+                      <div class="print-awb-badge-wrap">
+                        <span id="printAwbCountBadge" class="print-awb-count-badge hidden">0 Resi</span>
+                        <button type="button" class="btn-clear-print-input" id="btnClearPrintAwb" title="Bersihkan input">Bersihkan</button>
+                      </div>
+                    </div>
+                    <div class="print-awb-textarea-wrap">
+                      <textarea id="printAwbInput" class="print-awb-textarea" rows="3" placeholder="Contoh:&#10;570650197323&#10;570637710281&#10;201822795237&#10;(Bisa paste 1 kolom Excel langsung tanpa koma!)..."></textarea>
+                    </div>
+
+                    <!-- QUICK SAMPLES & ACTION BUTTON -->
+                    <div class="print-awb-action-bar">
+                      <div class="print-awb-samples">
+                        <span class="samples-label">Contoh:</span>
+                        <button type="button" class="btn-print-sample" data-sample="570650197323">Resi 1 Koli</button>
+                        <button type="button" class="btn-print-sample" data-sample="570637710281">Resi 2 Koli</button>
+                        <button type="button" class="btn-print-sample" data-sample="570650197323&#10;570637710281&#10;201822795237">Batch 3 Resi</button>
+                      </div>
+
+                      <button type="button" class="btn-generate-print-pdf" id="btnGenerateAwbPrint">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="6 9 6 2 18 2 18 9"/>
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                          <rect width="12" height="8" x="6" y="14"/>
+                        </svg>
+                        <span>Tarik &amp; Cetak Label PDF</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RESULTS SECTION -->
+                <div class="print-awb-results-card">
+                  <!-- SUMMARY TOOLBAR -->
+                  <div id="printAwbSummaryToolbar" class="print-summary-toolbar hidden">
+                    <div class="summary-toolbar-left">
+                      <span class="pulse-green-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+                      <strong id="printSummaryStatusText" class="summary-status-text">Siap Dicetak: 0 Resi</strong>
+                    </div>
+                    <div class="summary-toolbar-right">
+                      <button type="button" class="btn-open-all-pdfs" id="btnOpenAllPdfs">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                        <span>Buka Semua PDF</span>
+                      </button>
+                      <button type="button" class="btn-copy-all-urls" id="btnCopyAllPdfUrls">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        <span>Salin Semua Link</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- RESULTS CONTAINER / LIST -->
+                  <div id="printAwbResultsList" class="print-awb-results-list hidden"></div>
+
+                  <!-- EMPTY STATE -->
+                  <div id="printAwbEmptyState" class="print-awb-empty-state">
+                    <div class="empty-icon-wrap">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect width="12" height="8" x="6" y="14"/>
+                      </svg>
+                    </div>
+                    <h4>Belum Ada Label yang Siap Dicetak</h4>
+                    <p>Masukkan nomor resi AWB pada kotak di atas, pilih tipe dokumen (Resi Utama, Kolian, atau TTD), lalu klik tombol <strong>Tarik &amp; Siapkan Cetak PDF</strong>.</p>
                   </div>
                 </div>
               </div>
@@ -3893,11 +4278,44 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
         </div>
 
         <div class="waybill-detail-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- BARCODE CODE 128 INTERAKTIF -->
+          <div class="wb-detail-barcode-box" id="wbDetailBarcodeBox">
+            <canvas id="wbDetailBarcodeCanvas"></canvas>
+            <div class="wb-detail-barcode-actions">
+              <button type="button" class="btn-wb-detail-barcode-copy" id="btnCopyWbDetailBarcode" title="Salin Gambar Barcode ke Clipboard (Siap Paste di WA/Excel)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+                <span>📋 Salin Barcode</span>
+              </button>
+              <button type="button" class="btn-wb-detail-barcode-dl" id="btnDownloadWbDetailBarcode" title="Unduh File Barcode PNG">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Unduh PNG</span>
+              </button>
+              <button type="button" class="btn-wb-detail-print-pdf" id="btnPrintWbOfficialPdf" title="Cetak / Buka Label Thermal PDF Resmi JFS J&T Cargo">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect width="12" height="8" x="6" y="14"/>
+                </svg>
+                <span>🖨️ Cetak Label JFS (PDF)</span>
+              </button>
+            </div>
+          </div>
+
           <!-- STATUS & AGING BANNER -->
           <div class="wb-detail-banner" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 16px; border-radius: 10px;">
             <div>
               <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 4px;">Status Waybill</span>
-              <span id="wbDetailStatusBadge" class="modern-status-badge status-pending">Pending</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="wbDetailStatusBadge" class="modern-status-badge status-pending">Pending</span>
+                <span id="wbDetailClientBadge" class="badge" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.35); font-weight: 700; font-size: 0.75rem;">JFS</span>
+              </div>
             </div>
             <div style="text-align: right;">
               <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 4px;">Durasi Stuck (Aging)</span>
@@ -3905,42 +4323,62 @@ GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82r
             </div>
           </div>
 
+          <!-- EXTRA JFS DATA BANNER (PROBLEM / REFUND / COD) -->
+          <div id="wbDetailAlertBanner" class="hidden" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #f87171; font-weight: 800; font-size: 0.8rem;">⚠️ PERHATIAN:</span>
+            <div id="wbDetailAlertBadges" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+          </div>
+
           <!-- GRID ATTRIBUTES -->
           <div class="wb-detail-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <!-- OUTLET ASAL -->
+            <!-- OUTLET ASAL & KOTA -->
             <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
               <div style="display: flex; align-items: center; gap: 6px; color: #38bdf8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
-                <span>OUTLET ASAL</span>
+                <span>OUTLET &amp; KOTA ASAL</span>
               </div>
               <strong id="wbDetailOutletAsal" style="font-size: 1.05rem; color: #f8fafc; font-family: monospace;">-</strong>
+              <div id="wbDetailOriginCity" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">-</div>
             </div>
 
-            <!-- OUTLET TUJUAN -->
+            <!-- OUTLET TUJUAN & KOTA -->
             <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
               <div style="display: flex; align-items: center; gap: 6px; color: #a78bfa; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>OUTLET TUJUAN</span>
+                <span>OUTLET &amp; KOTA TUJUAN</span>
               </div>
               <strong id="wbDetailOutletTujuan" style="font-size: 1.05rem; color: #f8fafc; font-family: monospace;">-</strong>
+              <div id="wbDetailDestCity" style="font-size: 0.8rem; color: #c084fc; margin-top: 2px; font-weight: 600;">-</div>
             </div>
 
-            <!-- TANGGAL MASUK -->
+            <!-- BERAT & KOLI -->
             <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
-              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <span>TANGGAL INVENTARIS</span>
+              <div style="display: flex; align-items: center; gap: 6px; color: #34d399; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                <span>BERAT &amp; JUMLAH KOLI</span>
               </div>
-              <strong id="wbDetailTanggal" style="font-size: 0.95rem; color: #f8fafc;">-</strong>
+              <strong id="wbDetailWeightKoli" style="font-size: 1rem; color: #f8fafc;">0.00 kg • 1 Koli</strong>
             </div>
 
             <!-- TLC -->
             <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
-              <div style="display: flex; align-items: center; gap: 6px; color: #34d399; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #fb923c; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/></svg>
-                <span>KODE TLC</span>
+                <span>KODE TLC / GATEWAY</span>
               </div>
               <strong id="wbDetailTlc" style="font-size: 0.95rem; color: #f8fafc; font-family: monospace;">-</strong>
+            </div>
+
+            <!-- TANGGAL & JAM SCAN IN GATEWAY -->
+            <div class="wb-detail-item" style="grid-column: span 2; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>WAKTU SCAN MASUK GATEWAY</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <strong id="wbDetailTanggal" style="font-size: 0.95rem; color: #f8fafc;">-</strong>
+                <span id="wbDetailScanInTime" style="font-size: 0.8rem; color: #38bdf8; font-family: monospace;">-</span>
+              </div>
             </div>
 
             <!-- NAMA BARANG (FULL WIDTH) -->

@@ -197,7 +197,7 @@ const navLinks = {
 let currentAdvanceTab = 'reconcile';
 
 function switchAdvanceTab(tabName, updateUrl = true) {
-  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto'];
+  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb'];
   const tab = validTabs.includes(tabName) ? tabName : 'reconcile';
   currentAdvanceTab = tab;
 
@@ -212,6 +212,8 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   const paneFeishu = document.getElementById('viewFeishuDoc');
   const paneJfs = document.getElementById('viewJfs');
   const panePto = document.getElementById('viewPto');
+  const paneBarcode = document.getElementById('viewBarcodeGen');
+  const panePrintAwb = document.getElementById('viewPrintAwb');
 
   if (paneReconcile) {
     paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
@@ -233,6 +235,14 @@ function switchAdvanceTab(tabName, updateUrl = true) {
     panePto.classList.toggle('hidden', tab !== 'pto');
     panePto.classList.toggle('active', tab === 'pto');
   }
+  if (paneBarcode) {
+    paneBarcode.classList.toggle('hidden', tab !== 'barcode');
+    paneBarcode.classList.toggle('active', tab === 'barcode');
+  }
+  if (panePrintAwb) {
+    panePrintAwb.classList.toggle('hidden', tab !== 'print-awb');
+    panePrintAwb.classList.toggle('active', tab === 'print-awb');
+  }
 
   if (updateUrl) {
     history.replaceState(null, '', `#/advance?tab=${tab}`);
@@ -253,6 +263,10 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   } else if (tab === 'pto') {
     if (typeof initPtoModule === 'function') {
       initPtoModule();
+    }
+  } else if (tab === 'print-awb') {
+    if (typeof initPrintAwbModule === 'function') {
+      initPrintAwbModule();
     }
   }
 }
@@ -286,7 +300,7 @@ function handleHashRoute() {
   const queryStr = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
   const urlParams = new URLSearchParams(queryStr);
 
-  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto'];
+  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb'];
   let target = baseRoute;
   let advanceSubTab = 'reconcile';
 

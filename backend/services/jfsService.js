@@ -78,6 +78,34 @@ async function ensureJfsTables() {
      WHERE config_key = 'authtoken' AND (config_value = '5e5f58c243c645b89385c6806310474c' OR config_value IS NULL OR config_value = '')`,
     [initialToken]
   );
+
+  // Pastikan kolom-kolom data emas JFS tersedia di monitoring_stuck & monitoring_history
+  const extraCols = [
+    ['client_name', 'VARCHAR(100) NULL'],
+    ['dest_city', 'VARCHAR(150) NULL'],
+    ['origin_city', 'VARCHAR(150) NULL'],
+    ['weight', 'VARCHAR(50) NULL'],
+    ['package_number', 'VARCHAR(50) NULL'],
+    ['is_problem', 'VARCHAR(20) NULL'],
+    ['is_refund', 'VARCHAR(20) NULL'],
+    ['is_cod', 'VARCHAR(20) NULL'],
+    ['scan_in_time', 'VARCHAR(50) NULL'],
+  ];
+  for (const table of ['monitoring_stuck', 'monitoring_history', 'monitoring_archive']) {
+    for (const [col, def] of extraCols) {
+      try {
+        const [chk] = await db.query(
+          'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+          [table, col]
+        );
+        if (!chk || !chk.length) {
+          await db.query(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+        }
+      } catch (colErr) {
+        // Abaikan jika sudah ada
+      }
+    }
+  }
 }
 
 async function getConfig() {
@@ -253,56 +281,92 @@ async function fetchAllJfsWaybills() {
 
   const now = new Date();
   const endDate = `${getFormattedDate(now)} 23:59:59`;
-  const past = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const beginDate = `${getFormattedDate(past)} 00:00:00`;
 
   const PAGE_SIZE = 1000;
-  let currentPage = 1;
   const allRecords = [];
-  const maxPages = 50; // Safety cap (up to 50,000 waybills)
 
-  while (currentPage <= maxPages) {
-    const payload = {
-      beginDate,
-      endDate,
-      scanSiteCode: siteCode,
-      queryFlag: '2',
-      billCode: '',
-      scanSiteCodeName: siteName,
-      isOverDate: '',
-      operateSiteType: 'all',
-      expressTypeCode: '',
-      codNeed: '',
-      invOverTm: '',
-      shipHour: '',
-      customerCode: '',
-      isRefund: '',
-      sqlCode: 'realtime_inv_man_dtl',
-      current: currentPage,
-      size: PAGE_SIZE,
-      convertResultFromDictionCode: 'is_receiver_pay|124,isProblemPiece|124,cod_need|124,is_refund|124',
-      convertResultFromDictionOriCode: '',
-      paginationSearchType: 'list',
-      countryId: '1',
-    };
+  const basePayload = {
+    beginDate,
+    endDate,
+    scanSiteCode: siteCode,
+    queryFlag: '2',
+    billCode: '',
+    scanSiteCodeName: siteName,
+    isOverDate: '',
+    operateSiteType: 'all',
+    expressTypeCode: '',
+    codNeed: '',
+    invOverTm: '',
+    shipHour: '',
+    customerCode: '',
+    isRefund: '',
+    sqlCode: 'realtime_inv_man_dtl',
+    convertResultFromDictionCode: 'is_receiver_pay|124,isProblemPiece|124,cod_need|124,is_refund|124',
+    convertResultFromDictionOriCode: '',
+    countryId: '1',
+  };
 
-    const result = await requestJfsApi(token, payload);
-    const records = result?.data?.records || [];
-    if (!records.length) {
-      break;
-    }
-
-    allRecords.push(...records);
-
-    // If fetched less than PAGE_SIZE, we reached the end
-    if (records.length < PAGE_SIZE) {
-      break;
-    }
-
-    currentPage += 1;
+  // 1. Eksekusi request count super cepat untuk mengetahui total halaman JFS
+  let totalCount = 0;
+  try {
+    const countRes = await requestJfsApi(token, {
+      ...basePayload,
+      current: 1,
+      size: 10,
+      paginationSearchType: 'count',
+    });
+    totalCount = Number(countRes?.data?.total || 0);
+  } catch (cErr) {
+    console.warn('[JFS Count] Warning saat membaca total data, beralih ke fallback sekuensial:', cErr.message);
   }
 
-  // Map to FIFO format
+  if (totalCount > 0) {
+    const totalPages = Math.min(50, Math.ceil(totalCount / PAGE_SIZE));
+    const pageList = Array.from({ length: totalPages }, (_, i) => i + 1);
+    const CONCURRENCY = 5; // Tembak 5 request paralel sekaligus untuk kecepatan maksimal
+
+    for (let i = 0; i < pageList.length; i += CONCURRENCY) {
+      const batchPages = pageList.slice(i, i + CONCURRENCY);
+      const batchPromises = batchPages.map((p) =>
+        requestJfsApi(token, {
+          ...basePayload,
+          current: p,
+          size: PAGE_SIZE,
+          paginationSearchType: 'list',
+        }).catch((err) => {
+          console.warn(`[JFS Parallel Sync] Warning page ${p}:`, err.message);
+          return { data: { records: [] } };
+        })
+      );
+
+      const batchResults = await Promise.all(batchPromises);
+      for (const res of batchResults) {
+        const recs = res?.data?.records || [];
+        if (recs.length) allRecords.push(...recs);
+      }
+    }
+  } else {
+    // Fallback jika JFS tidak mengembalikan count
+    let currentPage = 1;
+    const maxPages = 50;
+    while (currentPage <= maxPages) {
+      const result = await requestJfsApi(token, {
+        ...basePayload,
+        current: currentPage,
+        size: PAGE_SIZE,
+        paginationSearchType: 'list',
+      });
+      const records = result?.data?.records || [];
+      if (!records.length) break;
+      allRecords.push(...records);
+      if (records.length < PAGE_SIZE) break;
+      currentPage += 1;
+    }
+  }
+
+  // Map to FIFO format dengan data emas lengkap
   const todayStr = getFormattedDate(now);
   const normalizedRows = [];
 
@@ -318,6 +382,16 @@ async function fetchAllJfsWaybills() {
     const tlc = r.destination_distribution_name || r.SEND_NEXTSTATION || siteName || 'GW-Jakarta';
     const namaBarang = r.goods_name || '-';
 
+    const clientName = r.name || '-';
+    const destCity = r.dest_proxy_area_name || '-';
+    const originCity = r.take_proxy_area_name || '-';
+    const weight = r.weight ? String(r.weight).trim() : '0';
+    const packageNumber = r.package_number ? String(r.package_number).trim() : '1';
+    const isProblem = (r.isProblemPiece === '是' || r.isProblemPiece === '1' || r.isProblemPiece === true) ? 'Ya' : 'Tidak';
+    const isRefund = (r.is_refund === '是' || r.is_refund === '1' || r.is_refund === true) ? 'Ya' : 'Tidak';
+    const isCod = (r.cod_need === '是' || r.cod_need === '1' || r.cod_need === true) ? 'Ya' : 'Tidak';
+    const scanInTime = r.operate_scantime_1 || '';
+
     normalizedRows.push({
       waybill,
       tanggal,
@@ -329,6 +403,15 @@ async function fetchAllJfsWaybills() {
       aksi: '-',
       nama_barang: namaBarang,
       updated_by: 'JFS Realtime',
+      client_name: clientName,
+      dest_city: destCity,
+      origin_city: originCity,
+      weight,
+      package_number: packageNumber,
+      is_problem: isProblem,
+      is_refund: isRefund,
+      is_cod: isCod,
+      scan_in_time: scanInTime,
     });
   }
 
@@ -347,7 +430,7 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
 
     // 1. Ambil seluruh data aktif yang ada di monitoring_stuck saat ini
     const [existingRows] = await connection.query(
-      'SELECT waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by FROM monitoring_stuck'
+      'SELECT waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, client_name, dest_city, origin_city, weight, package_number, is_problem, is_refund, is_cod, scan_in_time FROM monitoring_stuck'
     );
     const existingMap = new Map();
     existingRows.forEach(r => existingMap.set(String(r.waybill), r));
@@ -378,18 +461,16 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
         const isUpdated = (oldAksi && oldAksi !== '-') || oldStatus === 'sudah diupdate' || oldStatus === 'sudah scan kirim';
 
         if (isUpdated) {
-          // Data yang sudah dikerjakan/diupdate operator diarsipkan ke History agar catatan tidak hilang
           toArchive.push({ ...existing, source: 'jfs_resolved' });
         } else {
-          // Paket lama yang sudah tidak tertahan di gudang JFS dibersihkan dari antrean aktif monitoring
           toDelete.push(wb);
         }
       }
     }
 
-    const CHUNK_SIZE = 500;
+    const CHUNK_SIZE = 1500;
 
-    // 5. Arsipkan data yang sudah diupdate ke monitoring_history (chunks of 500)
+    // 5. Arsipkan data yang sudah diupdate ke monitoring_history
     for (let i = 0; i < toArchive.length; i += CHUNK_SIZE) {
       const chunk = toArchive.slice(i, i + CHUNK_SIZE);
       const values = chunk.map((r) => [
@@ -404,16 +485,25 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
         r.nama_barang || '-',
         r.updated_by || 'JFS Realtime',
         r.source || 'jfs_resolved',
+        r.client_name || '-',
+        r.dest_city || '-',
+        r.origin_city || '-',
+        r.weight || '0',
+        r.package_number || '1',
+        r.is_problem || 'Tidak',
+        r.is_refund || 'Tidak',
+        r.is_cod || 'Tidak',
+        r.scan_in_time || '',
       ]);
       await connection.query(
         `INSERT INTO monitoring_history
-          (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source)
+          (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, source, client_name, dest_city, origin_city, weight, package_number, is_problem, is_refund, is_cod, scan_in_time)
          VALUES ?`,
         [values]
       );
     }
 
-    // 6. Hapus paket yang sudah keluar/beres dari monitoring_stuck (chunks of 500)
+    // 6. Hapus paket yang sudah keluar/beres dari monitoring_stuck
     const allLeftWaybills = [...toArchive.map(r => r.waybill), ...toDelete];
     for (let i = 0; i < allLeftWaybills.length; i += CHUNK_SIZE) {
       const chunk = allLeftWaybills.slice(i, i + CHUNK_SIZE);
@@ -447,7 +537,7 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
       validIncoming.push(incoming);
     }
 
-    // 8. Eksekusi batch upsert dengan chunks of 500
+    // 8. Eksekusi batch upsert dengan chunks of 1500
     for (let i = 0; i < validIncoming.length; i += CHUNK_SIZE) {
       const chunk = validIncoming.slice(i, i + CHUNK_SIZE);
       const values = chunk.map((r) => [
@@ -461,11 +551,20 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
         '-',
         r.nama_barang || '-',
         'JFS Realtime',
+        r.client_name || '-',
+        r.dest_city || '-',
+        r.origin_city || '-',
+        r.weight || '0',
+        r.package_number || '1',
+        r.is_problem || 'Tidak',
+        r.is_refund || 'Tidak',
+        r.is_cod || 'Tidak',
+        r.scan_in_time || '',
       ]);
 
       await connection.query(
         `INSERT INTO monitoring_stuck
-           (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by)
+           (waybill, tanggal, outlet_asal, outlet, stuck, tlc, status, aksi, nama_barang, updated_by, client_name, dest_city, origin_city, weight, package_number, is_problem, is_refund, is_cod, scan_in_time)
          VALUES ?
          ON DUPLICATE KEY UPDATE
            tanggal = VALUES(tanggal),
@@ -491,6 +590,35 @@ async function syncJfsWaybillsToMonitoring(rows, actor = null) {
              WHEN VALUES(nama_barang) IS NOT NULL AND VALUES(nama_barang) != '-' AND VALUES(nama_barang) != ''
              THEN VALUES(nama_barang)
              ELSE monitoring_stuck.nama_barang
+           END,
+           client_name = CASE
+             WHEN VALUES(client_name) IS NOT NULL AND VALUES(client_name) != '-' AND VALUES(client_name) != ''
+             THEN VALUES(client_name)
+             ELSE monitoring_stuck.client_name
+           END,
+           dest_city = CASE
+             WHEN VALUES(dest_city) IS NOT NULL AND VALUES(dest_city) != '-' AND VALUES(dest_city) != ''
+             THEN VALUES(dest_city)
+             ELSE monitoring_stuck.dest_city
+           END,
+           origin_city = CASE
+             WHEN VALUES(origin_city) IS NOT NULL AND VALUES(origin_city) != '-' AND VALUES(origin_city) != ''
+             THEN VALUES(origin_city)
+             ELSE monitoring_stuck.origin_city
+           END,
+           weight = CASE
+             WHEN VALUES(weight) IS NOT NULL AND VALUES(weight) != '0'
+             THEN VALUES(weight)
+             ELSE monitoring_stuck.weight
+           END,
+           package_number = VALUES(package_number),
+           is_problem = VALUES(is_problem),
+           is_refund = VALUES(is_refund),
+           is_cod = VALUES(is_cod),
+           scan_in_time = CASE
+             WHEN VALUES(scan_in_time) IS NOT NULL AND VALUES(scan_in_time) != ''
+             THEN VALUES(scan_in_time)
+             ELSE monitoring_stuck.scan_in_time
            END,
            status = CASE
              WHEN (monitoring_stuck.aksi IS NOT NULL AND monitoring_stuck.aksi != '-' AND monitoring_stuck.aksi != '')
@@ -868,6 +996,127 @@ async function initJfs() {
   }
 }
 
+async function getWaybillPrintPdf(waybillNo, type = [4, 5]) {
+  const cleanWb = String(waybillNo || '').trim();
+  if (!cleanWb) throw new Error('Nomor waybill tidak boleh kosong.');
+
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  if (!token) throw new Error('JFS authtoken belum diatur.');
+
+  const postData = JSON.stringify({
+    languageType: 'ID',
+    type: Array.isArray(type) && type.length ? type : [4, 5],
+    waybillNo: cleanWb,
+    countryId: '1'
+  });
+
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'jfsgw.jtcargo.co.id',
+      port: 443,
+      path: '/networkmanagement/print/previewWaybillPdfUrl',
+      method: 'POST',
+      headers: {
+        'accept': 'application/json, text/plain, */*',
+        'authtoken': token,
+        'content-type': 'application/json;charset=UTF-8',
+        'lang': 'ID',
+        'langtype': 'ID',
+        'origin': 'https://jfs.jtcargo.co.id',
+        'referer': 'https://jfs.jtcargo.co.id/',
+        'routename': 'sendWaybillSite',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 401) {
+          return reject(new Error('Sesi JFS authtoken telah kedaluwarsa (401). Silakan perbarui token di menu JFS.'));
+        }
+        try {
+          const json = JSON.parse(body);
+          if (json.succ === false || json.fail === true || json.code !== 1) {
+            return reject(new Error(json.msg || 'Gagal menghasilkan URL PDF dari server JFS'));
+          }
+          resolve({
+            success: true,
+            waybillNo: cleanWb,
+            pdfUrl: json.data,
+            traceId: json.traceId
+          });
+        } catch (e) {
+          reject(new Error(`Gagal membaca respon print dari JFS: ${e.message}`));
+        }
+      });
+    });
+
+    req.on('error', err => reject(new Error(`Koneksi print ke JFS gagal: ${err.message}`)));
+    req.write(postData);
+    req.end();
+  });
+}
+
+async function getWaybillPrintPreview(waybillNos) {
+  const list = Array.isArray(waybillNos) ? waybillNos : [waybillNos];
+  const cleanList = list.map(w => String(w).trim()).filter(Boolean);
+  if (!cleanList.length) throw new Error('Daftar waybill tidak boleh kosong.');
+
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  if (!token) throw new Error('JFS authtoken belum diatur.');
+
+  const postData = JSON.stringify(cleanList);
+
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'jfsgw.jtcargo.co.id',
+      port: 443,
+      path: '/networkmanagement/print/previewByWaybillNos',
+      method: 'POST',
+      headers: {
+        'accept': 'application/json, text/plain, */*',
+        'authtoken': token,
+        'content-type': 'application/json;charset=UTF-8',
+        'lang': 'ID',
+        'langtype': 'ID',
+        'origin': 'https://jfs.jtcargo.co.id',
+        'referer': 'https://jfs.jtcargo.co.id/',
+        'routename': 'sendWaybillSite',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(body);
+          if (json.succ === false || json.fail === true || json.code !== 1) {
+            return reject(new Error(json.msg || 'Gagal membaca preview label dari JFS'));
+          }
+          resolve({
+            success: true,
+            records: json.data || []
+          });
+        } catch (e) {
+          reject(new Error(`Gagal membaca data preview: ${e.message}`));
+        }
+      });
+    });
+
+    req.on('error', err => reject(new Error(`Koneksi JFS gagal: ${err.message}`)));
+    req.write(postData);
+    req.end();
+  });
+}
+
 module.exports = {
   initJfs,
   getConfig,
@@ -881,4 +1130,7 @@ module.exports = {
   getRecentLogs,
   clearLogs,
   restartScheduler,
+  getWaybillPrintPdf,
+  getWaybillPrintPreview,
 };
+

@@ -163,6 +163,65 @@ async function getFlowDetail(req, res) {
   }
 }
 
+async function printWaybillPdf(req, res) {
+  try {
+    const { waybillNo, waybillNos, type = [4, 5] } = req.body || {};
+
+    // Jika dipanggil dengan array nomor resi (Mode Batch Multi-AWB)
+    if (Array.isArray(waybillNos) && waybillNos.length > 0) {
+      const cleanList = waybillNos
+        .map(w => String(w).trim())
+        .filter(Boolean)
+        .map(w => (w.length === 15 ? w.slice(0, 12) : w));
+
+      const uniqueList = [...new Set(cleanList)];
+      const results = [];
+
+      // Eksekusi secara konkuren maksimal 5 request sekaligus
+      const CONCURRENCY = 5;
+      for (let i = 0; i < uniqueList.length; i += CONCURRENCY) {
+        const batch = uniqueList.slice(i, i + CONCURRENCY);
+        const batchPromises = batch.map(async (wb) => {
+          try {
+            const r = await jfsService.getWaybillPrintPdf(wb, type);
+            return { waybillNo: wb, success: true, pdfUrl: r.pdfUrl };
+          } catch (err) {
+            return { waybillNo: wb, success: false, error: err.message };
+          }
+        });
+        const batchRes = await Promise.all(batchPromises);
+        results.push(...batchRes);
+      }
+
+      return res.json({
+        success: true,
+        total: results.length,
+        results
+      });
+    }
+
+    // Mode single waybill
+    const cleanWb = String(waybillNo || '').trim();
+    const targetWb = cleanWb.length === 15 ? cleanWb.slice(0, 12) : cleanWb;
+    const result = await jfsService.getWaybillPrintPdf(targetWb, type);
+    res.json(result);
+  } catch (error) {
+    console.error('jfsController printWaybillPdf error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal membuat URL cetak waybill' });
+  }
+}
+
+async function previewWaybills(req, res) {
+  try {
+    const { waybillNos } = req.body || {};
+    const result = await jfsService.getWaybillPrintPreview(waybillNos);
+    res.json(result);
+  } catch (error) {
+    console.error('jfsController previewWaybills error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal membaca preview waybill' });
+  }
+}
+
 module.exports = {
   getStatus,
   updateConfig,
@@ -173,4 +232,7 @@ module.exports = {
   getFlowSummary,
   getFlowTrend,
   getFlowDetail,
+  printWaybillPdf,
+  previewWaybills,
 };
+

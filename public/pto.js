@@ -55,6 +55,28 @@ function getPtoDateStr(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Parser Nomor Pesanan Shopee untuk Label Sobek (YYMMDD...)
+function parseShopeeOrderSn(sn) {
+  if (!sn) return null;
+  const clean = String(sn).trim().toUpperCase();
+  const match = clean.match(/^(\d{2})(\d{2})(\d{2})([A-Z0-9]{7,12})$/i);
+  if (!match) return null;
+  const yy = match[1];
+  const mm = match[2];
+  const dd = match[3];
+  const mNum = parseInt(mm, 10);
+  const dNum = parseInt(dd, 10);
+  if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31) return null;
+  return {
+    orderSn: clean,
+    year: `20${yy}`,
+    month: mm,
+    day: dd,
+    dateIso: `20${yy}-${mm}-${dd}`,
+    dateFormatted: `${dd}/${mm}/20${yy}`
+  };
+}
+
 // Set up Default Dates (Default 30 Hari agar mencakup seluruh order aktif)
 function initPtoDates() {
   const startInput = document.getElementById('ptoStartDate');
@@ -983,6 +1005,59 @@ function initPtoEventListeners() {
     });
   }
 
+  // Smart Multi-AWB & Shopee Order Detection on Search Input
+  const ptoSearchInput = document.getElementById('ptoWaybillSearch');
+  const ptoSearchBadge = document.getElementById('ptoSearchCountBadge');
+
+  if (ptoSearchInput) {
+    const updatePtoSearchBadge = () => {
+      const val = ptoSearchInput.value.trim();
+      if (!val) {
+        if (ptoSearchBadge) ptoSearchBadge.classList.add('hidden');
+        return;
+      }
+
+      // Pisahkan berdasarkan baris baru (enter), koma, titik koma, spasi, atau tab
+      const items = val.split(/[\s,;\n\t]+/).map(s => s.trim()).filter(Boolean);
+      if (items.length > 1) {
+        if (ptoSearchBadge) {
+          ptoSearchBadge.textContent = `${items.length} Resi / Order Terdeteksi`;
+          ptoSearchBadge.classList.remove('hidden');
+        }
+      } else {
+        if (ptoSearchBadge) ptoSearchBadge.classList.add('hidden');
+      }
+
+      // Deteksi otomatis jika hanya 1 nomor dan itu nomor pesanan Shopee (YYMMDD...)
+      if (items.length === 1) {
+        const parsed = parseShopeeOrderSn(items[0]);
+        if (parsed) {
+          const startInput = document.getElementById('ptoStartDate');
+          const endInput = document.getElementById('ptoEndDate');
+          const srcSelect = document.getElementById('ptoOrderSource');
+          if (startInput) startInput.value = parsed.dateIso;
+          if (endInput) endInput.value = parsed.dateIso;
+          if (srcSelect) {
+            const shopeeOpt = Array.from(srcSelect.options).find(o => o.value.toLowerCase().includes('shopee') || o.text.toLowerCase().includes('shopee'));
+            if (shopeeOpt) srcSelect.value = shopeeOpt.value;
+          }
+          showAppAlert(`💡 Terdeteksi No Pesanan Shopee (${parsed.orderSn}) tanggal ${parsed.dateFormatted}! Filter tanggal otomatis diarahkan.`, false);
+        }
+      }
+    };
+
+    ptoSearchInput.addEventListener('input', updatePtoSearchBadge);
+    ptoSearchInput.addEventListener('paste', () => setTimeout(updatePtoSearchBadge, 50));
+
+    // Shortcut: Tekan Ctrl+Enter atau Cmd+Enter untuk langsung menarik/mencari data PTO
+    ptoSearchInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        executePtoQuery(1);
+      }
+    });
+  }
+
   // Clear search input
   const btnClear = document.getElementById('btnClearPtoSearch');
   if (btnClear) {
@@ -992,6 +1067,7 @@ function initPtoEventListeners() {
         input.value = '';
         input.focus();
       }
+      if (ptoSearchBadge) ptoSearchBadge.classList.add('hidden');
     });
   }
 
@@ -1006,6 +1082,7 @@ function initPtoEventListeners() {
       if (size) size.value = '100';
       const search = document.getElementById('ptoWaybillSearch');
       if (search) search.value = '';
+      if (ptoSearchBadge) ptoSearchBadge.classList.add('hidden');
       document.querySelectorAll('#ptoDatePresets .pto-chip').forEach(c => c.classList.remove('active'));
       const chip30 = document.querySelector('#ptoDatePresets .pto-chip[data-days="30"]');
       if (chip30) chip30.classList.add('active');

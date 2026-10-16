@@ -10,3 +10,5 @@ android/.gradle/
 *.xls
 cloudflared.exe
 *.sql
+scratch/
+config.yml

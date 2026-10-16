@@ -484,11 +484,13 @@ exports.queryOrders = async (req, res) => {
           total = ptoTotal;
           querySuccessful = true;
 
-          // Jika pencarian nomor resi spesifik dan data di DB masih mengandung bintang (*),
-          // jangan berhenti di DB, lanjutkan ke Tier 1 agar otomatis di-unmask dari JFS!
+          // Jika pencarian nomor resi spesifik:
+          // 1. Cek apakah ada data di DB yang masih mengandung bintang (*) -> unmask dari JFS
+          // 2. Cek apakah jumlah yang ditemukan di DB lebih sedikit dari total nomor yang dicari -> tarik sisanya dari JFS
           if (payload.waybillIds && payload.waybillIds.length > 0) {
             const hasMasked = ptoRows.some(r => (r.penerima && r.penerima.includes('*')) || (r.pengirim && r.pengirim.includes('*')));
-            if (hasMasked) {
+            const isMissingSome = ptoRows.length < payload.waybillIds.length;
+            if (hasMasked || isMissingSome) {
               querySuccessful = false;
             }
           }
@@ -500,66 +502,120 @@ exports.queryOrders = async (req, res) => {
 
     // --- TIER 1: COBA QUERY JFS OMS API JIKA BELUM ADA DI DATABASE PTO ---
     if (!querySuccessful) {
-      // 1A. Jika user mencari nomor resi tertentu (AWB Hunter):
-      // Gunakan parameter sakti JFS: p_billType: 1, p_billNo: w, lowerSiteQuery: true, siteCode: 'JKT99A'
+      // 1A. Jika user mencari nomor resi tertentu (AWB Hunter / Multi-AWB):
       if (payload.waybillIds && payload.waybillIds.length > 0) {
         const foundLiveRecords = [];
-        for (const wb of payload.waybillIds) {
-          try {
-            // JFS p_billType options discovered from frontend code:
-            // 1 = Waybill / AWB (运单)
-            // 3 = Customer Order Number / No Pesanan Pelanggan (客户订单号)
-            // 0 = Order ID (订单编号)
-            // 2 = Third-party Waybill (三方运单)
-            const isCustomerOrderFormat = /^[a-zA-Z]/.test(wb) || wb.startsWith('ID') || wb.startsWith('26') || /[a-zA-Z]/.test(wb);
-            const billTypesToTry = isCustomerOrderFormat ? [3, 1, 0] : [1, 3, 0];
+        const liveFoundSet = new Set();
 
-            let liveRes = null;
-            for (const bt of billTypesToTry) {
+        // Cari mana saja yang belum ada di records Tier 0 lokal (atau yang masih bermasker)
+        const unmaskedDbWaybills = new Set(
+          records
+            .filter(r => r.waybillId && !r.receiverName?.includes('*'))
+            .map(r => r.waybillId)
+        );
+        const targetWbs = payload.waybillIds.filter(wb => !unmaskedDbWaybills.has(wb));
+        const wbsToQuery = targetWbs.length > 0 ? targetWbs : payload.waybillIds;
+
+        // Pisahkan AWB standar numerik (10-16 digit) untuk batching super cepat
+        const numericAwbs = wbsToQuery.filter(w => /^\d{10,16}$/.test(w));
+        const otherTerms = wbsToQuery.filter(w => !/^\d{10,16}$/.test(w));
+
+        // 1. Batch Query untuk AWB numerik (maksimal 20 resi per request via p_billNo koma)
+        if (numericAwbs.length > 0) {
+          for (let i = 0; i < numericAwbs.length; i += 20) {
+            const chunk = numericAwbs.slice(i, i + 20);
+            try {
               const awbPayload = {
                 siteCode: effectiveSiteCode || 'JKT99A',
                 startDate: payload.startDate,
                 endDate: payload.endDate,
-                p_billType: bt,
-                p_billNo: wb,
+                p_billType: 1,
+                p_billNo: chunk.join(','),
                 current: 1,
-                size: 20,
+                size: Math.max(20, chunk.length * 2),
                 lowerSiteQuery: true,
                 countryId: String(countryId)
               };
               const res = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(awbPayload), token).catch(() => null);
               if (res && (res.code === 1 || res.succ === true) && res.data?.records?.length > 0) {
-                liveRes = res;
-                break;
-              }
-            }
-            if (liveRes && (liveRes.code === 1 || liveRes.succ === true) && liveRes.data?.records?.length > 0) {
-              for (const r of liveRes.data.records) {
-                if (r.customerOrderId && !r.customerOrderNo) {
-                  r.customerOrderNo = r.customerOrderId;
-                }
-                // Unmask detail immediately
-                if (r.id) {
-                  const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
-                  if (detailRes && (detailRes.code === 1 || detailRes.succ === true) && detailRes.data) {
-                    applyDetailToRecord(r, detailRes.data);
-                    await autoPersistOrderDetail(detailRes.data);
+                for (const r of res.data.records) {
+                  if (r.waybillId && !liveFoundSet.has(r.waybillId)) {
+                    liveFoundSet.add(r.waybillId);
+                    foundLiveRecords.push(r);
                   }
                 }
-                if (!r.customerOrderNo && r.customerOrderId) {
-                  r.customerOrderNo = r.customerOrderId;
-                }
-                foundLiveRecords.push(r);
               }
+            } catch (batchErr) {
+              console.warn('Batch AWB Query warning:', batchErr.message);
             }
-          } catch (awbErr) {
-            console.warn('AWB Live Query warning:', awbErr.message);
           }
         }
 
+        // 2. Query untuk nomor pesanan marketplace (Shopee, TikTok, ID Booking, dll.) atau nomor yang belum terjaring batch
+        const missingWbs = wbsToQuery.filter(w => !liveFoundSet.has(w));
+        if (missingWbs.length > 0) {
+          await mapConcurrent(missingWbs, 4, async (wb) => {
+            try {
+              const isCustomerOrderFormat = /^[a-zA-Z]/.test(wb) || wb.startsWith('ID') || wb.startsWith('26') || /[a-zA-Z]/.test(wb);
+              const billTypesToTry = isCustomerOrderFormat ? [3, 1, 0] : [1, 3, 0];
+
+              for (const bt of billTypesToTry) {
+                const awbPayload = {
+                  siteCode: effectiveSiteCode || 'JKT99A',
+                  startDate: payload.startDate,
+                  endDate: payload.endDate,
+                  p_billType: bt,
+                  p_billNo: wb,
+                  current: 1,
+                  size: 20,
+                  lowerSiteQuery: true,
+                  countryId: String(countryId)
+                };
+                const res = await makeJfsPtoRequest('/customerplatform/omsOrderStatus/statusQuery', 'POST', JSON.stringify(awbPayload), token).catch(() => null);
+                if (res && (res.code === 1 || res.succ === true) && res.data?.records?.length > 0) {
+                  for (const r of res.data.records) {
+                    if (r.waybillId && !liveFoundSet.has(r.waybillId)) {
+                      liveFoundSet.add(r.waybillId);
+                      foundLiveRecords.push(r);
+                    }
+                  }
+                  break;
+                }
+              }
+            } catch (awbErr) {
+              console.warn(`Individual query error for ${wb}:`, awbErr.message);
+            }
+          });
+        }
+
+        // 3. Unmask detail live records secara paralel (maksimal 5 worker konkuren)
         if (foundLiveRecords.length > 0) {
-          records = foundLiveRecords;
-          total = foundLiveRecords.length;
+          await mapConcurrent(foundLiveRecords, 5, async (r) => {
+            if (r.customerOrderId && !r.customerOrderNo) {
+              r.customerOrderNo = r.customerOrderId;
+            }
+            if (r.id) {
+              const detailRes = await makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token, 'orderTrackingView').catch(() => null);
+              if (detailRes && (detailRes.code === 1 || detailRes.succ === true) && detailRes.data) {
+                applyDetailToRecord(r, detailRes.data);
+                await autoPersistOrderDetail(detailRes.data);
+              }
+            }
+            if (!r.customerOrderNo && r.customerOrderId) {
+              r.customerOrderNo = r.customerOrderId;
+            }
+          });
+
+          // Merge hasil live dengan hasil Tier 0 lokal agar semua resi yang dicari tampil lengkap
+          const mergedMap = new Map();
+          for (const r of records) {
+            if (r.waybillId) mergedMap.set(r.waybillId, r);
+          }
+          for (const r of foundLiveRecords) {
+            if (r.waybillId) mergedMap.set(r.waybillId, r);
+          }
+          records = Array.from(mergedMap.values());
+          total = records.length;
           querySuccessful = true;
         }
       }

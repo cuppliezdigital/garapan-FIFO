@@ -699,47 +699,160 @@ function renderTlcDropdownMenu(searchQuery = '') {
   tlcDropdownMenu.innerHTML = html;
 }
 
+let currentSortColumn = null;
+let currentSortDirection = 'asc';
+const columnFilters = {};
+
+function parseShopeeOrderSn(sn) {
+  if (!sn) return null;
+  const clean = String(sn).trim().toUpperCase();
+  const match = clean.match(/^(\d{2})(\d{2})(\d{2})([A-Z0-9]{7,12})$/i);
+  if (!match) return null;
+  const yy = match[1];
+  const mm = match[2];
+  const dd = match[3];
+  const mNum = parseInt(mm, 10);
+  const dNum = parseInt(dd, 10);
+  if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31) return null;
+  return {
+    orderSn: clean,
+    year: `20${yy}`,
+    month: mm,
+    day: dd,
+    dateIso: `20${yy}-${mm}-${dd}`,
+    dateFormatted: `${dd}/${mm}/20${yy}`
+  };
+}
+
 function applyFilter() {
   const keyword = (searchInput?.value || '').trim().toLowerCase();
   const tlcRaw = (tlcFilterInput?.value || '').trim();
   const tlcQuery = tlcRaw.toLowerCase();
   const selectTlc = (tlcFilter?.value || 'all');
 
-  let filtered = monitoringData;
+  let filtered = monitoringData || [];
+  const tipEl = document.getElementById('monitoringSearchTip');
 
+  // 1. Filter Keyword Global / Shopee Torn Label Smart Match
   if (keyword) {
-    filtered = filtered.filter((item) => {
-      const formattedTanggal = formatDate(item.tanggal);
-      const haystack = [
-        item.waybill,
-        item.tanggal,
-        formattedTanggal,
-        item.outlet_asal,
-        item.outlet,
-        item.stuck,
-        item.tlc,
-        item.status,
-        item.aksi,
-        item.nama_barang,
-        item.updated_by,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(keyword);
-    });
+    const parsedShopee = parseShopeeOrderSn(keyword);
+    if (parsedShopee) {
+      // Cek apakah ada resi langsung yang cocok
+      const directMatches = filtered.filter((item) => (item.waybill || '').toLowerCase().includes(keyword));
+      if (directMatches.length > 0) {
+        filtered = directMatches;
+        if (tipEl) tipEl.classList.add('hidden');
+      } else {
+        // Mode Pencarian Label Sobek Shopee (Filter berdasarkan tanggal order & Marketplace Shopee)
+        filtered = filtered.filter((item) => {
+          const tgl = String(item.tanggal || '');
+          const isDateMatch = tgl.startsWith(parsedShopee.dateIso);
+          const isShopee = String(item.client_name || '').toLowerCase().includes('shopee');
+          return isDateMatch && isShopee;
+        });
+        if (tipEl) {
+          tipEl.innerHTML = `💡 Terdeteksi No Pesanan Shopee <strong>${parsedShopee.orderSn}</strong> (Tanggal Order: ${parsedShopee.dateFormatted}). Ditemukan <strong>${filtered.length}</strong> paket Shopee pada tanggal tersebut. Silakan ketik kota/outlet tujuan di kolom filter untuk mencocokkan potongan label sobek!`;
+          tipEl.classList.remove('hidden');
+        }
+      }
+    } else {
+      if (tipEl) tipEl.classList.add('hidden');
+      filtered = filtered.filter((item) => {
+        const formattedTanggal = formatDate(item.tanggal);
+        const haystack = [
+          item.waybill,
+          item.tanggal,
+          formattedTanggal,
+          item.outlet_asal,
+          item.origin_city,
+          item.outlet,
+          item.dest_city,
+          item.stuck,
+          item.tlc,
+          item.status,
+          item.aksi,
+          item.nama_barang,
+          item.updated_by,
+          item.client_name,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(keyword);
+      });
+    }
+  } else {
+    if (tipEl) tipEl.classList.add('hidden');
   }
 
-  // Filter TLC: jika ada ketikan di input combobox, gunakan partial match
-  // Jika input kosong namun dropdown select tlc ada nilainya bukan 'all', gunakan itu
+  // 2. Filter TLC Combobox
   if (tlcQuery) {
     filtered = filtered.filter((item) => (item.tlc || '').toLowerCase().includes(tlcQuery));
   } else if (selectTlc !== 'all') {
     filtered = filtered.filter((item) => (item.tlc || '').trim().toLowerCase() === selectTlc.trim().toLowerCase());
   }
 
+  // 3. Filter Kartu Stuck (Aging)
   if (currentStuckFilter) {
     filtered = filtered.filter((item) => matchesStuckFilter(item, currentStuckFilter));
+  }
+
+  // 4. Filter Spesifik per Kolom Tabel
+  const colKeys = Object.keys(columnFilters);
+  if (colKeys.length > 0) {
+    filtered = filtered.filter((item) => {
+      for (const col of colKeys) {
+        const fVal = String(columnFilters[col] || '').trim().toLowerCase();
+        if (!fVal) continue;
+
+        if (col === 'stuck') {
+          if (!matchesStuckFilter(item, fVal)) return false;
+        } else if (col === 'status') {
+          const isUpd = isSudahUpdate(item);
+          if (fVal === 'pending' && isUpd) return false;
+          if (fVal === 'sudah diupdate' && !isUpd) return false;
+        } else if (col === 'tanggal') {
+          const rawTgl = String(item.tanggal || '').toLowerCase();
+          const fmtTgl = formatDate(item.tanggal).toLowerCase();
+          if (!rawTgl.includes(fVal) && !fmtTgl.includes(fVal)) return false;
+        } else if (col === 'outlet_asal') {
+          const valAsal = `${item.outlet_asal || ''} ${item.origin_city || ''}`.toLowerCase();
+          if (!valAsal.includes(fVal)) return false;
+        } else if (col === 'outlet') {
+          const valTujuan = `${item.outlet || ''} ${item.dest_city || ''}`.toLowerCase();
+          if (!valTujuan.includes(fVal)) return false;
+        } else {
+          const itemVal = String(item[col] || '').toLowerCase();
+          if (!itemVal.includes(fVal)) return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  // 5. Sortir per Kolom (Ascending / Descending)
+  if (currentSortColumn) {
+    filtered = [...filtered].sort((a, b) => {
+      const valA = a[currentSortColumn];
+      const valB = b[currentSortColumn];
+
+      if (currentSortColumn === 'stuck') {
+        const hA = parseInt(String(valA || '0').match(/\d+/)?.[0] || '0', 10);
+        const hB = parseInt(String(valB || '0').match(/\d+/)?.[0] || '0', 10);
+        return currentSortDirection === 'asc' ? hA - hB : hB - hA;
+      }
+
+      if (currentSortColumn === 'tanggal') {
+        const dA = new Date(valA || 0).getTime();
+        const dB = new Date(valB || 0).getTime();
+        return currentSortDirection === 'asc' ? dA - dB : dB - dA;
+      }
+
+      const strA = String(valA || '').toLowerCase();
+      const strB = String(valB || '').toLowerCase();
+      const cmp = strA.localeCompare(strB, 'id-ID', { numeric: true });
+      return currentSortDirection === 'asc' ? cmp : -cmp;
+    });
   }
 
   // Tampilkan / sembunyikan tombol clear search & clear tlc
@@ -752,10 +865,10 @@ function applyFilter() {
 
   // Update badge total data di panel header
   if (monitoringTotalBadge) {
-    if (filtered.length === monitoringData.length) {
-      monitoringTotalBadge.textContent = `${monitoringData.length} Data`;
+    if (filtered.length === (monitoringData || []).length) {
+      monitoringTotalBadge.textContent = `${(monitoringData || []).length} Data`;
     } else {
-      monitoringTotalBadge.textContent = `${filtered.length} dari ${monitoringData.length} Data`;
+      monitoringTotalBadge.textContent = `${filtered.length} dari ${(monitoringData || []).length} Data`;
     }
   }
 
@@ -1095,10 +1208,17 @@ function openWaybillDetailModal(waybill) {
 
   const noEl = document.getElementById('wbDetailWaybillNo');
   const statusEl = document.getElementById('wbDetailStatusBadge');
+  const clientBadgeEl = document.getElementById('wbDetailClientBadge');
   const stuckEl = document.getElementById('wbDetailStuckBadge');
   const asalEl = document.getElementById('wbDetailOutletAsal');
+  const originCityEl = document.getElementById('wbDetailOriginCity');
   const tujuanEl = document.getElementById('wbDetailOutletTujuan');
+  const destCityEl = document.getElementById('wbDetailDestCity');
+  const weightKoliEl = document.getElementById('wbDetailWeightKoli');
+  const alertBanner = document.getElementById('wbDetailAlertBanner');
+  const alertBadges = document.getElementById('wbDetailAlertBadges');
   const tanggalEl = document.getElementById('wbDetailTanggal');
+  const scanInTimeEl = document.getElementById('wbDetailScanInTime');
   const tlcEl = document.getElementById('wbDetailTlc');
   const barangEl = document.getElementById('wbDetailNamaBarang');
   const aksiEl = document.getElementById('wbDetailAksi');
@@ -1115,14 +1235,67 @@ function openWaybillDetailModal(waybill) {
     statusEl.className = `modern-status-badge ${updated ? 'status-success' : 'status-pending'}`;
   }
 
+  // Client badge (Shopee, TikTok, Tokopedia, JFS, etc)
+  if (clientBadgeEl) {
+    const client = (item.client_name || 'JFS').trim();
+    clientBadgeEl.textContent = client;
+    const cLower = client.toLowerCase();
+    if (cLower.includes('shopee')) {
+      clientBadgeEl.style.background = 'rgba(238, 77, 45, 0.2)';
+      clientBadgeEl.style.color = '#ff6b4a';
+      clientBadgeEl.style.borderColor = 'rgba(238, 77, 45, 0.4)';
+    } else if (cLower.includes('tiktok')) {
+      clientBadgeEl.style.background = 'rgba(15, 23, 42, 0.8)';
+      clientBadgeEl.style.color = '#38bdf8';
+      clientBadgeEl.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+    } else if (cLower.includes('tokopedia')) {
+      clientBadgeEl.style.background = 'rgba(34, 197, 94, 0.2)';
+      clientBadgeEl.style.color = '#4ade80';
+      clientBadgeEl.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+    } else {
+      clientBadgeEl.style.background = 'rgba(168, 85, 247, 0.2)';
+      clientBadgeEl.style.color = '#d8b4fe';
+      clientBadgeEl.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+    }
+  }
+
   if (stuckEl) {
     stuckEl.textContent = item.stuck || '0 Jam (1-12)';
   }
 
+  // Problem / Refund / COD Banner
+  if (alertBanner && alertBadges) {
+    const alerts = [];
+    if (item.is_problem) alerts.push('<span class="badge" style="background:#ef4444; color:#fff; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:4px;">🚨 PAKET BERMASALAH</span>');
+    if (item.is_refund) alerts.push('<span class="badge" style="background:#f59e0b; color:#18181b; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:4px;">🔄 REFUND / RETUR</span>');
+    if (item.is_cod) alerts.push('<span class="badge" style="background:#3b82f6; color:#fff; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:4px;">💵 COD TAGIHAN</span>');
+
+    if (alerts.length > 0) {
+      alertBadges.innerHTML = alerts.join(' ');
+      alertBanner.classList.remove('hidden');
+    } else {
+      alertBanner.classList.add('hidden');
+      alertBadges.innerHTML = '';
+    }
+  }
+
   if (asalEl) asalEl.textContent = item.outlet_asal || '-';
+  if (originCityEl) originCityEl.textContent = item.origin_city ? `📍 ${item.origin_city}` : 'Asal: Standard';
   if (tujuanEl) tujuanEl.textContent = item.outlet || '-';
-  if (tanggalEl) tanggalEl.textContent = formatDate(item.tanggal) || '-';
+  if (destCityEl) destCityEl.textContent = item.dest_city ? `🎯 ${item.dest_city}` : 'Tujuan: Standard';
+
+  if (weightKoliEl) {
+    const w = parseFloat(item.weight) || 0;
+    const k = parseInt(item.package_number, 10) || 1;
+    weightKoliEl.textContent = `${w.toFixed(2)} kg • ${k} Koli`;
+  }
+
   if (tlcEl) tlcEl.textContent = item.tlc || '-';
+  if (tanggalEl) tanggalEl.textContent = formatDate(item.tanggal) || '-';
+  if (scanInTimeEl) {
+    scanInTimeEl.textContent = item.scan_in_time ? `Masuk: ${item.scan_in_time}` : (item.jam ? `Jam: ${item.jam}` : 'Waktu Scan: -');
+  }
+
   if (barangEl) barangEl.textContent = item.nama_barang || '-';
   if (aksiEl) {
     aksiEl.textContent = item.aksi && item.aksi !== '-' ? item.aksi : 'Belum ada tindakan (Status Pending)';
@@ -1131,6 +1304,17 @@ function openWaybillDetailModal(waybill) {
   if (updatedByEl) updatedByEl.textContent = item.updated_by || 'System';
   if (updatedAtEl) {
     updatedAtEl.textContent = item.updated_at ? new Date(item.updated_at).toLocaleString('id-ID') : '-';
+  }
+
+  // Draw Barcode on Canvas
+  const barcodeCanvas = document.getElementById('wbDetailBarcodeCanvas');
+  if (barcodeCanvas && window.renderGlobalWaybillBarcode) {
+    window.renderGlobalWaybillBarcode(barcodeCanvas, item.waybill, {
+      width: 2.2,
+      height: 65,
+      fontSize: 14,
+      margin: 8,
+    });
   }
 
   modal.classList.remove('hidden');
@@ -1152,6 +1336,8 @@ function initWaybillDetailModalHandlers() {
   const closeBtn = document.getElementById('closeWaybillDetailBtn');
   const closeBottomBtn = document.getElementById('closeWaybillDetailBottomBtn');
   const btnCopyNo = document.getElementById('btnCopyWbDetailNumber');
+  const btnCopyBarcode = document.getElementById('btnCopyWbDetailBarcode');
+  const btnDownloadBarcode = document.getElementById('btnDownloadWbDetailBarcode');
   const btnCopyAll = document.getElementById('btnWbDetailCopyAll');
   const btnEditAction = document.getElementById('btnWbDetailEditAction');
 
@@ -1171,20 +1357,90 @@ function initWaybillDetailModalHandlers() {
     });
   }
 
+  if (btnCopyBarcode) {
+    btnCopyBarcode.addEventListener('click', async () => {
+      const canvas = document.getElementById('wbDetailBarcodeCanvas');
+      if (canvas && window.copyBarcodeImageToClipboard) {
+        await window.copyBarcodeImageToClipboard(canvas, currentDetailWaybillItem?.waybill || 'Barcode');
+      } else if (currentDetailWaybillItem?.waybill) {
+        navigator.clipboard.writeText(currentDetailWaybillItem.waybill);
+        showAppAlert(`📋 Resi ${currentDetailWaybillItem.waybill} disalin ke clipboard!`);
+      }
+    });
+  }
+
+  if (btnDownloadBarcode) {
+    btnDownloadBarcode.addEventListener('click', () => {
+      const canvas = document.getElementById('wbDetailBarcodeCanvas');
+      if (canvas && window.downloadBarcodeCanvas) {
+        window.downloadBarcodeCanvas(canvas, `barcode_${currentDetailWaybillItem?.waybill || 'resi'}.png`);
+      }
+    });
+  }
+
+  const btnPrintOfficialPdf = document.getElementById('btnPrintWbOfficialPdf');
+  if (btnPrintOfficialPdf) {
+    btnPrintOfficialPdf.addEventListener('click', async () => {
+      if (!currentDetailWaybillItem || !currentDetailWaybillItem.waybill) return;
+      const wb = currentDetailWaybillItem.waybill;
+
+      const origHtml = btnPrintOfficialPdf.innerHTML;
+      btnPrintOfficialPdf.disabled = true;
+      btnPrintOfficialPdf.innerHTML = `
+        <svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        <span>Memuat PDF...</span>
+      `;
+
+      try {
+        const token = getToken();
+        const res = await fetch('/api/jfs/print-waybill', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ waybillNo: wb, type: [4, 5] })
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Gagal membuat URL PDF dari server JFS');
+        }
+
+        if (json.pdfUrl) {
+          window.open(json.pdfUrl, '_blank');
+          showAppAlert(`🖨️ Label PDF Resmi JFS untuk ${wb} berhasil dibuka! Siap dicetak.`);
+        } else {
+          throw new Error('Server JFS tidak mengembalikan URL PDF');
+        }
+      } catch (err) {
+        showAppAlert(`Gagal mencetak label: ${err.message}`, true);
+      } finally {
+        btnPrintOfficialPdf.disabled = false;
+        btnPrintOfficialPdf.innerHTML = origHtml;
+      }
+    });
+  }
+
   if (btnCopyAll) {
     btnCopyAll.addEventListener('click', () => {
       if (!currentDetailWaybillItem) return;
       const d = currentDetailWaybillItem;
       const text = [
         `📦 DETAIL WAYBILL: ${d.waybill}`,
+        `• Klien/Marketplace: ${d.client_name || 'JFS'}`,
         `• Tanggal: ${formatDate(d.tanggal)}`,
-        `• Asal: ${d.outlet_asal || '-'}`,
-        `• Tujuan: ${d.outlet || '-'}`,
+        `• Asal: ${d.outlet_asal || '-'} (${d.origin_city || '-'})`,
+        `• Tujuan: ${d.outlet || '-'} (${d.dest_city || '-'})`,
+        `• Berat / Koli: ${(parseFloat(d.weight) || 0).toFixed(2)} kg / ${d.package_number || 1} Koli`,
         `• TLC: ${d.tlc || '-'}`,
         `• Stuck: ${d.stuck || '-'}`,
         `• Status: ${d.status || 'Pending'}`,
         `• Tindakan/Aksi: ${d.aksi || '-'}`,
         `• Nama Barang: ${d.nama_barang || '-'}`,
+        `• Scan In Gateway: ${d.scan_in_time || '-'}`,
         `• Diupdate Oleh: ${d.updated_by || 'System'}`
       ].join('\n');
       navigator.clipboard.writeText(text);
@@ -1213,6 +1469,70 @@ function initWaybillDetailModalHandlers() {
   });
 }
 
+function initTableSortingAndColumnFilters() {
+  const sortableHeaders = document.querySelectorAll('.monitoring-table th.sortable-th');
+  sortableHeaders.forEach((th) => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (!col) return;
+
+      if (currentSortColumn === col) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortColumn = col;
+        currentSortDirection = 'asc';
+      }
+
+      sortableHeaders.forEach((otherTh) => {
+        const ind = otherTh.querySelector('.sort-indicator');
+        if (otherTh === th) {
+          otherTh.classList.add('active-sort');
+          if (ind) ind.textContent = currentSortDirection === 'asc' ? '▲' : '▼';
+        } else {
+          otherTh.classList.remove('active-sort');
+          if (ind) ind.textContent = '↕';
+        }
+      });
+
+      applyFilter();
+    });
+  });
+
+  const filterInputs = document.querySelectorAll('.col-filter-input, .col-filter-select');
+  filterInputs.forEach((input) => {
+    const handleFilterChange = () => {
+      const col = input.dataset.col;
+      const val = input.value.trim();
+      if (val) {
+        columnFilters[col] = val;
+      } else {
+        delete columnFilters[col];
+      }
+      applyFilter();
+    };
+
+    if (input.tagName === 'SELECT') {
+      input.addEventListener('change', handleFilterChange);
+    } else {
+      input.addEventListener('input', handleFilterChange);
+    }
+  });
+
+  const btnClearCols = document.getElementById('btnClearColumnFilters');
+  if (btnClearCols) {
+    btnClearCols.addEventListener('click', () => {
+      filterInputs.forEach((input) => {
+        input.value = '';
+      });
+      for (const k in columnFilters) {
+        delete columnFilters[k];
+      }
+      applyFilter();
+    });
+  }
+}
+
 initWaybillDetailModalHandlers();
+initTableSortingAndColumnFilters();
 
 
