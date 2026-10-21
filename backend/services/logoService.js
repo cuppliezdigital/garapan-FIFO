@@ -125,9 +125,44 @@ async function deleteBackground() {
   await db.query('UPDATE app_background SET bg_data = NULL, bg_mime = NULL, bg_opacity = 0.35 WHERE id = 1');
 }
 
+async function ensureThemeTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS app_theme (
+      id INT PRIMARY KEY DEFAULT 1,
+      theme_name VARCHAR(50) DEFAULT 'default',
+      updated_by VARCHAR(100),
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function getTheme() {
+  try {
+    await ensureThemeTable();
+    const [rows] = await db.query('SELECT theme_name FROM app_theme WHERE id = 1 LIMIT 1');
+    if (!rows.length || !rows[0].theme_name) return 'default';
+    return rows[0].theme_name;
+  } catch (error) {
+    console.error('getTheme error:', error);
+    return 'default';
+  }
+}
+
+async function saveTheme(themeName, updatedBy = 'system') {
+  await ensureThemeTable();
+  const safeName = String(themeName || 'default').trim().toLowerCase();
+  await db.query(
+    `INSERT INTO app_theme (id, theme_name, updated_by) VALUES (1, ?, ?)
+     ON DUPLICATE KEY UPDATE theme_name = VALUES(theme_name), updated_by = VALUES(updated_by)`,
+    [safeName, updatedBy]
+  );
+  return safeName;
+}
+
 module.exports = {
   ensureLogoTable,
   ensureBackgroundTable,
+  ensureThemeTable,
   getLogo,
   getAllLogos,
   saveLogo,
@@ -137,4 +172,7 @@ module.exports = {
   saveBackground,
   updateBackgroundOpacity,
   deleteBackground,
+  getTheme,
+  saveTheme,
 };
+

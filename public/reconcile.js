@@ -103,6 +103,18 @@
   let reconcileSortDir = 'asc';
   let reconcilePageSize = 20;
   let reconcileCurrentPage = 1;
+  let reconcileColumnFilters = {
+    waybill: '',
+    status: '',
+    namaBarang: '',
+    weight: '',
+    route: '',
+    waktu: '',
+    waktuBongkar: '',
+    gwAsal: '',
+    petugas: '',
+    resiTugas: '',
+  };
 
   // 1. Tab Switching (Single vs Multi file)
   if (tabSingle && tabMulti) {
@@ -166,6 +178,7 @@
     activeKpiFilter = filter;
     reconcileCurrentPage = 1;
     updateKpiCardsVisual();
+    renderTableHead();
     applyFiltersAndRenderTable();
   }
 
@@ -714,6 +727,7 @@
     updateKpiCardsVisual();
     populateFilterDropdowns();
     resetFilterValues();
+    renderTableHead();
     applyFiltersAndRenderTable();
 
     if (autoScroll) {
@@ -795,6 +809,23 @@
     if (btnClearKeyword) btnClearKeyword.classList.add('hidden');
     if (filterOrigin) filterOrigin.value = '';
     if (filterDestination) filterDestination.value = '';
+    reconcileColumnFilters = {
+      waybill: '',
+      status: '',
+      namaBarang: '',
+      weight: '',
+      route: '',
+      waktu: '',
+      waktuBongkar: '',
+      gwAsal: '',
+      petugas: '',
+      resiTugas: '',
+    };
+    if (tableHead) {
+      tableHead.querySelectorAll('.reconcile-col-filter').forEach((inp) => {
+        inp.value = '';
+      });
+    }
     reconcileCurrentPage = 1;
   }
 
@@ -822,6 +853,7 @@
     };
 
     let headersHtml = '';
+    let filterRowHtml = '';
 
     if (activeKpiFilter === 'missing') {
       // TAB: BELUM SCAN BONGKAR
@@ -837,6 +869,40 @@
           ${makeTh('gwMuat', 'GW Asal (Muat)')}
           <th style="min-width: 130px;">Petugas Muat</th>
           ${makeTh('resiTugas', 'Nomor Resi Tugas')}
+        </tr>
+      `;
+      filterRowHtml = `
+        <tr class="reconcile-filter-row" style="background: rgba(15, 23, 42, 0.95);">
+          <th style="text-align: center; padding: 4px;">
+            <button type="button" class="btn-clear-col-filters" id="btnClearReconcileFilters" title="Reset semua filter kolom" style="padding: 2px 5px; font-size: 0.68rem; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); cursor: pointer;">✕</button>
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waybill" placeholder="Cari Resi..." value="${escapeHtml(reconcileColumnFilters.waybill || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="status" placeholder="Cari Status..." value="${escapeHtml(reconcileColumnFilters.status || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="namaBarang" placeholder="Cari Barang..." value="${escapeHtml(reconcileColumnFilters.namaBarang || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="weight" placeholder="Cari Berat..." value="${escapeHtml(reconcileColumnFilters.weight || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="route" placeholder="Cari Rute..." value="${escapeHtml(reconcileColumnFilters.route || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waktu" placeholder="Cari Waktu..." value="${escapeHtml(reconcileColumnFilters.waktu || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="gwAsal" placeholder="Cari GW..." value="${escapeHtml(reconcileColumnFilters.gwAsal || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="petugas" placeholder="Cari Petugas..." value="${escapeHtml(reconcileColumnFilters.petugas || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="resiTugas" placeholder="Cari Resi Tugas..." value="${escapeHtml(reconcileColumnFilters.resiTugas || '')}">
+          </th>
         </tr>
       `;
     } else if (activeKpiFilter === 'matched') {
@@ -855,6 +921,40 @@
           ${makeTh('resiTugas', 'Nomor Resi Tugas')}
         </tr>
       `;
+      filterRowHtml = `
+        <tr class="reconcile-filter-row" style="background: rgba(15, 23, 42, 0.95);">
+          <th style="text-align: center; padding: 4px;">
+            <button type="button" class="btn-clear-col-filters" id="btnClearReconcileFilters" title="Reset semua filter kolom" style="padding: 2px 5px; font-size: 0.68rem; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); cursor: pointer;">✕</button>
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waybill" placeholder="Cari Resi..." value="${escapeHtml(reconcileColumnFilters.waybill || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="status" placeholder="Cari Status..." value="${escapeHtml(reconcileColumnFilters.status || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="namaBarang" placeholder="Cari Barang..." value="${escapeHtml(reconcileColumnFilters.namaBarang || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="weight" placeholder="Cari Berat..." value="${escapeHtml(reconcileColumnFilters.weight || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="route" placeholder="Cari Rute..." value="${escapeHtml(reconcileColumnFilters.route || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waktu" placeholder="Cari Waktu..." value="${escapeHtml(reconcileColumnFilters.waktu || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="gwAsal" placeholder="Cari GW..." value="${escapeHtml(reconcileColumnFilters.gwAsal || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="petugas" placeholder="Cari Petugas..." value="${escapeHtml(reconcileColumnFilters.petugas || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="resiTugas" placeholder="Cari Resi Tugas..." value="${escapeHtml(reconcileColumnFilters.resiTugas || '')}">
+          </th>
+        </tr>
+      `;
     } else {
       // TAB: TOTAL DIMUAT (ALL)
       headersHtml = `
@@ -871,11 +971,58 @@
           ${makeTh('resiTugas', 'Nomor Resi Tugas')}
         </tr>
       `;
+      filterRowHtml = `
+        <tr class="reconcile-filter-row" style="background: rgba(15, 23, 42, 0.95);">
+          <th style="text-align: center; padding: 4px;">
+            <button type="button" class="btn-clear-col-filters" id="btnClearReconcileFilters" title="Reset semua filter kolom" style="padding: 2px 5px; font-size: 0.68rem; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); cursor: pointer;">✕</button>
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waybill" placeholder="Cari Resi..." value="${escapeHtml(reconcileColumnFilters.waybill || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="status" placeholder="Cari Status..." value="${escapeHtml(reconcileColumnFilters.status || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="namaBarang" placeholder="Cari Barang..." value="${escapeHtml(reconcileColumnFilters.namaBarang || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="weight" placeholder="Cari Berat..." value="${escapeHtml(reconcileColumnFilters.weight || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="route" placeholder="Cari Rute..." value="${escapeHtml(reconcileColumnFilters.route || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waktu" placeholder="Cari Waktu..." value="${escapeHtml(reconcileColumnFilters.waktu || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="waktuBongkar" placeholder="Cari Waktu Bongkar..." value="${escapeHtml(reconcileColumnFilters.waktuBongkar || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="gwAsal" placeholder="Cari GW..." value="${escapeHtml(reconcileColumnFilters.gwAsal || '')}">
+          </th>
+          <th style="padding: 4px 6px;">
+            <input type="text" class="col-filter-input reconcile-col-filter" data-col="resiTugas" placeholder="Cari Resi Tugas..." value="${escapeHtml(reconcileColumnFilters.resiTugas || '')}">
+          </th>
+        </tr>
+      `;
     }
 
-    tableHead.innerHTML = headersHtml;
+    tableHead.innerHTML = headersHtml + filterRowHtml;
 
-    // Attach click listeners for sorting
+    // Helper to update sort indicators without rebuilding thead inputs
+    function updateSortHeadersVisual() {
+      tableHead.querySelectorAll('.sortable-th').forEach((th) => {
+        const sortKey = th.getAttribute('data-sort');
+        const isSorted = reconcileSortColumn === sortKey;
+        th.classList.toggle('sort-active', isSorted);
+        const iconEl = th.querySelector('.sort-icon');
+        if (iconEl) {
+          iconEl.textContent = isSorted ? (reconcileSortDir === 'asc' ? '▲' : '▼') : '↕';
+        }
+      });
+    }
+
+    // Attach click listeners for sorting without destroying inputs
     tableHead.querySelectorAll('.sortable-th').forEach((th) => {
       th.addEventListener('click', () => {
         const sortKey = th.getAttribute('data-sort');
@@ -886,9 +1033,49 @@
           reconcileSortColumn = sortKey;
           reconcileSortDir = (sortKey === 'waktuMuat' || sortKey === 'waktuBongkar') ? 'desc' : 'asc';
         }
+        updateSortHeadersVisual();
         applyFiltersAndRenderTable();
       });
     });
+
+    // Attach input listeners for per-column search filters with debounce and without recreating inputs
+    let colFilterDebounceTimer = null;
+    tableHead.querySelectorAll('.reconcile-col-filter').forEach((input) => {
+      input.addEventListener('input', (e) => {
+        const col = e.target.getAttribute('data-col');
+        if (!col) return;
+        reconcileColumnFilters[col] = e.target.value.trim().toLowerCase();
+        reconcileCurrentPage = 1;
+        clearTimeout(colFilterDebounceTimer);
+        colFilterDebounceTimer = setTimeout(() => {
+          applyFiltersAndRenderTable();
+        }, 150);
+      });
+    });
+
+    // Reset button for column filters
+    const btnClearFilters = tableHead.querySelector('#btnClearReconcileFilters');
+    if (btnClearFilters) {
+      btnClearFilters.addEventListener('click', () => {
+        reconcileColumnFilters = {
+          waybill: '',
+          status: '',
+          namaBarang: '',
+          weight: '',
+          route: '',
+          waktu: '',
+          waktuBongkar: '',
+          gwAsal: '',
+          petugas: '',
+          resiTugas: '',
+        };
+        tableHead.querySelectorAll('.reconcile-col-filter').forEach((inp) => {
+          inp.value = '';
+        });
+        reconcileCurrentPage = 1;
+        applyFiltersAndRenderTable();
+      });
+    }
   }
 
   // 8. Filter Execution and Table Rendering
@@ -910,7 +1097,7 @@
     }
 
     const filtered = baseList.filter((item) => {
-      // Keyword filter
+      // Global Keyword filter
       if (filterState.keyword) {
         const kw = filterState.keyword;
         const wbMatch = item.waybill && item.waybill.toLowerCase().includes(kw);
@@ -926,6 +1113,46 @@
         if (!wbMatch && !nameMatch && !originMatch && !destMatch && !gwMuatMatch && !gwBongkarMatch && !picMatch && !resiTugasMatch) {
           return false;
         }
+      }
+
+      // Column Specific Filters
+      if (reconcileColumnFilters.waybill) {
+        if (!item.waybill || !item.waybill.toLowerCase().includes(reconcileColumnFilters.waybill)) return false;
+      }
+      if (reconcileColumnFilters.status) {
+        const st = String(item.status || (activeKpiFilter === 'matched' ? 'sudah scan bongkar' : 'belum scan bongkar')).toLowerCase();
+        if (!st.includes(reconcileColumnFilters.status)) return false;
+      }
+      if (reconcileColumnFilters.namaBarang) {
+        const nb = `${item.namaBarang || ''} ${item.kemasan || ''}`.toLowerCase();
+        if (!nb.includes(reconcileColumnFilters.namaBarang)) return false;
+      }
+      if (reconcileColumnFilters.weight) {
+        const wtStr = `${item.weight || ''} ${item.packageNumber || ''} ${item.koli || ''}`.toLowerCase();
+        if (!wtStr.includes(reconcileColumnFilters.weight)) return false;
+      }
+      if (reconcileColumnFilters.route) {
+        const rtStr = `${item.origin || ''} ${item.destination || ''} ${item.route || ''}`.toLowerCase();
+        if (!rtStr.includes(reconcileColumnFilters.route)) return false;
+      }
+      if (reconcileColumnFilters.waktu) {
+        const timeStr = `${item.waktuMuat || ''} ${item.waktuBongkar || ''} ${item.jam || ''} ${item.tanggal || ''}`.toLowerCase();
+        if (!timeStr.includes(reconcileColumnFilters.waktu)) return false;
+      }
+      if (reconcileColumnFilters.waktuBongkar) {
+        const wbStr = `${item.waktuBongkar || ''}`.toLowerCase();
+        if (!wbStr.includes(reconcileColumnFilters.waktuBongkar)) return false;
+      }
+      if (reconcileColumnFilters.gwAsal) {
+        const gwStr = `${item.gwMuat || ''} ${item.gwBongkar || ''} ${item.pemindai || ''}`.toLowerCase();
+        if (!gwStr.includes(reconcileColumnFilters.gwAsal)) return false;
+      }
+      if (reconcileColumnFilters.petugas) {
+        const picStr = `${item.petugasMuat || ''} ${item.petugasBongkar || ''} ${item.pemindai || ''}`.toLowerCase();
+        if (!picStr.includes(reconcileColumnFilters.petugas)) return false;
+      }
+      if (reconcileColumnFilters.resiTugas) {
+        if (!item.resiTugas || !item.resiTugas.toLowerCase().includes(reconcileColumnFilters.resiTugas)) return false;
       }
 
       // Origin filter
@@ -989,8 +1216,6 @@
           return 0;
       }
     });
-
-    renderTableHead();
 
     if (resultsCountBadge) {
       resultsCountBadge.innerHTML = `Menampilkan <strong id="visibleCount">${filtered.length.toLocaleString('id-ID')}</strong> dari <strong id="totalUnmatchedCount">${baseList.length.toLocaleString('id-ID')}</strong> ${filterTitle}`;
@@ -1270,7 +1495,8 @@
       filePrefix = 'REKONSILIASI_SEMUA_DATA';
     }
 
-    const hasActiveFilter = Boolean(filterState.keyword || filterState.origin || filterState.destination);
+    const hasColumnFilter = Object.values(reconcileColumnFilters || {}).some((v) => Boolean(v));
+    const hasActiveFilter = Boolean(filterState.keyword || filterState.origin || filterState.destination || hasColumnFilter);
     const items = hasActiveFilter ? currentFilteredList : baseList;
 
     if (!items || !items.length) {
@@ -1398,7 +1624,22 @@
     const filterSuffix = hasActiveFilter ? '_FILTERED' : '';
     const fileName = `${filePrefix}${filterSuffix}_${dateStr}_${timeStr}.xlsx`;
 
-    XLSX.writeFile(workbook, fileName);
+    try {
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 1500);
+    } catch (_) {
+      XLSX.writeFile(workbook, fileName);
+    }
   }
 
   // 11. Restart / Upload Ulang

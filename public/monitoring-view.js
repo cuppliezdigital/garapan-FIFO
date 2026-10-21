@@ -1263,12 +1263,27 @@ function openWaybillDetailModal(waybill) {
     stuckEl.textContent = item.stuck || '0 Jam (1-12)';
   }
 
-  // Problem / Refund / COD Banner
+  // Role check: Tombol Cetak Label JFS hanya untuk super_admin dan admin
+  const btnPrintOfficialPdf = document.getElementById('btnPrintWbOfficialPdf');
+  if (btnPrintOfficialPdf) {
+    const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    const role = (user && user.role) ? String(user.role).toLowerCase().trim() : '';
+    const isAdminOrSuperAdmin = role === 'super_admin' || role === 'admin';
+    if (isAdminOrSuperAdmin) {
+      btnPrintOfficialPdf.classList.remove('hidden');
+      btnPrintOfficialPdf.style.display = 'inline-flex';
+    } else {
+      btnPrintOfficialPdf.classList.add('hidden');
+      btnPrintOfficialPdf.style.display = 'none';
+    }
+  }
+
+  // Problem / Refund / COD Banner (Tampilan elegan tanpa icon norak)
   if (alertBanner && alertBadges) {
     const alerts = [];
-    if (item.is_problem) alerts.push('<span class="badge" style="background:#ef4444; color:#fff; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:4px;">🚨 PAKET BERMASALAH</span>');
-    if (item.is_refund) alerts.push('<span class="badge" style="background:#f59e0b; color:#18181b; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:4px;">🔄 REFUND / RETUR</span>');
-    if (item.is_cod) alerts.push('<span class="badge" style="background:#3b82f6; color:#fff; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:4px;">💵 COD TAGIHAN</span>');
+    if (item.is_problem) alerts.push('<span class="wb-alert-tag tag-problem">Paket Bermasalah</span>');
+    if (item.is_refund) alerts.push('<span class="wb-alert-tag tag-refund">Refund / Retur</span>');
+    if (item.is_cod) alerts.push('<span class="wb-alert-tag tag-cod">COD Tagihan</span>');
 
     if (alerts.length > 0) {
       alertBadges.innerHTML = alerts.join(' ');
@@ -1280,9 +1295,9 @@ function openWaybillDetailModal(waybill) {
   }
 
   if (asalEl) asalEl.textContent = item.outlet_asal || '-';
-  if (originCityEl) originCityEl.textContent = item.origin_city ? `📍 ${item.origin_city}` : 'Asal: Standard';
+  if (originCityEl) originCityEl.textContent = item.origin_city ? item.origin_city : 'Standard';
   if (tujuanEl) tujuanEl.textContent = item.outlet || '-';
-  if (destCityEl) destCityEl.textContent = item.dest_city ? `🎯 ${item.dest_city}` : 'Tujuan: Standard';
+  if (destCityEl) destCityEl.textContent = item.dest_city ? item.dest_city : 'Standard';
 
   if (weightKoliEl) {
     const w = parseFloat(item.weight) || 0;
@@ -1306,14 +1321,15 @@ function openWaybillDetailModal(waybill) {
     updatedAtEl.textContent = item.updated_at ? new Date(item.updated_at).toLocaleString('id-ID') : '-';
   }
 
-  // Draw Barcode on Canvas
+  // Draw Barcode on Canvas (Slim & Mobile-Optimized)
   const barcodeCanvas = document.getElementById('wbDetailBarcodeCanvas');
   if (barcodeCanvas && window.renderGlobalWaybillBarcode) {
+    const isMobile = window.innerWidth <= 680;
     window.renderGlobalWaybillBarcode(barcodeCanvas, item.waybill, {
-      width: 2.2,
-      height: 65,
-      fontSize: 14,
-      margin: 8,
+      width: isMobile ? 1.7 : 1.9,
+      height: isMobile ? 36 : 42,
+      fontSize: 12,
+      margin: 4,
     });
   }
 
@@ -1381,6 +1397,13 @@ function initWaybillDetailModalHandlers() {
   const btnPrintOfficialPdf = document.getElementById('btnPrintWbOfficialPdf');
   if (btnPrintOfficialPdf) {
     btnPrintOfficialPdf.addEventListener('click', async () => {
+      const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+      const role = (user && user.role) ? String(user.role).toLowerCase().trim() : '';
+      if (role !== 'super_admin' && role !== 'admin') {
+        showAppAlert('Akses dibatasi: Fitur cetak label resmi JFS hanya untuk Super Admin dan Admin.', true);
+        return;
+      }
+
       if (!currentDetailWaybillItem || !currentDetailWaybillItem.waybill) return;
       const wb = currentDetailWaybillItem.waybill;
 
@@ -1411,7 +1434,7 @@ function initWaybillDetailModalHandlers() {
 
         if (json.pdfUrl) {
           window.open(json.pdfUrl, '_blank');
-          showAppAlert(`🖨️ Label PDF Resmi JFS untuk ${wb} berhasil dibuka! Siap dicetak.`);
+          showAppAlert(`Label PDF JFS untuk ${wb} berhasil dibuka.`);
         } else {
           throw new Error('Server JFS tidak mengembalikan URL PDF');
         }

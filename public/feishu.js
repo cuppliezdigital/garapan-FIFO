@@ -7,11 +7,11 @@ let feishuPicMap = null;
 let feishuSelectedGreeting = 'Selamat pagi';
 
 // 1. Preload / Ensure Entire 3,180 PIC Mapping in Client Memory (0ms Lookup)
-async function ensureFeishuPicMap() {
-  if (feishuPicMap && Object.keys(feishuPicMap).length > 0) return feishuPicMap;
+async function ensureFeishuPicMap(force = false) {
+  if (!force && feishuPicMap && Object.keys(feishuPicMap).length > 0) return feishuPicMap;
   try {
     const token = getToken();
-    const res = await fetch('/api/kendaraan/pic-map', {
+    const res = await fetch('/api/kendaraan/pic-map?_t=' + Date.now(), {
       credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
@@ -26,6 +26,8 @@ async function ensureFeishuPicMap() {
   }
   return feishuPicMap;
 }
+
+window.ensureFeishuPicMap = ensureFeishuPicMap;
 
 // 2. Resolve Gateway and PIC for a Row
 function resolveFeishuRowPic(row) {
@@ -97,7 +99,7 @@ function renderFeishuExcelTable() {
       if (gw) {
         const cleanPic = (pic && pic.toUpperCase() !== 'PIC') ? pic.trim() : '';
         const picTag = cleanPic
-          ? `<span class="badge-pic-tag">${cleanPic.startsWith('@') ? cleanPic : '@' + cleanPic}</span>`
+          ? `<span class="badge-pic-tag editable" onclick="editRowPicDirectly(${idx})" title="Klik untuk edit PIC langsung">${cleanPic.startsWith('@') ? cleanPic : '@' + cleanPic} ✎</span>`
           : '';
         resultHtml = `
           <div class="excel-cell-result">
@@ -171,6 +173,20 @@ window.cycleFeishuReportCount = function(idx) {
   }
 };
 
+window.editRowPicDirectly = function(idx) {
+  const row = feishuExcelRows[idx];
+  if (!row) return;
+  const curPic = (row.pic || '').replace(/^@/, '');
+  const title = row.gateway ? `${row.gateway} (${row.outlet || 'Kargo'})` : (row.outlet || `Baris ${idx + 1}`);
+  const input = prompt(`Ubah PIC untuk ${title}:`, curPic);
+  if (input !== null) {
+    row.pic = input.trim();
+    renderFeishuExcelTable();
+    updateFeishuStats();
+    generateFeishuPreviewText();
+  }
+};
+
 // 6. Delete Row
 window.deleteFeishuExcelRow = function(index) {
   if (index >= 0 && index < feishuExcelRows.length) {
@@ -232,7 +248,7 @@ function handleExcelTableInput(e) {
         if (gw) {
           const cleanPic = (pic && pic.toUpperCase() !== 'PIC') ? pic.trim() : '';
           const picTag = cleanPic
-            ? `<span class="badge-pic-tag">${cleanPic.startsWith('@') ? cleanPic : '@' + cleanPic}</span>`
+            ? `<span class="badge-pic-tag editable" onclick="editRowPicDirectly(${idx})" title="Klik untuk edit PIC langsung">${cleanPic.startsWith('@') ? cleanPic : '@' + cleanPic} ✎</span>`
             : '';
           resCell.innerHTML = `
             <div class="excel-cell-result">
@@ -421,7 +437,7 @@ async function fetchFeishuHoldList(isManual = false) {
   if (btnPull && isManual) btnPull.classList.add('is-loading');
 
   try {
-    await ensureFeishuPicMap();
+    await ensureFeishuPicMap(true);
     const token = getToken();
     const res = await fetch('/api/kendaraan/feishu-hold-list', {
       credentials: 'include',

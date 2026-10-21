@@ -868,7 +868,7 @@ async function getJfsFlowDetail(options = {}) {
   if (type === 'outbound' || type === 'transit') type = 'sen';
 
   const page = Math.max(1, parseInt(options.page || '1', 10));
-  const size = Math.min(100, Math.max(10, parseInt(options.size || '20', 10)));
+  const size = Math.min(10000, Math.max(10, parseInt(options.size || '20', 10)));
   const billCode = (options.search || options.billCode || '').trim();
 
   const basePayload = {
@@ -1117,7 +1117,528 @@ async function getWaybillPrintPreview(waybillNos) {
   });
 }
 
+async function getReturWaybillPrint(waybillNo) {
+  const cleanWb = String(waybillNo || '').trim();
+  if (!cleanWb) throw new Error('Nomor waybill tidak boleh kosong.');
+
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  if (!token) throw new Error('JFS authtoken belum diatur.');
+
+  // 1. Coba request link PDF resmi dari getPrintWaybillUrl
+  let officialPdfUrl = null;
+  let officialError = null;
+
+  try {
+    const postData1 = JSON.stringify({
+      waybillId: cleanWb,
+      applyTypeCode: 4,
+      countryId: '1'
+    });
+
+    const res1 = await new Promise((resolve) => {
+      const options = {
+        hostname: 'jfsgw.jtcargo.co.id',
+        port: 443,
+        path: '/operatingplatform/rebackTransferExpress/getPrintWaybillUrl',
+        method: 'POST',
+        headers: {
+          'accept': 'application/json, text/plain, */*',
+          'authtoken': token,
+          'content-type': 'application/json;charset=UTF-8',
+          'lang': 'ID',
+          'langtype': 'ID',
+          'origin': 'https://jfs.jtcargo.co.id',
+          'referer': 'https://jfs.jtcargo.co.id/',
+          'routename': 'returnAndForwardMaintain',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36',
+          'Content-Length': Buffer.byteLength(postData1)
+        }
+      };
+      const req = https.request(options, (res) => {
+        let b = '';
+        res.on('data', chunk => b += chunk);
+        res.on('end', () => {
+          try { resolve(JSON.parse(b)); } catch (e) { resolve(null); }
+        });
+      });
+      req.on('error', err => resolve({ code: -1, msg: err.message }));
+      req.write(postData1);
+      req.end();
+    });
+
+    if (res1 && res1.code === 1 && res1.data) {
+      officialPdfUrl = res1.data;
+    } else if (res1 && res1.msg) {
+      officialError = res1.msg;
+    }
+  } catch (err) {
+    officialError = err.message;
+  }
+
+  // 2. Ambil data lengkap pengajuan retur dari pringListPage
+  let returData = null;
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const fromDateStr = thirtyDaysAgo.toISOString().slice(0, 10);
+    const postData2 = JSON.stringify({
+      current: 1,
+      size: 20,
+      auditNetworkId: 220,
+      pringFlag: 0,
+      waybillIds: [cleanWb],
+      applyTimeFrom: `${fromDateStr} 00:00:00`,
+      applyTimeTo: `${todayStr} 23:59:59`,
+      pringType: 0,
+      countryId: '1'
+    });
+
+    const res2 = await new Promise((resolve) => {
+      const options = {
+        hostname: 'jfsgw.jtcargo.co.id',
+        port: 443,
+        path: '/operatingplatform/rebackTransferExpress/pringListPage',
+        method: 'POST',
+        headers: {
+          'accept': 'application/json, text/plain, */*',
+          'authtoken': token,
+          'content-type': 'application/json;charset=UTF-8',
+          'lang': 'ID',
+          'langtype': 'ID',
+          'origin': 'https://jfs.jtcargo.co.id',
+          'referer': 'https://jfs.jtcargo.co.id/',
+          'routename': 'returnAndForwardMaintain',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36',
+          'Content-Length': Buffer.byteLength(postData2)
+        }
+      };
+      const req = https.request(options, (res) => {
+        let b = '';
+        res.on('data', chunk => b += chunk);
+        res.on('end', () => {
+          try { resolve(JSON.parse(b)); } catch (e) { resolve(null); }
+        });
+      });
+      req.on('error', err => resolve({ code: -1, msg: err.message }));
+      req.write(postData2);
+      req.end();
+    });
+
+    if (res2 && res2.code === 1 && res2.data && Array.isArray(res2.data.records) && res2.data.records.length > 0) {
+      const rec = res2.data.records.find(r => r.waybillNo === cleanWb) || res2.data.records[0];
+      returData = {
+        waybillNo: rec.waybillNo,
+        orderSource: rec.orderSourceName || 'J&T Cargo',
+        applyTypeName: rec.applyTypeName || 'Retur',
+        senderName: rec.newSenderName || rec.senderName || '',
+        senderPhone: rec.newSenderMobilePhone || rec.senderMobilePhone || '',
+        senderProvince: rec.newSenderProvinceName || '',
+        senderCity: rec.newSenderCityName || '',
+        senderArea: rec.newSenderAreaName || '',
+        senderAddress: rec.newSenderDetailedAddress || '',
+        receiverName: rec.newReceiverName || rec.receiverName || '',
+        receiverPhone: rec.newReceiverMobilePhone || rec.receiverMobilePhone || '',
+        receiverProvince: rec.newReceiverProvinceName || '',
+        receiverCity: rec.newReceiverCityName || '',
+        receiverArea: rec.newReceiverAreaName || '',
+        receiverAddress: rec.newReceiverDetailedAddress || '',
+        weight: rec.packageChargeWeight || rec.newPackageChargeWeight || 1,
+        freight: rec.totalFreight || rec.newTotalFreight || 0,
+        settlementName: rec.newSettlementName || rec.settlementName || 'Bulanan',
+        reason: rec.rebackTransferReason || rec.secondProblemTypeName || 'Retur Paket',
+        problemCategory: rec.firstProblemTypeName || '',
+        applyNetwork: rec.applyNetworkName || '',
+        destNetwork: rec.senderNetworkName || rec.examineNetworkName || '',
+        applyTime: rec.applyTime || ''
+      };
+
+      // Jika alamat tujuan retur dimasking tanda bintang (*) oleh JFS, ambil alamat asli lengkap dari pengirim awal
+      if (returData.receiverAddress && returData.receiverAddress.includes('*')) {
+        try {
+          const previewRes = await getWaybillPrintPreview([cleanWb]);
+          if (previewRes && previewRes.records && previewRes.records[0]) {
+            const pRec = previewRes.records[0];
+            if (pRec.senderDetailedAddress && !pRec.senderDetailedAddress.includes('*')) {
+              returData.receiverAddress = pRec.senderDetailedAddress;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching pringListPage for retur:', err.message);
+  }
+
+  const success = !!(officialPdfUrl || returData);
+  return {
+    waybillNo: cleanWb,
+    isRetur: true,
+    success,
+    pdfUrl: officialPdfUrl,
+    officialPdfUrl,
+    officialError,
+    returData,
+    canPrintThermal: !!returData,
+    error: success ? null : (officialError || 'Nomor resi tidak ditemukan dalam data pengajuan retur JFS.')
+  };
+}
+
+function parseDurationToHours(durStr) {
+  if (!durStr) return 0;
+  let total = 0;
+  const dayMatch = durStr.match(/(\d+)\s*天/);
+  const hourMatch = durStr.match(/(\d+)\s*时/);
+  const jamMatch = durStr.match(/(\d+)\s*jam/i);
+  if (dayMatch) total += parseInt(dayMatch[1], 10) * 24;
+  if (hourMatch) total += parseInt(hourMatch[1], 10);
+  if (jamMatch) total += parseInt(jamMatch[1], 10);
+  return total;
+}
+
+function translateLostReason(reason) {
+  if (!reason || reason === '-') return '-';
+  const str = String(reason).trim();
+  if (str.includes('司机晚打卡')) return 'Driver Telat Tap / Absen (司机晚打卡)';
+  if (str.includes('操作原因')) return 'Kendala Operasional Gudang (操作原因)';
+  if (str.includes('错发漏扫')) return 'Salah Kirim / Miss Scan (错发漏扫)';
+  if (str.includes('分拨晚封车')) return 'Gateway Telat Segel Truk (分拨晚封车)';
+  if (str.includes('装车漏扫')) return 'Miss Scan Muat Truk (装车漏扫)';
+  if (str.includes('分拨漏发') || str.includes('漏发')) return 'Tertinggal di Gateway (分拨漏发)';
+  if (str.includes('装车超时') || str.includes('超时')) return 'Muat Melebihi Batas Waktu (装车超时)';
+  if (str.includes('车辆故障')) return 'Kendala Armada / Breakdown (车辆故障)';
+  if (str.includes('滞留')) return 'Tertahan di Staging / Backlog (滞留)';
+  return str;
+}
+
+async function ensureJfsWajibKirimTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS jfs_wajib_kirim (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      waybill_no VARCHAR(50) NOT NULL,
+      child_waybill_no VARCHAR(50) NOT NULL UNIQUE,
+      is_main_waybill VARCHAR(20) DEFAULT 'tidak',
+      tlc VARCHAR(100) DEFAULT '-',
+      take_site_name VARCHAR(100) DEFAULT '-',
+      destination_site_name VARCHAR(100) DEFAULT '-',
+      first_distribution_name VARCHAR(100) DEFAULT '-',
+      operate_site_name VARCHAR(100) DEFAULT 'GW-Jakarta',
+      send_nextstation VARCHAR(100) DEFAULT '-',
+      destination_distribution_name VARCHAR(100) DEFAULT '-',
+      dest_proxy_area_name VARCHAR(100) DEFAULT '-',
+      goods_name TEXT,
+      weight DECIMAL(10,2) DEFAULT 0,
+      volume DECIMAL(10,4) DEFAULT 0,
+      package_number INT DEFAULT 1,
+      operate_scantime_1 VARCHAR(30),
+      inventory_hours INT DEFAULT 0,
+      should_depart_time VARCHAR(30),
+      next_depart_time VARCHAR(30),
+      real_depart_time VARCHAR(30),
+      lost_reson VARCHAR(255) DEFAULT '-',
+      lost_link VARCHAR(100) DEFAULT '-',
+      load_task_no VARCHAR(100) DEFAULT '-',
+      order_source_name VARCHAR(50) DEFAULT '-',
+      is_stuck_in_gw TINYINT(1) DEFAULT 1,
+      synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_wb (waybill_no),
+      INDEX idx_tlc (tlc),
+      INDEX idx_dest_site (destination_site_name),
+      INDEX idx_nextstation (send_nextstation)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+async function syncWajibKirimData(options = {}) {
+  await ensureJfsWajibKirimTable();
+  const cfg = await getConfig();
+  const token = cfg.authtoken;
+  if (!token) throw new Error('JFS authtoken belum diatur. Silakan perbarui di menu Integrasi JFS.');
+
+  const now = new Date();
+  const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  const allRecords = [];
+  const daysToScan = options.days ? Math.min(14, Math.max(1, options.days)) : 5;
+
+  console.log(`[JFS Wajib Kirim] Memulai VLOOKUP otomatis Must-Go vs Simpan Gudang (${daysToScan} hari terakhir)...`);
+
+  // Scan per hari mundur dari hari ini agar menangkap seluruh kargo Wajib Kirim operasional terkini
+  for (let i = 0; i < daysToScan; i++) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dayStr = formatDate(d);
+    const beginDate = `${dayStr} 00:00:00`;
+    const endDate = `${dayStr} 23:59:59`;
+
+    for (let p = 1; p <= 2; p++) {
+      const payload = {
+        dateType: '1',
+        beginDate,
+        endDate,
+        waybillNo: options.waybillNo || '',
+        childWaybillNo: options.childWaybillNo || '',
+        orderSourceCode: '',
+        sqlCode: 'ads_all_qc_must_go_cargo_waybill_child_dt',
+        current: p,
+        size: 500,
+        convertResultFromDictionCode: 'is_lost_goods|106,is_main_waybill|106,data_type|106,is_transfer|106',
+        paginationSearchType: 'list',
+        countryId: '1'
+      };
+
+      try {
+        const res = await requestJfsApi(
+          token,
+          payload,
+          'ads_all_qc_must_go_cargo_waybill_child_dt',
+          'Bd-theme-5553671e-37db-4957-b2c1-132215c17f77'
+        );
+
+        const recs = res?.data?.records || [];
+        if (!recs.length) break;
+        allRecords.push(...recs);
+        if (recs.length < 500) break;
+      } catch (pageErr) {
+        console.warn(`[JFS Wajib Kirim] Gagal mengambil tanggal ${dayStr} hal ${p}: ${pageErr.message}`);
+        break;
+      }
+    }
+  }
+
+  if (!allRecords.length) {
+    return {
+      success: true,
+      message: 'Tidak ada data kargo Wajib Kirim pada rentang tanggal yang dipilih.',
+      total: 0,
+      syncedCount: 0
+    };
+  }
+
+  const allSearchKeys = [];
+  allRecords.forEach(r => {
+    if (r.waybill_no) allSearchKeys.push(r.waybill_no);
+    if (r.child_waybill_no) allSearchKeys.push(r.child_waybill_no);
+  });
+
+  const uniqueKeys = [...new Set(allSearchKeys)];
+  const invMap = new Map();
+
+  const CHUNK = 500;
+  for (let i = 0; i < uniqueKeys.length; i += CHUNK) {
+    const chunk = uniqueKeys.slice(i, i + CHUNK);
+    const placeholders = chunk.map(() => '?').join(',');
+    const [rows] = await db.query(
+      `SELECT waybill, outlet_asal, outlet, tlc, nama_barang, stuck, weight, dest_city, package_number 
+       FROM monitoring_stuck 
+       WHERE waybill IN (${placeholders}) OR LEFT(waybill, 12) IN (${placeholders})`,
+      [...chunk, ...chunk]
+    );
+    rows.forEach(row => {
+      invMap.set(row.waybill, row);
+      if (row.waybill.length >= 12) {
+        invMap.set(row.waybill.slice(0, 12), row);
+      }
+    });
+  }
+
+  // TRUNCATE TABLE jfs_wajib_kirim agar kargo yang sudah berangkat / sudah TTD / #N/A bersih total
+  await db.query('TRUNCATE TABLE jfs_wajib_kirim');
+
+  let upsertCount = 0;
+  for (const r of allRecords) {
+    const wb = String(r.waybill_no || '').trim();
+    const childWb = String(r.child_waybill_no || wb).trim();
+    if (!childWb) continue;
+
+    // VLOOKUP FILTER: Jika tidak ada di simpan gudang (invMap), berarti #N/A (sudah berangkat/TTD) -> JANGAN DIMUNCULKAN!
+    const inv = invMap.get(childWb) || invMap.get(wb) || null;
+    if (!inv) {
+      continue; // Lewati kargo yang sudah tidak ada di simpan gudang
+    }
+
+    let tlc = '-';
+    if (inv?.tlc && inv.tlc !== '-') {
+      tlc = inv.tlc;
+    } else if (r.task_next_site_name) {
+      tlc = r.task_next_site_name.replace(/^GW-/, '').slice(0, 3).toUpperCase();
+    } else if (inv?.outlet) {
+      tlc = inv.outlet.slice(0, 3).toUpperCase();
+    }
+
+    const takeSite = inv?.outlet_asal || r.pick_network_name || '-';
+    const destSite = inv?.outlet || r.task_next_site_name || '-';
+    const firstGw = r.belong_fwd_name || r.stock_site_name || 'GW-Jakarta';
+    const nextGw = r.task_next_site_name || '-';
+    const finalGw = inv?.dest_city || '-';
+    const goodsName = inv?.nama_barang || 'Paket E-Commerce Standar';
+    const weight = Number(inv?.weight || 1);
+    const volume = 0.001;
+    const pkgNum = Number(inv?.package_number || 1);
+    const invHours = inv?.stuck ? parseInt(inv.stuck, 10) : parseDurationToHours(r.inventory_duration);
+    const shouldDepart = r.should_depart_time || '-';
+    const nextDepart = r.next_depart_time || '-';
+    const realDepart = r.real_depart_time || null;
+    const lostReson = translateLostReason(r.lost_reson);
+    const lostLink = r.lost_link || '-';
+    const loadTask = r.load_task_no || '-';
+    const source = r.order_source_name || r.order_type || 'JFS';
+    const isStuck = 1; // Pasti 1 karena valid ada di simpan gudang GW-Jakarta
+
+    await db.query(`
+      INSERT INTO jfs_wajib_kirim (
+        waybill_no, child_waybill_no, is_main_waybill, tlc, take_site_name,
+        destination_site_name, first_distribution_name, operate_site_name,
+        send_nextstation, destination_distribution_name, dest_proxy_area_name,
+        goods_name, weight, volume, package_number, operate_scantime_1,
+        inventory_hours, should_depart_time, next_depart_time, real_depart_time,
+        lost_reson, lost_link, load_task_no, order_source_name, is_stuck_in_gw, synced_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON DUPLICATE KEY UPDATE
+        tlc = VALUES(tlc),
+        take_site_name = VALUES(take_site_name),
+        destination_site_name = VALUES(destination_site_name),
+        first_distribution_name = VALUES(first_distribution_name),
+        send_nextstation = VALUES(send_nextstation),
+        destination_distribution_name = VALUES(destination_distribution_name),
+        goods_name = VALUES(goods_name),
+        weight = VALUES(weight),
+        inventory_hours = VALUES(inventory_hours),
+        should_depart_time = VALUES(should_depart_time),
+        next_depart_time = VALUES(next_depart_time),
+        real_depart_time = VALUES(real_depart_time),
+        lost_reson = VALUES(lost_reson),
+        is_stuck_in_gw = VALUES(is_stuck_in_gw),
+        synced_at = CURRENT_TIMESTAMP
+    `, [
+      wb, childWb, r.is_main_waybill || 'tidak', tlc, takeSite,
+      destSite, firstGw, r.stock_site_name || 'GW-Jakarta',
+      nextGw, finalGw, inv?.dest_city || '-',
+      goodsName, weight, volume, pkgNum, r.in_stock_time || '',
+      invHours, shouldDepart, nextDepart, realDepart,
+      lostReson, lostLink, loadTask, source, isStuck
+    ]);
+    upsertCount++;
+  }
+
+  return {
+    success: true,
+    message: `VLOOKUP Berhasil: Menemukan ${upsertCount} koli Wajib Kirim yang aktif berada di simpan gudang GW-Jakarta.`,
+    totalFetched: allRecords.length,
+    upsertCount,
+    syncedAt: new Date().toISOString()
+  };
+}
+
+async function getWajibKirimData(query = {}) {
+  await ensureJfsWajibKirimTable();
+  const search = String(query.search || '').trim();
+  const tlc = String(query.tlc || '').trim();
+  const gwTujuan = String(query.gw_tujuan || '').trim();
+  const outletTujuan = String(query.outlet_tujuan || '').trim();
+  const statusFilter = String(query.status || 'all').trim();
+  const limit = Math.min(2000, Math.max(10, parseInt(query.limit || '500', 10)));
+  const page = Math.max(1, parseInt(query.page || '1', 10));
+  const offset = (page - 1) * limit;
+
+  const allowedSortCols = {
+    waybill_no: 'waybill_no',
+    child_waybill_no: 'child_waybill_no',
+    tlc: 'tlc',
+    take_site_name: 'take_site_name',
+    destination_site_name: 'destination_site_name',
+    first_distribution_name: 'first_distribution_name',
+    send_nextstation: 'send_nextstation',
+    goods_name: 'goods_name',
+    weight: 'weight',
+    inventory_hours: 'inventory_hours',
+    should_depart_time: 'should_depart_time',
+    lost_reson: 'lost_reson',
+    id: 'id'
+  };
+
+  const sortBy = allowedSortCols[query.sortBy] || 'id';
+  const sortDir = String(query.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+  let whereClauses = ['1=1'];
+  const params = [];
+
+  if (search) {
+    whereClauses.push('(waybill_no LIKE ? OR child_waybill_no LIKE ? OR goods_name LIKE ? OR tlc LIKE ? OR destination_site_name LIKE ? OR send_nextstation LIKE ? OR take_site_name LIKE ?)');
+    const sTerm = `%${search}%`;
+    params.push(sTerm, sTerm, sTerm, sTerm, sTerm, sTerm, sTerm);
+  }
+
+  if (tlc && tlc !== 'ALL') {
+    whereClauses.push('tlc = ?');
+    params.push(tlc);
+  }
+
+  if (gwTujuan) {
+    whereClauses.push('send_nextstation LIKE ?');
+    params.push(`%${gwTujuan}%`);
+  }
+
+  if (outletTujuan) {
+    whereClauses.push('destination_site_name LIKE ?');
+    params.push(`%${outletTujuan}%`);
+  }
+
+  if (statusFilter === 'stuck') {
+    whereClauses.push('is_stuck_in_gw = 1');
+  } else if (statusFilter === 'departed') {
+    whereClauses.push('is_stuck_in_gw = 0');
+  }
+
+  const whereSql = whereClauses.join(' AND ');
+
+  const [statsRows] = await db.query(`
+    SELECT 
+      COUNT(*) as total_records,
+      COALESCE(SUM(weight), 0) as total_weight,
+      COUNT(DISTINCT tlc) as total_tlc,
+      COUNT(DISTINCT send_nextstation) as total_gw,
+      COALESCE(SUM(CASE WHEN is_stuck_in_gw = 1 THEN 1 ELSE 0 END), 0) as total_stuck,
+      MAX(synced_at) as last_sync_time
+    FROM jfs_wajib_kirim
+  `);
+
+  const [countRows] = await db.query(`SELECT COUNT(*) as filtered_total FROM jfs_wajib_kirim WHERE ${whereSql}`, params);
+  const filteredTotal = countRows[0]?.filtered_total || 0;
+
+  const [records] = await db.query(`
+    SELECT * FROM jfs_wajib_kirim
+    WHERE ${whereSql}
+    ORDER BY ${sortBy} ${sortDir}
+    LIMIT ? OFFSET ?
+  `, [...params, limit, offset]);
+
+  const [tlcRows] = await db.query(`
+    SELECT tlc, COUNT(*) as count 
+    FROM jfs_wajib_kirim 
+    WHERE tlc != '-' 
+    GROUP BY tlc 
+    ORDER BY count DESC 
+    LIMIT 20
+  `);
+
+  return {
+    success: true,
+    stats: statsRows[0] || {},
+    tlcList: tlcRows || [],
+    pagination: {
+      page,
+      limit,
+      total: filteredTotal,
+      totalPages: Math.ceil(filteredTotal / limit)
+    },
+    records
+  };
+}
+
 module.exports = {
+  syncWajibKirimData,
+  getWajibKirimData,
   initJfs,
   getConfig,
   updateConfig,
@@ -1132,5 +1653,6 @@ module.exports = {
   restartScheduler,
   getWaybillPrintPdf,
   getWaybillPrintPreview,
+  getReturWaybillPrint,
 };
 

@@ -140,11 +140,8 @@ function initBarcodeGenerator() {
   if (tabBtn) {
     tabBtn.addEventListener('click', () => {
       switchAdvanceToBarcodeTab();
-      // Render initial sample if empty
-      if (inputEl && !inputEl.value.trim()) {
-        inputEl.value = '201827854164003';
-        renderBarcodeFromInput();
-      }
+      // Pastikan tampilan bersih tanpa default sample otomatis
+      renderBarcodeFromInput();
     });
   }
 }

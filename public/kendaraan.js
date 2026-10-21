@@ -756,6 +756,7 @@ async function submitEditPicForm(e) {
     closeEditPicModal();
     showAppAlert('Kontak PIC Gateway berhasil diperbarui.');
     await openMasterGatewaysModal(); // refresh list
+    if (typeof window.ensureFeishuPicMap === 'function') await window.ensureFeishuPicMap(true);
   } catch (err) {
     showAppAlert(err.message, true);
   }

@@ -447,3 +447,128 @@ if (bgOpacitySlider) {
   bgOpacitySlider.addEventListener('input', onBgOpacityChange);
 }
 
+// =========================================================
+// SYSTEM THEME ENGINE (RETRO & POLOS KLASIK)
+// =========================================================
+const themeSettingCard = document.getElementById('themeSettingCard');
+const systemThemeSelect = document.getElementById('systemThemeSelect');
+const saveThemeBtn = document.getElementById('saveThemeBtn');
+const resetThemeBtn = document.getElementById('resetThemeBtn');
+const themeMessage = document.getElementById('themeMessage');
+const themePreviewBadge = document.getElementById('themePreviewBadge');
+
+function updateThemeCardVisibility() {
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  const role = user?.role || '';
+  const canManageTheme = role === 'super_admin' || role === 'admin';
+  if (themeSettingCard) {
+    themeSettingCard.classList.toggle('hidden', !canManageTheme);
+  }
+}
+
+function applySystemTheme(themeName) {
+  const safeTheme = themeName || 'default';
+  if (safeTheme === 'default') {
+    document.documentElement.removeAttribute('data-theme');
+    if (document.body) document.body.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', safeTheme);
+    if (document.body) document.body.setAttribute('data-theme', safeTheme);
+  }
+
+  if (systemThemeSelect) {
+    systemThemeSelect.value = safeTheme;
+  }
+  if (themePreviewBadge) {
+    const selectedOpt = systemThemeSelect?.options?.[systemThemeSelect.selectedIndex];
+    const label = selectedOpt ? selectedOpt.text : safeTheme;
+    themePreviewBadge.textContent = label.split(' ')[0] + ' ' + (label.split(' ')[1] || 'Aktif');
+  }
+}
+
+async function loadTheme() {
+  updateThemeCardVisibility();
+  try {
+    const response = await fetch('/api/auth/theme', { credentials: 'include' });
+    const result = await parseResponseJson(response);
+    const activeTheme = result?.theme || 'default';
+    localStorage.setItem('app_theme', activeTheme);
+    applySystemTheme(activeTheme);
+  } catch (err) {
+    console.error('Error loading theme:', err);
+    const local = localStorage.getItem('app_theme') || 'default';
+    applySystemTheme(local);
+  }
+}
+
+async function saveSystemTheme() {
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  const role = user?.role || '';
+  if (role !== 'super_admin' && role !== 'admin') {
+    if (themeMessage) {
+      themeMessage.textContent = 'Akses ditolak: Hanya super_admin dan admin yang dapat mengubah tema.';
+      themeMessage.classList.add('error');
+    }
+    return;
+  }
+
+  const chosenTheme = systemThemeSelect?.value || 'default';
+  try {
+    const response = await fetch('/api/auth/theme', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: chosenTheme }),
+    });
+    const result = await parseResponseJson(response);
+    if (!response.ok) {
+      if (themeMessage) {
+        themeMessage.textContent = result.error || 'Gagal menyimpan tema.';
+        themeMessage.classList.add('error');
+      }
+      return;
+    }
+
+    localStorage.setItem('app_theme', chosenTheme);
+    applySystemTheme(chosenTheme);
+
+    if (themeMessage) {
+      const selectedOpt = systemThemeSelect?.options?.[systemThemeSelect.selectedIndex];
+      const label = selectedOpt ? selectedOpt.text : chosenTheme;
+      themeMessage.textContent = `Tema sistem berhasil diubah ke ${label}.`;
+      themeMessage.classList.remove('error');
+      setTimeout(() => { if (themeMessage) themeMessage.textContent = ''; }, 3500);
+    }
+  } catch (err) {
+    console.error('Error saving theme:', err);
+    if (themeMessage) {
+      themeMessage.textContent = 'Gagal menghubungi server untuk menyimpan tema.';
+      themeMessage.classList.add('error');
+    }
+  }
+}
+
+async function resetSystemTheme() {
+  if (systemThemeSelect) {
+    systemThemeSelect.value = 'default';
+    applySystemTheme('default');
+  }
+  await saveSystemTheme();
+}
+
+if (systemThemeSelect) {
+  systemThemeSelect.addEventListener('change', () => {
+    applySystemTheme(systemThemeSelect.value);
+  });
+}
+if (saveThemeBtn) {
+  saveThemeBtn.addEventListener('click', saveSystemTheme);
+}
+if (resetThemeBtn) {
+  resetThemeBtn.addEventListener('click', resetSystemTheme);
+}
+
+// Auto-load theme on script evaluation
+loadTheme();
+
+

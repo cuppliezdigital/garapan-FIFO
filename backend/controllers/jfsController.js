@@ -165,7 +165,40 @@ async function getFlowDetail(req, res) {
 
 async function printWaybillPdf(req, res) {
   try {
-    const { waybillNo, waybillNos, type = [4, 5] } = req.body || {};
+    const { waybillNo, waybillNos, type = [4, 5], isRetur = false } = req.body || {};
+    const checkIsRetur = isRetur === true || type === 'retur' || (Array.isArray(type) && type.includes('retur'));
+
+    // MODE KHUSUS RETUR / PENGEMBALIAN BARANG
+    if (checkIsRetur) {
+      if (Array.isArray(waybillNos) && waybillNos.length > 0) {
+        const cleanList = waybillNos
+          .map(w => String(w).trim())
+          .filter(Boolean)
+          .map(w => (w.length === 15 ? w.slice(0, 12) : w));
+
+        const uniqueList = [...new Set(cleanList)];
+        const results = [];
+        const CONCURRENCY = 5;
+        for (let i = 0; i < uniqueList.length; i += CONCURRENCY) {
+          const batch = uniqueList.slice(i, i + CONCURRENCY);
+          const batchPromises = batch.map(wb => jfsService.getReturWaybillPrint(wb));
+          const batchRes = await Promise.all(batchPromises);
+          results.push(...batchRes);
+        }
+
+        return res.json({
+          success: true,
+          isRetur: true,
+          total: results.length,
+          results
+        });
+      }
+
+      const cleanWb = String(waybillNo || '').trim();
+      const targetWb = cleanWb.length === 15 ? cleanWb.slice(0, 12) : cleanWb;
+      const result = await jfsService.getReturWaybillPrint(targetWb);
+      return res.json(result);
+    }
 
     // Jika dipanggil dengan array nomor resi (Mode Batch Multi-AWB)
     if (Array.isArray(waybillNos) && waybillNos.length > 0) {
@@ -222,7 +255,31 @@ async function previewWaybills(req, res) {
   }
 }
 
+async function getWajibKirimList(req, res) {
+  try {
+    const result = await jfsService.getWajibKirimData(req.query);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ jfsController getWajibKirimList error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal memuat data Wajib Kirim' });
+  }
+}
+
+async function syncWajibKirim(req, res) {
+  try {
+    console.log(`⚡ [JFS Wajib Kirim] Menerima request sinkronisasi manual dari user: ${req.user?.username || 'unknown'} (role: ${req.user?.role})`);
+    const result = await jfsService.syncWajibKirimData(req.body);
+    console.log(`✅ [JFS Wajib Kirim] Sinkronisasi selesai: ${result.upsertCount} koli disimpan.`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ jfsController syncWajibKirim error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Gagal menyinkronkan data Wajib Kirim' });
+  }
+}
+
 module.exports = {
+  getWajibKirimList,
+  syncWajibKirim,
   getStatus,
   updateConfig,
   testConnection,

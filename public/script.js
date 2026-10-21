@@ -197,7 +197,7 @@ const navLinks = {
 let currentAdvanceTab = 'reconcile';
 
 function switchAdvanceTab(tabName, updateUrl = true) {
-  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb'];
+  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim'];
   const tab = validTabs.includes(tabName) ? tabName : 'reconcile';
   currentAdvanceTab = tab;
 
@@ -214,6 +214,7 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   const panePto = document.getElementById('viewPto');
   const paneBarcode = document.getElementById('viewBarcodeGen');
   const panePrintAwb = document.getElementById('viewPrintAwb');
+  const paneWajibKirim = document.getElementById('viewWajibKirim');
 
   if (paneReconcile) {
     paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
@@ -238,6 +239,10 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   if (paneBarcode) {
     paneBarcode.classList.toggle('hidden', tab !== 'barcode');
     paneBarcode.classList.toggle('active', tab === 'barcode');
+  }
+  if (paneWajibKirim) {
+    paneWajibKirim.classList.toggle('hidden', tab !== 'wajib-kirim');
+    paneWajibKirim.classList.toggle('active', tab === 'wajib-kirim');
   }
   if (panePrintAwb) {
     panePrintAwb.classList.toggle('hidden', tab !== 'print-awb');
@@ -264,12 +269,18 @@ function switchAdvanceTab(tabName, updateUrl = true) {
     if (typeof initPtoModule === 'function') {
       initPtoModule();
     }
+  } else if (tab === 'wajib-kirim') {
+    if (typeof window.loadWajibKirimData === 'function') {
+      window.loadWajibKirimData();
+    }
   } else if (tab === 'print-awb') {
     if (typeof initPrintAwbModule === 'function') {
       initPrintAwbModule();
     }
   }
 }
+
+window.switchAdvanceTab = switchAdvanceTab;
 
 let advanceTabsInitialized = false;
 function initAdvanceTabs() {
@@ -300,7 +311,7 @@ function handleHashRoute() {
   const queryStr = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
   const urlParams = new URLSearchParams(queryStr);
 
-  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb'];
+  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim'];
   let target = baseRoute;
   let advanceSubTab = 'reconcile';
 
@@ -381,6 +392,7 @@ function handleHashRoute() {
   } else if (finalTarget === 'settings') {
     loadLogo();
     loadBackground();
+    if (typeof loadTheme === 'function') loadTheme();
   }
 
   closeMobileSidebar();
@@ -412,7 +424,7 @@ function showAppAlert(message, isErrorOverride = null) {
   const text = String(message || 'Terjadi sesuatu pada aplikasi.');
   const isError = isErrorOverride !== null
     ? Boolean(isErrorOverride)
-    : /gagal|error|ditolak|tidak|batal|salah|habis|kadaluarsa|unauthorized|forbidden|invalid|wajib|belum/i.test(text);
+    : (!/berhasil|sukses|disalin|selesai/i.test(text) && /gagal|error|ditolak|batal|salah|kadaluarsa|unauthorized|forbidden|invalid|belum berhasil/i.test(text));
   if (appAlertTitle) appAlertTitle.textContent = isError ? 'Proses belum berhasil' : 'Proses berhasil';
   if (appAlertMessage) appAlertMessage.textContent = text;
   if (appAlertIcon) {
@@ -523,6 +535,11 @@ function applyUIPermissions() {
     if (role === 'super_admin') el.classList.remove('hidden');
     else el.classList.add('hidden');
   });
+
+  const canManageTheme = role === 'super_admin' || role === 'admin';
+  const themeCard = document.getElementById('themeSettingCard');
+  if (themeCard) toggle(themeCard, canManageTheme);
+
 
   if (addBtn) {
     addBtn.style.display = hasPermission('import_bulk') ? '' : 'none';
@@ -3115,9 +3132,52 @@ if (auditTableBody) {
 
 
 
-// Sidebar Drawer & Router Events
+// Desktop Mini Sidebar Toggle Helper (Icon-only mode)
+function toggleDesktopSidebar() {
+  const sidebar = document.getElementById('appSidebar');
+  if (!sidebar) return;
+  const isCollapsed = sidebar.classList.toggle('is-collapsed');
+  document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+  try {
+    localStorage.setItem('sidebar_collapsed', isCollapsed ? 'true' : 'false');
+  } catch (_) {}
+}
+
+function initDesktopSidebarState() {
+  if (window.innerWidth <= 992) return;
+  try {
+    const saved = localStorage.getItem('sidebar_collapsed');
+    if (saved === 'true') {
+      const sidebar = document.getElementById('appSidebar');
+      if (sidebar) {
+        sidebar.classList.add('is-collapsed');
+        document.body.classList.add('sidebar-collapsed');
+      }
+    }
+  } catch (_) {}
+}
+
+// Inisialisasi posisi mini-sidebar saat halaman pertama kali dibuka
+initDesktopSidebarState();
+window.addEventListener('resize', () => {
+  if (window.innerWidth <= 992) {
+    const sidebar = document.getElementById('appSidebar');
+    if (sidebar) sidebar.classList.remove('is-collapsed');
+    document.body.classList.remove('sidebar-collapsed');
+  } else {
+    initDesktopSidebarState();
+  }
+});
+
+// Sidebar Drawer, Mini-Sidebar & Router Events
 if (sidebarToggleBtn) {
-  sidebarToggleBtn.addEventListener('click', openMobileSidebar);
+  sidebarToggleBtn.addEventListener('click', () => {
+    if (window.innerWidth > 992) {
+      toggleDesktopSidebar();
+    } else {
+      openMobileSidebar();
+    }
+  });
 }
 if (sidebarCloseBtn) {
   sidebarCloseBtn.addEventListener('click', closeMobileSidebar);

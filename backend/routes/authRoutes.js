@@ -46,6 +46,10 @@ router.put('/background', authMiddleware, requireRole('super_admin'), (req, res,
 router.patch('/background/opacity', authMiddleware, requireRole('super_admin'), authController.updateBackgroundOpacity);
 router.delete('/background', authMiddleware, requireRole('super_admin'), authController.deleteAppBackground);
 
+router.get('/theme', authController.getTheme);
+router.put('/theme', authMiddleware, requireRole('super_admin', 'admin'), authController.updateTheme);
+
+
 router.get('/debug/users', authMiddleware, requireRole('super_admin'), authController.debugUsers);
 
 router.get('/me', authMiddleware, (req, res) => {

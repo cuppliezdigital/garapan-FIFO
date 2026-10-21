@@ -4,7 +4,7 @@ const jfsController = require('../controllers/jfsController');
 const { authMiddleware, requireRole, requireAnyPermission } = require('../middleware/auth');
 const { PERMISSION_KEYS } = require('../services/permissionsService');
 
-const requireAdminOrGm = requireRole('super_admin', 'admin');
+const requireAdminOrGm = requireRole('super_admin', 'admin', 'admin-gm', 'gm', 'leader');
 
 // Public to any authenticated user (for header/dashboard status chips)
 router.get('/status', authMiddleware, jfsController.getStatus);
@@ -26,6 +26,10 @@ router.get('/flow-detail', authMiddleware, jfsController.getFlowDetail);
 // Waybill Thermal Print & Preview (Bisa diakses oleh semua operator yang login)
 router.post('/print-waybill', authMiddleware, jfsController.printWaybillPdf);
 router.post('/preview-waybill', authMiddleware, jfsController.previewWaybills);
+
+// WAJIB KIRIM (Khusus super_admin dan admin)
+router.get('/wajib-kirim', authMiddleware, requireAdminOrGm, jfsController.getWajibKirimList);
+router.post('/wajib-kirim/sync', authMiddleware, requireAdminOrGm, jfsController.syncWajibKirim);
 
 module.exports = router;
 

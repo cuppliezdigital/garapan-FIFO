@@ -307,6 +307,8 @@ module.exports = {
   updateBackground,
   updateBackgroundOpacity,
   deleteAppBackground,
+  getTheme,
+  updateTheme,
 };
 
 async function getLogo(req, res) {
@@ -412,3 +414,26 @@ async function deleteAppBackground(req, res) {
     res.status(500).json({ error: 'Gagal menghapus background' });
   }
 }
+
+async function getTheme(req, res) {
+  try {
+    const theme = await require('../services/logoService').getTheme();
+    res.json({ theme: theme || 'default' });
+  } catch (error) {
+    console.error('Controller getTheme error:', error);
+    res.json({ theme: 'default' });
+  }
+}
+
+async function updateTheme(req, res) {
+  try {
+    const { theme } = req.body;
+    if (!theme) return res.status(400).json({ error: 'Nama tema wajib diisi.' });
+    const saved = await require('../services/logoService').saveTheme(theme, req.user?.username || req.user?.role || 'admin');
+    res.json({ message: 'Tema berhasil diperbarui.', theme: saved });
+  } catch (error) {
+    console.error('Controller updateTheme error:', error);
+    res.status(500).json({ error: 'Gagal memperbarui tema' });
+  }
+}
+

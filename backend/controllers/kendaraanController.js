@@ -157,7 +157,7 @@ exports.getDashboard = async (req, res) => {
         k.*,
         k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
       FROM kendaraan_instock k
       LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -185,7 +185,7 @@ exports.getList = async (req, res) => {
         k.*,
         k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
       FROM kendaraan_instock k
       LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -291,7 +291,7 @@ exports.create = async (req, res) => {
         k.*,
         k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
       FROM kendaraan_instock k
       LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -362,7 +362,7 @@ exports.update = async (req, res) => {
         k.*,
         k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
       FROM kendaraan_instock k
       LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -500,7 +500,7 @@ exports.syncFromGoogleSheet = async (req, res) => {
         k.*,
         k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
       FROM kendaraan_instock k
       LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -537,7 +537,7 @@ exports.pushToFeishu = async (req, res) => {
           k.tipe_kendaraan,
           k.kode_outlet as effective_outlet,
           COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-          COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+          COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
         FROM kendaraan_instock k
         LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
         LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -633,7 +633,13 @@ exports.updateGatewayPic = async (req, res) => {
     `, [tagging_pic || null, id]);
 
     if (gw && gw.length > 0 && gw[0].nama_gateway) {
-      await db.query('UPDATE master_pic_gateway SET tagging_pic = ? WHERE nama_gateway = ?', [tagging_pic || null, gw[0].nama_gateway]).catch(() => null);
+      const gwName = gw[0].nama_gateway;
+      const cleanPic = tagging_pic ? String(tagging_pic).trim() : null;
+      const displayPic = cleanPic ? (cleanPic.startsWith('@') ? cleanPic : `@${cleanPic}`) : '';
+      const display = gwName + (displayPic ? ` ${displayPic}` : '');
+
+      await db.query('UPDATE master_pic_gateway SET tagging_pic = ?, display_gateway_pic = ? WHERE nama_gateway = ?', [cleanPic, display, gwName]).catch(() => null);
+      await db.query('UPDATE kendaraan_instock SET tagging_pic = ? WHERE nama_gateway = ?', [cleanPic, gwName]).catch(() => null);
     }
 
     res.json({ success: true, message: 'PIC Gateway berhasil disimpan.' });
@@ -759,7 +765,7 @@ exports.getFeishuHoldList = async (req, res) => {
         k.keterangan,
         k.kode_outlet as effective_outlet,
         COALESCE(k.nama_gateway, m.nama_gateway, gl.nama_gateway) as effective_gateway,
-        COALESCE(k.tagging_pic, m.tagging_pic, gl.tagging_pic) as effective_pic
+        COALESCE(gl.tagging_pic, m.tagging_pic, k.tagging_pic) as effective_pic
       FROM kendaraan_instock k
       LEFT JOIN master_pic_gateway m ON k.kode_outlet = m.kode_outlet
       LEFT JOIN master_gateway_list gl ON COALESCE(k.nama_gateway, m.nama_gateway) = gl.nama_gateway
@@ -861,7 +867,7 @@ exports.getPicMap = async (req, res) => {
       SELECT 
         m.kode_outlet,
         m.nama_gateway,
-        COALESCE(m.tagging_pic, gl.tagging_pic) as tagging_pic,
+        COALESCE(gl.tagging_pic, m.tagging_pic) as tagging_pic,
         m.display_gateway_pic
       FROM master_pic_gateway m
       LEFT JOIN master_gateway_list gl ON m.nama_gateway = gl.nama_gateway

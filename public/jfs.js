@@ -623,7 +623,15 @@ function initJfsEventListeners() {
     });
   }
 
-  // Event Delegation for AWB drilldown button and resi copy
+  // Export Excel button in drilldown view
+  const btnExportDateExcel = document.getElementById('btnExportFlowDateExcel');
+  if (btnExportDateExcel) {
+    btnExportDateExcel.addEventListener('click', () => {
+      exportFlowWaybillsToExcel(currentFlowDetailState.date, currentFlowDetailState.type);
+    });
+  }
+
+  // Event Delegation for AWB drilldown button, date export, and resi copy
   document.addEventListener('click', (e) => {
     const drillBtn = e.target.closest('.btn-flow-awb-drilldown');
     if (drillBtn) {
@@ -633,6 +641,18 @@ function initJfsEventListeners() {
       const type = drillBtn.dataset.type || currentFlowDetailState.type || 'inbound';
       if (date) {
         openFlowWaybillList(date, type, 1, '');
+      }
+      return;
+    }
+
+    const exportBtn = e.target.closest('.btn-flow-date-export');
+    if (exportBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const date = exportBtn.dataset.date;
+      const type = exportBtn.dataset.type || currentFlowDetailState.type || 'inbound';
+      if (date) {
+        exportFlowWaybillsToExcel(date, type);
       }
       return;
     }
@@ -805,13 +825,171 @@ async function openFlowDetailModal(type) {
                 ${awb > 0 && rAwb > 0 ? ((rAwb / awb) * 100).toFixed(0) + '%' : '-'}
               </span>
             </td>
+            <td style="padding: 6px 10px; text-align: center;">
+              <button type="button" class="btn-flow-date-export" data-date="${dateCode}" data-type="${type}" title="Download Excel waybill ${dateCode}" style="padding: 3px 8px; font-size: 0.72rem; font-weight: 700; border-radius: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Excel</span>
+              </button>
+            </td>
           </tr>
         `;
       }).join('');
     }
   } catch (err) {
     console.error('openFlowDetailModal error:', err);
-    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Gagal memuat tren: ${err.message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Gagal memuat tren: ${err.message}</td></tr>`;
+  }
+}
+
+async function exportFlowWaybillsToExcel(date, type) {
+  if (!date || date === '-') {
+    if (typeof showAppAlert === 'function') {
+      showAppAlert('Pilih tanggal yang ingin diexport.', true);
+    } else {
+      alert('Pilih tanggal yang ingin diexport.');
+    }
+    return;
+  }
+
+  const typeLabels = {
+    inbound: 'Bongkar_Tiba',
+    outbound: 'Muat_Kirim',
+    backlog: 'Antrean_Belum_Muat',
+    transit: 'Dalam_Perjalanan',
+  };
+  const typeName = typeLabels[type] || 'Beban_GW';
+
+  if (typeof showAppAlert === 'function') {
+    showAppAlert(`⏳ Menyiapkan data ${typeName} tanggal ${date} untuk di-export...`);
+  }
+
+  try {
+    const token = typeof getToken === 'function' ? getToken() : (sessionStorage.getItem('monitoring_jwt') || '');
+    const searchParam = (currentFlowDetailState && currentFlowDetailState.date === date && currentFlowDetailState.type === type)
+      ? (currentFlowDetailState.search || '')
+      : '';
+    const qObj = {
+      date,
+      type,
+      page: '1',
+      size: '10000',
+    };
+    if (searchParam) qObj.search = searchParam;
+    const q = new URLSearchParams(qObj);
+
+    const headers = {};
+    if (token && token !== 'cookie-session') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`/api/jfs/flow-detail?${q.toString()}`, {
+      credentials: 'include',
+      headers,
+    });
+
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson.error) errMsg = errJson.error;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    const records = data.records || [];
+
+    if (!records.length) {
+      if (typeof showAppAlert === 'function') {
+        showAppAlert(`Tidak ada data waybill untuk tanggal ${date}.`, true);
+      } else {
+        alert(`Tidak ada data waybill untuk tanggal ${date}.`);
+      }
+      return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+      throw new Error('Library Excel (SheetJS) belum termuat di halaman.');
+    }
+
+    const exportRows = records.map((r, idx) => {
+      const waybill = r.billcode || r.bill_code || '-';
+      const koli = parseInt(r.package_number || r.piece_num || r.pieces, 10) || 1;
+      const rawWeight = (r.package_charge_weight !== undefined && r.package_charge_weight !== null && r.package_charge_weight !== '')
+        ? r.package_charge_weight
+        : (r.weight || r.charge_weight || 0);
+      const parsedWeight = parseFloat(rawWeight);
+      const berat = Number.isFinite(parsedWeight) ? Number(parsedWeight.toFixed(2)) : 0;
+      const hubAsal = r.last_dept || r.arr_dept || r.source_scan_site_name || r.siteName || '-';
+      const tujuan = r.dispatch_network_name || r.send_dept || r.next_scan_site_name || r.dest_site_name || '-';
+      const jamTiba = r.arrive_tm || r.scan_date || r.arrival_time || '-';
+      const jamKirim = r.send_tm || r.send_date || r.send_time || '-';
+      const petugas = r.scanuser || r.scan_user_name || '-';
+      const armada = r.terminal_dispatch_code || r.truck_number || r.car_number || '-';
+
+      return {
+        'No': idx + 1,
+        'No. Waybill': waybill,
+        'Koli': koli,
+        'Berat (Kg)': berat,
+        'Hub Asal': hubAsal,
+        'Tujuan Dispatch': tujuan,
+        'Jam Tiba': jamTiba,
+        'Jam Kirim': jamKirim,
+        'Petugas Scan': petugas,
+        'Armada Dispatch': armada
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Beban GW');
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 22 },
+      { wch: 8 },
+      { wch: 12 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 20 }
+    ];
+
+    const fileName = `JFS_Beban_GW-Jakarta_${typeName}_${date}.xlsx`;
+
+    // Universal browser download using Blob (works on Mobile and Desktop)
+    try {
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 1500);
+    } catch (_) {
+      // Fallback
+      XLSX.writeFile(wb, fileName);
+    }
+
+    if (typeof showAppAlert === 'function') {
+      showAppAlert(`✅ Berhasil download Excel: ${fileName} (${records.length} waybill)!`);
+    }
+  } catch (err) {
+    console.error('exportFlowWaybillsToExcel error:', err);
+    if (typeof showAppAlert === 'function') {
+      showAppAlert(`Gagal export Excel: ${err.message}`, true);
+    } else {
+      alert(`Gagal export Excel: ${err.message}`);
+    }
   }
 }
 
