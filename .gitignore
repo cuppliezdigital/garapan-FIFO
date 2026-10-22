@@ -6,6 +6,7 @@ server.log
 server_err.log
 .gradle/
 android/.gradle/
+android/build/
 *.xlsx
 *.xls
 cloudflared.exe

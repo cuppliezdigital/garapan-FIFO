@@ -446,6 +446,7 @@ function renderMonitoringPagination(totalRows, totalPages) {
 }
 
 let currentStuckFilter = null;
+let currentFilteredMonitoringData = [];
 let activeSummaryCardId = null;
 
 function isSudahUpdate(item) {
@@ -885,6 +886,7 @@ function applyFilter() {
     });
   }
 
+  currentFilteredMonitoringData = filtered;
   renderTable(filtered);
 }
 
@@ -1557,5 +1559,103 @@ function initTableSortingAndColumnFilters() {
 
 initWaybillDetailModalHandlers();
 initTableSortingAndColumnFilters();
+
+async function copyMonitoringAwbs() {
+  const keyword = (searchInput?.value || '').trim();
+  const tlcRaw = (tlcFilterInput?.value || '').trim();
+  const selectTlc = (tlcFilter?.value || 'all');
+  const hasColumnFilter = Object.keys(columnFilters || {}).some((k) => Boolean(String(columnFilters[k] || '').trim()));
+  const isFiltered = Boolean(keyword || tlcRaw || selectTlc !== 'all' || currentStuckFilter || hasColumnFilter);
+
+  // Jika sedang difilter/dicari: gunakan data hasil filter.
+  // Jika tidak ada yang diketik dan tidak difilter: gunakan seluruh data monitoringData.
+  const sourceList = isFiltered ? (currentFilteredMonitoringData || []) : (monitoringData || []);
+
+  const awbs = [];
+  const seen = new Set();
+  sourceList.forEach((item) => {
+    const wb = (item && item.waybill ? String(item.waybill).trim() : '');
+    if (wb && !seen.has(wb)) {
+      seen.add(wb);
+      awbs.push(wb);
+    }
+  });
+
+  if (awbs.length === 0) {
+    if (typeof showAppAlert === 'function') {
+      showAppAlert(
+        isFiltered
+          ? 'Tidak ada nomor AWB yang cocok dengan pencarian / filter saat ini.'
+          : 'Tidak ada data AWB pada tabel monitoring untuk disalin.',
+        true
+      );
+    }
+    return;
+  }
+
+  const textToCopy = awbs.join('\n');
+  let success = false;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      success = true;
+    } catch (_) {
+      success = false;
+    }
+  }
+
+  if (!success) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = textToCopy;
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-9999px';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      success = document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch (_) {
+      success = false;
+    }
+  }
+
+  if (success) {
+    const btn = document.getElementById('copyMonitoringAwbBtn');
+    const textSpan = document.getElementById('copyMonitoringAwbBtnText');
+    if (btn) btn.classList.add('copied');
+    if (textSpan) {
+      const origText = textSpan.textContent;
+      textSpan.textContent = `✓ Tersalin (${awbs.length})`;
+      setTimeout(() => {
+        textSpan.textContent = origText;
+        if (btn) btn.classList.remove('copied');
+      }, 2000);
+    }
+
+    const scopeDesc = isFiltered ? `hasil pencarian (${awbs.length} AWB)` : `seluruh data (${awbs.length} AWB)`;
+    if (typeof showAppAlert === 'function') {
+      showAppAlert(`Berhasil menyalin ${scopeDesc} ke clipboard! Siap di-paste ke Excel / WhatsApp.`, false);
+    }
+  } else {
+    if (typeof showAppAlert === 'function') {
+      showAppAlert('Gagal menyalin ke clipboard. Mohon izinkan akses clipboard pada browser Anda.', true);
+    }
+  }
+}
+
+function initCopyMonitoringAwbHandler() {
+  const btn = document.getElementById('copyMonitoringAwbBtn');
+  if (btn) {
+    btn.removeEventListener('click', copyMonitoringAwbs);
+    btn.addEventListener('click', copyMonitoringAwbs);
+  }
+}
+
+window.copyMonitoringAwbs = copyMonitoringAwbs;
+
+initCopyMonitoringAwbHandler();
 
 
