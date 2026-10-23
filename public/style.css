@@ -23551,23 +23551,23 @@ thead th input[type="checkbox"]:active {
 }
 
 .fifo-printable-card {
-  width: 720px;
+  width: 780px;
   max-width: 100%;
   background: #ffffff !important;
   color: #000000 !important;
-  border: 2px solid #000000;
+  border: 2px solid #000000 !important;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-  padding: 14px 18px 24px 18px;
+  padding: 18px 24px 28px 24px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   box-sizing: border-box;
 }
 
 .fifo-report-main-header {
-  border: 1.5px solid #000000;
+  border: 1.5px solid #000000 !important;
   text-align: center;
   padding: 6px 12px;
-  margin-bottom: 12px;
-  background: #ffffff;
+  margin-bottom: 14px;
+  background: #ffffff !important;
 }
 
 .fifo-report-main-header h2 {
@@ -23575,170 +23575,183 @@ thead th input[type="checkbox"]:active {
   font-weight: 800;
   letter-spacing: 0.08em;
   margin: 0;
-  color: #000000;
+  color: #000000 !important;
   text-transform: uppercase;
 }
 
-/* TOP SUMMARY TABLE */
+/* TOP SUMMARY TABLE (STRICT OVERRIDE MIN-WIDTH 980px) */
 .fifo-summary-table-wrap {
-  width: 60%;
-  min-width: 380px;
+  width: 65%;
+  max-width: 100%;
   margin-bottom: 16px;
 }
 
-.fifo-summary-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1.5px solid #000000;
-  font-size: 0.84rem;
+table.fifo-summary-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1.5px solid #000000 !important;
+  font-size: 0.84rem !important;
+  background: #ffffff !important;
+  margin: 0 !important;
+  table-layout: fixed !important;
 }
 
-.fifo-summary-table td {
-  border: 1px solid #000000;
-  padding: 4px 10px;
-  font-weight: 700;
-  text-align: center;
-  color: #000000;
+table.fifo-summary-table td {
+  border: 1px solid #000000 !important;
+  padding: 5px 8px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  color: #000000 !important;
+  background: #ffffff !important;
+  box-sizing: border-box !important;
 }
 
-.col-summary-label {
-  text-align: center;
+table.fifo-summary-table td.col-summary-label {
+  text-align: center !important;
   font-weight: 800 !important;
-  background: #ffffff;
-  width: 48%;
+  background: #ffffff !important;
+  width: 48% !important;
+  color: #000000 !important;
 }
 
-.col-summary-val-date {
-  background: #ffffff;
-  width: 26%;
-  font-family: monospace;
+table.fifo-summary-table td.col-summary-val-date,
+table.fifo-summary-table td.col-summary-val-time {
+  background: #ffffff !important;
+  width: 26% !important;
+  font-family: monospace !important;
+  color: #000000 !important;
 }
 
-.col-summary-val-time {
-  background: #ffffff;
-  width: 26%;
-  font-family: monospace;
-}
-
-.col-summary-red {
+table.fifo-summary-table td.col-summary-red {
   background: #dc2626 !important;
   color: #ffffff !important;
   font-weight: 900 !important;
-  font-size: 0.95rem;
+  font-size: 0.95rem !important;
 }
 
-.col-summary-unit {
-  background: #ffffff;
-  font-weight: 700;
+table.fifo-summary-table td.col-summary-unit {
+  background: #ffffff !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05em;
+  color: #000000 !important;
 }
 
-/* MAIN MATRIX TABLE */
+/* MAIN MATRIX TABLE (STRICT OVERRIDE MIN-WIDTH 980px) */
 .fifo-matrix-table-wrap {
   width: 100%;
   overflow-x: auto;
 }
 
-.fifo-matrix-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1.5px solid #000000;
-  font-size: 0.8rem;
-  text-align: center;
+table.fifo-matrix-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1.5px solid #000000 !important;
+  font-size: 0.82rem !important;
+  text-align: center !important;
+  background: #ffffff !important;
+  margin: 0 !important;
+  table-layout: fixed !important;
 }
 
-.fifo-matrix-table th {
-  border: 1px solid #000000;
-  background: #ffffff;
-  color: #000000;
-  font-weight: 800;
-  padding: 5px 6px;
-  text-transform: uppercase;
+table.fifo-matrix-table th {
+  border: 1px solid #000000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+  padding: 5px 6px !important;
+  text-transform: uppercase !important;
+  box-sizing: border-box !important;
 }
 
-.fifo-matrix-table th.th-spot {
-  width: 26%;
-  vertical-align: middle;
-  font-size: 0.88rem;
+table.fifo-matrix-table th.th-spot {
+  width: 26% !important;
+  vertical-align: middle !important;
+  font-size: 0.88rem !important;
   letter-spacing: 0.05em;
 }
 
-.fifo-matrix-table th.th-level {
-  font-size: 0.88rem;
+table.fifo-matrix-table th.th-level {
+  font-size: 0.88rem !important;
   letter-spacing: 0.08em;
-  padding: 4px;
+  padding: 4px !important;
 }
 
-.fifo-matrix-table th.th-hour {
-  font-size: 0.78rem;
-  width: 18.5%;
-  padding: 4px 2px;
+table.fifo-matrix-table th.th-hour {
+  font-size: 0.78rem !important;
+  width: 18.5% !important;
+  padding: 4px 2px !important;
 }
 
-.fifo-matrix-table td {
-  border: 1px solid #000000;
-  padding: 3px 6px;
-  color: #000000;
-  font-weight: 600;
-  height: 24px;
-  vertical-align: middle;
+table.fifo-matrix-table td {
+  border: 1px solid #000000 !important;
+  padding: 3px 6px !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  height: 24px !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
 
-.fifo-matrix-table td.col-spot-code {
-  text-align: center;
-  background: #ffffff;
-  font-family: monospace;
-  font-weight: 800;
-  font-size: 0.88rem;
+table.fifo-matrix-table td.col-spot-code {
+  text-align: center !important;
+  background: #ffffff !important;
+  font-family: monospace !important;
+  font-weight: 800 !important;
+  font-size: 0.88rem !important;
   letter-spacing: 0.04em;
   position: relative;
+  color: #000000 !important;
 }
 
-.fifo-matrix-table td.col-spot-code .spot-subname {
+table.fifo-matrix-table td.col-spot-code .spot-subname {
   display: block;
   font-size: 0.65rem;
   font-weight: 500;
-  color: #64748b;
+  color: #64748b !important;
   font-family: -apple-system, sans-serif;
   letter-spacing: normal;
   margin-top: -2px;
 }
 
-.fifo-matrix-table td.col-heat-cell {
+table.fifo-matrix-table td.col-heat-cell {
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.15s ease;
   user-select: none;
 }
 
-.fifo-matrix-table td.col-heat-cell:hover {
+table.fifo-matrix-table td.col-heat-cell:hover {
   filter: brightness(0.9);
   outline: 2px solid #0284c7;
   outline-offset: -2px;
 }
 
-/* HEATMAP CELL COLORS (Sesuai Foto Asli) */
-.fifo-matrix-table td.heat-red {
+/* HEATMAP CELL COLORS */
+table.fifo-matrix-table td.heat-red {
   background: #dc2626 !important;
   color: #ffffff !important;
   font-weight: 900 !important;
 }
 
-.fifo-matrix-table td.heat-yellow {
+table.fifo-matrix-table td.heat-yellow {
   background: #facc15 !important;
   color: #000000 !important;
   font-weight: 800 !important;
 }
 
-.fifo-matrix-table td.heat-normal {
+table.fifo-matrix-table td.heat-normal {
   background: #ffffff !important;
   color: #000000 !important;
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
-.fifo-matrix-table td.heat-zero {
+table.fifo-matrix-table td.heat-zero {
   background: #ffffff !important;
   color: #000000 !important;
-  font-weight: 500;
+  font-weight: 500 !important;
 }
 
 /* PATTERN PILL */
