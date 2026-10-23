@@ -174,6 +174,7 @@ const pageEyebrow = document.getElementById('pageEyebrow');
 
 const viewPages = {
   monitoring: document.getElementById('viewMonitoring'),
+  fifoReport: document.getElementById('viewFifoReport'),
   advance: document.getElementById('viewAdvance'),
   archive: document.getElementById('viewArchive'),
   history: document.getElementById('viewHistory'),
@@ -185,6 +186,7 @@ const viewPages = {
 
 const navLinks = {
   monitoring: document.getElementById('navMonitoring'),
+  fifoReport: document.getElementById('navFifoReport'),
   advance: document.getElementById('navAdvance'),
   archive: document.getElementById('navArchive'),
   history: document.getElementById('navHistory'),
@@ -314,6 +316,9 @@ function handleHashRoute() {
   const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim'];
   let target = baseRoute;
   let advanceSubTab = 'reconcile';
+  if (baseRoute === 'fifo-report' || baseRoute === 'fiforeport') {
+    target = 'fifoReport';
+  }
 
   if (advanceSubTabs.includes(baseRoute)) {
     target = 'advance';
@@ -330,6 +335,7 @@ function handleHashRoute() {
 
   const routeConfig = {
     monitoring: { title: 'FIFO Dashboard', eyebrow: 'Monitoring System' },
+    fifoReport: { title: 'Laporan FIFO Spot', eyebrow: 'Matriks Loading Bay & TLC Tujuan Realtime JFS' },
     advance: { title: 'Advance Operations & Intelligence', eyebrow: 'Pusat Rekonsiliasi, Kendaraan, Feishu, JFS & PTO' },
     archive: { title: 'Arsip Waybill', eyebrow: 'Data Management' },
     history: { title: 'History Update', eyebrow: 'Riwayat Perubahan' },
@@ -375,6 +381,16 @@ function handleHashRoute() {
       return;
     }
     switchAdvanceTab(advanceSubTab, false);
+  } else if (finalTarget === 'fifoReport') {
+    const userRole = (authUser && authUser.role) ? authUser.role : (getCurrentUser().role || '');
+    if (userRole !== 'super_admin' && userRole !== 'admin') {
+      showAppAlert('Akses Ditolak: Laporan FIFO Spot hanya dapat diakses oleh Admin dan GM.', true);
+      window.location.hash = '#/monitoring';
+      return;
+    }
+    if (typeof loadFifoSpotReport === 'function') {
+      loadFifoSpotReport();
+    }
   } else if (finalTarget === 'monitoring') {
     if (!monitoringData.length) fetchMonitoring();
   } else if (finalTarget === 'archive') {
@@ -518,6 +534,7 @@ function applyUIPermissions() {
   const adminPermissions = ['import_bulk', 'view_history', 'delete_history', 'manage_users', 'access_config', 'download_template', 'delete_global', 'create_user', 'restore_updated', 'delete_selected'];
   const hasAdminPermission = role === 'super_admin' || role === 'admin' || adminPermissions.some((key) => hasPermission(key));
 
+  toggle(navLinks.fifoReport, role === 'super_admin' || role === 'admin');
   toggle(navLinks.advance, role === 'super_admin' || role === 'admin');
   toggle(navLinks.users, canManageUsers);
   toggle(navLinks.history, canViewHistory);
