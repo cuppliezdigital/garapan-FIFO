@@ -2,49 +2,49 @@ const db = require('../config/db');
 const jfsService = require('../services/jfsService');
 
 const DEFAULT_SPOTS = [
-  { code: 'JKT99A', name: 'GW-Jakarta', patterns: 'GW-Jakarta,JKT' },
-  { code: 'JKM99V', name: 'GW-Jakarta Muara', patterns: 'GW-Jakarta Muara,JKM,Kapuk' },
-  { code: 'JKS99V', name: 'GW-Jakarta Selatan', patterns: 'GW-Jakarta Selatan,JKS' },
-  { code: 'JTI99V', name: 'GW-Jakarta Timur', patterns: 'GW-Jakarta Timur,GW-Jakarta Timur 2,JTI' },
-  { code: 'JKP99M', name: 'GW-Jakarta Pusat 2', patterns: 'GW-Jakarta Pusat,JKP' },
-  { code: 'BGR99A', name: 'GW-Bogor', patterns: 'GW-Bogor,BGR' },
-  { code: 'BKI99A', name: 'GW-Bekasi', patterns: 'GW-Bekasi,BKI' },
-  { code: 'DPK99A', name: 'GW-Depok', patterns: 'GW-Depok,DPK' },
-  { code: 'TGR99A', name: 'GW-Tangerang', patterns: 'GW-Tangerang,GW-Tangerang Selatan,TGR' },
-  { code: 'TGS99A', name: 'GW-Tigaraksa', patterns: 'GW-Tigaraksa,TGS' },
-  { code: 'SEG99A', name: 'GW-Serang', patterns: 'GW-Serang,SEG' },
-  { code: 'BDO99A', name: 'GW-Bandung', patterns: 'GW-Bandung,BDO' },
-  { code: 'SBG99V', name: 'GW-Subang', patterns: 'GW-Subang,SBG' },
-  { code: 'GRT99M', name: 'GW-Garut', patterns: 'GW-Garut,GW-GarutMitra,GRT' },
-  { code: 'CJR99M', name: 'GW-Cianjur', patterns: 'GW-Cianjur,GW-CianjurMitra,CJR' },
-  { code: 'SMI99A', name: 'GW-Sukabumi', patterns: 'GW-Sukabumi,SMI' },
-  { code: 'SOG99A', name: 'GW-Soreang', patterns: 'GW-Soreang,SOG' },
-  { code: 'TSK99A', name: 'GW-Tasikmalaya', patterns: 'GW-Tasikmalaya,TSK' },
-  { code: 'JOG99A', name: 'GW-Yogyakarta', patterns: 'GW-Yogyakarta,GW-Bantul,JOG' },
-  { code: 'KBT99M', name: 'GW-Kebumen Virtual', patterns: 'GW-Kebumen Virtual,KBT' },
-  { code: 'KBM99A', name: 'GW-Kebumen', patterns: 'GW-Kebumen,KBM' },
-  { code: 'SOC99A', name: 'GW-Solo', patterns: 'GW-Solo,GW-Klaten,SOC' },
-  { code: 'SRG99A', name: 'GW-Semarang', patterns: 'GW-Semarang,GW-Salatiga,SRG' },
-  { code: 'KDS99A', name: 'GW-Kudus', patterns: 'GW-Kudus,GW-Jepara,GW-Patii,KDS' },
-  { code: 'DMK99V', name: 'GW-Demak', patterns: 'GW-Demak,DMK' },
-  { code: 'TGL99A', name: 'GW-Tegal', patterns: 'GW-Tegal,GW-Slawi,GW-Brebes,TGL' },
-  { code: 'JBR99A', name: 'GW-Jember', patterns: 'GW-Jember,GW-Banyuwangi,JBR' },
-  { code: 'KDR99A', name: 'GW-Kediri', patterns: 'GW-Kediri,GW-Madiun,KDR' },
-  { code: 'MLG99A', name: 'GW-Malang', patterns: 'GW-Malang,MLG' },
-  { code: 'PRO99A', name: 'GW-Probolinggo', patterns: 'GW-Probolinggo,PRO' },
-  { code: 'SEA99A', name: 'GW-SurabayaSEA', patterns: 'GW-SurabayaSEA,SEA' },
-  { code: 'SUB99A', name: 'GW-Surabaya', patterns: 'GW-Surabaya,GW-Lamongan,SUB' },
-  { code: 'DJB99A', name: 'GW-Jambi', patterns: 'GW-Jambi,GW-Bangko,DJB' },
-  { code: 'BKO99V', name: 'GW-Bengkulu', patterns: 'GW-Bengkulu,BKO' },
-  { code: 'MES99A', name: 'GW-Medan', patterns: 'GW-Medan,GW-Aceh,MES' },
-  { code: 'PDG99A', name: 'GW-Padang', patterns: 'GW-Padang,GW-Bukittinggi,PDG' },
-  { code: 'PKU99A', name: 'GW-Pekanbaru', patterns: 'GW-Pekanbaru,GW-Rengat,PKU' },
-  { code: 'PLM99A', name: 'GW-Palembang', patterns: 'GW-Palembang,GW-Prabumulih,PLM' },
-  { code: 'TKG99A', name: 'GW-Lampung', patterns: 'GW-Lampung,TKG' },
-  { code: 'BDJ99A', name: 'GW-Banjarmasin', patterns: 'GW-Banjarmasin,BDJ' },
-  { code: 'PNK99A', name: 'GW-Pontianak', patterns: 'GW-Pontianak,PNK' },
-  { code: 'DPS99A', name: 'GW-Denpasar', patterns: 'GW-Denpasar,GW-Bali,GW-Tabanan,GW-Lombok,DPS' },
-  { code: 'VPG99V', name: 'GW-VIP Transit', patterns: 'GW-VIP,VPG' }
+  { code: 'JKT99A', name: 'GW-Jakarta', patterns: 'gw-jakarta,jkt99a' },
+  { code: 'JKM99V', name: 'GW-Jakarta Muara', patterns: 'gw-jakarta muara,gw-muara,jkm99v,jkm,kapuk' },
+  { code: 'JKS99V', name: 'GW-Jakarta Selatan', patterns: 'gw-jakarta selatan,jks99v,jks' },
+  { code: 'JTI99V', name: 'GW-Jakarta Timur', patterns: 'gw-jakarta timur,gw-jakarta timur 2,jti99v,jti' },
+  { code: 'JKP99M', name: 'GW-Jakarta Pusat 2', patterns: 'gw-jakarta pusat,gw-jakarta pusat 2,jkp99m,jkp' },
+  { code: 'BGR99A', name: 'GW-Bogor', patterns: 'gw-bogor,bgr99a,bgr' },
+  { code: 'BKI99A', name: 'GW-Bekasi', patterns: 'gw-bekasi,bki99a,bki' },
+  { code: 'DPK99A', name: 'GW-Depok', patterns: 'gw-depok,dpk99a,dpk' },
+  { code: 'TGR99A', name: 'GW-Tangerang', patterns: 'gw-tangerang,gw-tangerang selatan,tgr99a,tgr' },
+  { code: 'TGS99A', name: 'GW-Tigaraksa', patterns: 'gw-tigaraksa,tgs99a,tgs' },
+  { code: 'SEG99A', name: 'GW-Serang', patterns: 'gw-serang,seg99a,seg' },
+  { code: 'BDO99A', name: 'GW-Bandung', patterns: 'gw-bandung,gw-sumedangmitra,gw-cirebon,gw-indramayu,bdo99a,bdo' },
+  { code: 'SBG99V', name: 'GW-Subang', patterns: 'gw-subang,sbg99v,sbg' },
+  { code: 'GRT99M', name: 'GW-Garut', patterns: 'gw-garut,gw-garutmitra,grt99m,grt' },
+  { code: 'CJR99M', name: 'GW-Cianjur', patterns: 'gw-cianjur,gw-cianjurmitra,cjr99m,cjr' },
+  { code: 'SMI99A', name: 'GW-Sukabumi', patterns: 'gw-sukabumi,smi99a,smi' },
+  { code: 'SOG99A', name: 'GW-Soreang', patterns: 'gw-soreang,sog99a,sog' },
+  { code: 'TSK99A', name: 'GW-Tasikmalaya', patterns: 'gw-tasikmalaya,gw-banjar,tsk99a,tsk' },
+  { code: 'JOG99A', name: 'GW-Yogyakarta', patterns: 'gw-yogyakarta,gw-bantul,gw-kulonprogo,gw-wonosarimitra,jog99a,jog' },
+  { code: 'KBT99M', name: 'GW-Kebumen Virtual', patterns: 'gw-kebumen virtual,kbt99m,kbt' },
+  { code: 'KBM99A', name: 'GW-Kebumen', patterns: 'gw-kebumen,gw-purwokertoo,gw-purworejomitra,gw-purbalinggamitra,gw-banjarnegaramitra,gw-wonosobo,kbm99a,kbm' },
+  { code: 'SOC99A', name: 'GW-Solo', patterns: 'gw-solo,gw-klaten,soc99a,soc' },
+  { code: 'SRG99A', name: 'GW-Semarang', patterns: 'gw-semarang,gw-salatiga,gw-kendal,gw-ungaran,srg99a,srg' },
+  { code: 'KDS99A', name: 'GW-Kudus', patterns: 'gw-kudus,gw-jepara,gw-patii,gw-rembang,gw-blora,kds99a,kds' },
+  { code: 'DMK99V', name: 'GW-Demak', patterns: 'gw-demak,dmk99v,dmk' },
+  { code: 'TGL99A', name: 'GW-Tegal', patterns: 'gw-tegal,gw-slawi,gw-brebes,gw-brebes atas,gw-brebes bawah,gw-pekalongan,gw-pemalangmitra,tgl99a,tgl' },
+  { code: 'JBR99A', name: 'GW-Jember', patterns: 'gw-jember,gw-banyuwangi,jbr99a,jbr' },
+  { code: 'KDR99A', name: 'GW-Kediri', patterns: 'gw-kediri,gw-madiun,kdr99a,kdr' },
+  { code: 'MLG99A', name: 'GW-Malang', patterns: 'gw-malang,mlg99a,mlg' },
+  { code: 'PRO99A', name: 'GW-Probolinggo', patterns: 'gw-probolinggo,pro99a,pro' },
+  { code: 'SEA99A', name: 'GW-SurabayaSEA', patterns: 'gw-surabayasea,gw-ambon,gw-ternate,gw-gorontalo,gw-sofifi,gw-morowali,gw-manado,gw-kendari,gw-palu,gw-makassar,gw-kupang,sea99a,sea' },
+  { code: 'SUB99A', name: 'GW-Surabaya', patterns: 'gw-surabaya,gw-lamongan,bws,gsk,sub99a,sub' },
+  { code: 'DJB99A', name: 'GW-Jambi', patterns: 'gw-jambi,gw-bangko,djb99a,djb' },
+  { code: 'BKO99V', name: 'GW-Bengkulu', patterns: 'gw-bengkulu,bko99v,bko' },
+  { code: 'MES99A', name: 'GW-Medan', patterns: 'gw-medan,gw-aceh,gw-kuala simpang,gw-lhokseumawe,gw-takengon,gw-aek,gw-rantau,gw-ujung tanjung,mes99a,mes' },
+  { code: 'PDG99A', name: 'GW-Padang', patterns: 'gw-padang,gw-bukittinggi,gw-virtual padang,gw-padang sidempuan,pdg99a,pdg' },
+  { code: 'PKU99A', name: 'GW-Pekanbaru', patterns: 'gw-pekanbaru,gw-rengat,gw-rengatmitra,gw-batam,gw-batam barat,gw-batam selatan,gw-karimun,gw-tanjung pinang,pku99a,pku' },
+  { code: 'PLM99A', name: 'GW-Palembang', patterns: 'gw-palembang,gw-prabumulih,gw-lubuk linggau,gw-bangka belitung,plm99a,plm' },
+  { code: 'TKG99A', name: 'GW-Lampung', patterns: 'gw-lampung,tkg99a,tkg' },
+  { code: 'BDJ99A', name: 'GW-Banjarmasin', patterns: 'gw-banjarmasin,gw-palangkaraya,gw-palangkarayav,gw-pangkalanbun,gw-kotawaringintimur,gw-samarinda,gw-balikpapan,bdj99a,bdj' },
+  { code: 'PNK99A', name: 'GW-Pontianak', patterns: 'gw-pontianak,pnk99a,pnk' },
+  { code: 'DPS99A', name: 'GW-Denpasar', patterns: 'gw-denpasar,gw-bali,gw-tabanan,gw-lombok,dps99a,dps' },
+  { code: 'VPG99V', name: 'GW-VIP Transit', patterns: 'gw-vip,gw-vip transit,vpg99v,vpg' }
 ];
 
 let tableInitialized = false;
@@ -73,6 +73,14 @@ async function ensureTableInitialized() {
         );
       }
       console.log('✅ Berhasil inisialisasi 43 default Master Mapping SPOT FIFO.');
+    } else {
+      // Perbarui mapping default agar pattern collision GW-Jakarta vs GW-Jakarta Pusat/Timur/Selatan tidak terjadi
+      for (const dSpot of DEFAULT_SPOTS) {
+        await db.query(
+          'UPDATE master_spot_mapping SET tlc_patterns = ? WHERE spot_code = ? AND (tlc_patterns = ? OR tlc_patterns LIKE "%GW-Jakarta,JKT%")',
+          [dSpot.patterns, dSpot.code, dSpot.code]
+        );
+      }
     }
     tableInitialized = true;
   } catch (err) {
@@ -168,6 +176,15 @@ exports.getFifoSpotReport = async (req, res) => {
       spotList.push(entry);
     });
 
+    // Siapkan daftar pattern terurut panjang menurun agar yang spesifik mendahului yang umum
+    const allPatternsSorted = [];
+    spotList.forEach((s) => {
+      s.patterns.forEach((p) => {
+        allPatternsSorted.push({ spot: s, pattern: p, len: p.length });
+      });
+    });
+    allPatternsSorted.sort((a, b) => b.len - a.len);
+
     let total24_36 = 0;
     let total48_60 = 0;
     let total48_72 = 0;
@@ -183,11 +200,47 @@ exports.getFifoSpotReport = async (req, res) => {
 
       let matchedSpot = null;
 
-      // Cari spot yang cocok berdasarkan pattern
+      // 1. Exact match TLC terhadap salah satu pattern
       for (const entry of spotList) {
-        if (entry.patterns.some((p) => tlc.includes(p) || outlet.startsWith(p))) {
+        if (entry.patterns.some((p) => p === tlc)) {
           matchedSpot = entry;
           break;
+        }
+      }
+
+      // 2. Substring TLC match (pola lebih panjang / spesifik dievaluasi lebih dulu)
+      if (!matchedSpot) {
+        for (const item of allPatternsSorted) {
+          if (tlc && tlc.includes(item.pattern)) {
+            // Cegah GW-Jakarta menelan GW-Jakarta Pusat, Timur, Selatan, Muara
+            if (item.pattern === 'gw-jakarta' || item.pattern === 'jkt' || item.pattern === 'jkt99a') {
+              if (tlc.includes('selatan') || tlc.includes('timur') || tlc.includes('pusat') || tlc.includes('muara') || tlc.includes('barat') || tlc.includes('utara')) {
+                continue;
+              }
+            }
+            if (item.pattern === 'gw-surabaya' || item.pattern === 'sub') {
+              if (tlc.includes('sea')) continue;
+            }
+            if (item.pattern === 'gw-kebumen' || item.pattern === 'kbm') {
+              if (tlc.includes('virtual') || tlc.includes('kbt')) continue;
+            }
+            matchedSpot = item.spot;
+            break;
+          }
+        }
+      }
+
+      // 3. Fallback outlet matching atau TLC berupa kode outlet Jakarta langsung (misal JKT062A, JKT253A)
+      if (!matchedSpot) {
+        if (tlc.startsWith('jkt') && !tlc.includes('selatan') && !tlc.includes('timur') && !tlc.includes('pusat') && !tlc.includes('muara')) {
+          matchedSpot = spotMap.get('JKT99A') || null;
+        } else if (!tlc || tlc === '-' || tlc === 'gw-jakarta') {
+          for (const item of allPatternsSorted) {
+            if (item.pattern.length >= 3 && outlet.startsWith(item.pattern)) {
+              matchedSpot = item.spot;
+              break;
+            }
+          }
         }
       }
 

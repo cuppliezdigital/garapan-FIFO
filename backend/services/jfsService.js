@@ -247,6 +247,8 @@ async function testJfsConnection(authTokenParam = null, scanSiteCodeParam = null
     queryFlag: '2',
     billCode: '',
     scanSiteCodeName: cfg.scanSiteCodeName || 'GW-Jakarta',
+    scanSiteCodeTypeId: 335,
+    scanSiteCodeId: 220,
     isOverDate: '',
     operateSiteType: 'all',
     expressTypeCode: '',
@@ -281,7 +283,7 @@ async function fetchAllJfsWaybills() {
 
   const now = new Date();
   const endDate = `${getFormattedDate(now)} 23:59:59`;
-  const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const past = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
   const beginDate = `${getFormattedDate(past)} 00:00:00`;
 
   const PAGE_SIZE = 1000;
@@ -294,6 +296,8 @@ async function fetchAllJfsWaybills() {
     queryFlag: '2',
     billCode: '',
     scanSiteCodeName: siteName,
+    scanSiteCodeTypeId: 335,
+    scanSiteCodeId: 220,
     isOverDate: '',
     operateSiteType: 'all',
     expressTypeCode: '',
@@ -379,7 +383,16 @@ async function fetchAllJfsWaybills() {
     const outletAsal = r.take_site_name || r.first_distribution_name || r.take_proxy_area_name || '-';
     const outletTujuan = r.destination_site_name || r.destination_distribution_name || '-';
     const stuck = formatStuckByHours(r.inventoryHours);
-    const tlc = r.destination_distribution_name || r.SEND_NEXTSTATION || siteName || 'GW-Jakarta';
+    let tlc = 'GW-Jakarta';
+    if (r.SEND_NEXTSTATION && (r.SEND_NEXTSTATION.startsWith('GW-') || /[A-Z]{3}99[A-Z]/.test(r.SEND_NEXTSTATION))) {
+      tlc = r.SEND_NEXTSTATION;
+    } else if (r.destination_distribution_name) {
+      tlc = r.destination_distribution_name;
+    } else if (r.SEND_NEXTSTATION) {
+      tlc = r.SEND_NEXTSTATION;
+    } else {
+      tlc = siteName || 'GW-Jakarta';
+    }
     const namaBarang = r.goods_name || '-';
 
     const clientName = r.name || '-';
