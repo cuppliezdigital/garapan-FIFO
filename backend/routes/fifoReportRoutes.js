@@ -13,3 +13,4 @@ router.post('/mappings', authMiddleware, requireAdminOrGm, fifoReportController.
 router.delete('/mappings/:id', authMiddleware, requireAdminOrGm, fifoReportController.deleteSpotMapping);
 
 module.exports = router;
+

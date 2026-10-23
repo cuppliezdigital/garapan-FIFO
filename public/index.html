@@ -10,9 +10,9 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.8.8" />
+    <link rel="stylesheet" href="style.css?v=2.8.9" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.8.8" defer></script>
+    <script src="script.js?v=2.8.9" defer></script>
     <script src="monitoring-view.js?v=2.8.7" defer></script>
     <script src="branding.js?v=2.7.2" defer></script>
     <script src="scanner.js?v=2.7.2" defer></script>
@@ -26,7 +26,7 @@
     <script src="print-awb.js?v=2.7.2" defer></script>
     <script src="wajib-kirim.js?v=2.8.5" defer></script>
     <script src="vendor/html2canvas.min.js"></script>
-    <script src="fifo-report.js?v=2.8.8" defer></script>
+    <script src="fifo-report.js?v=2.8.9" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -1150,6 +1150,13 @@
                   <span class="btn-text-main">Unduh PNG</span>
                 </button>
 
+                <button type="button" class="btn-executive btn-executive-print" id="btnPrintFifoReport" title="Cetak langsung ke Kertas A4 Portrait atau Simpan sebagai PDF">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                  </span>
+                  <span class="btn-text-main">Cetak A4</span>
+                </button>
+
                 <button type="button" class="btn-executive btn-executive-jfs" id="btnSyncFifoReport" title="Tarik &amp; Refresh Data Persediaan Realtime dari Server JFS">
                   <span class="btn-icon-circle jfs-spin-icon">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -1178,8 +1185,13 @@
               </div>
             </div>
 
-            <!-- PRINTABLE CARD / CAPTURE AREA (PERSIS CONTOH FOTO) -->
+            <!-- PRINTABLE CARD / CAPTURE AREA (PERSIS CONTOH FOTO UKURAN A4) -->
             <div class="fifo-printable-wrapper">
+              <div class="fifo-a4-indicator">
+                <span class="a4-badge">📄 FORMAT: A4 PORTRAIT (210 × 297 mm)</span>
+                <span class="a4-sub">Presisi 1 halaman cetak &amp; resolusi tinggi saat disalin ke WhatsApp/Feishu</span>
+              </div>
+
               <div class="fifo-printable-card" id="fifoReportPrintableCard">
                 <!-- JUDUL RESMI -->
                 <div class="fifo-report-main-header">
@@ -1226,6 +1238,7 @@
                       <tr>
                         <th rowspan="2" class="th-spot">SPOT</th>
                         <th colspan="4" class="th-level">LEVEL</th>
+                        <th rowspan="2" class="th-total">TOTAL</th>
                       </tr>
                       <tr>
                         <th class="th-hour">3. 24 Jam - 36 Jam</th>
@@ -1235,9 +1248,13 @@
                       </tr>
                     </thead>
                     <tbody id="fifoReportTableBody">
-                      <tr><td colspan="5" class="empty-state" style="text-align: center; padding: 24px;">Memuat data Laporan FIFO Spot...</td></tr>
+                      <tr><td colspan="6" class="empty-state" style="text-align: center; padding: 24px;">Memuat data Laporan FIFO Spot...</td></tr>
                     </tbody>
+                    <tfoot id="fifoReportTableFoot"></tfoot>
                   </table>
+                </div>
+              </div>
+            </div>
                 </div>
               </div>
             </div>

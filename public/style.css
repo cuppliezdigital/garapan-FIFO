@@ -23541,39 +23541,83 @@ thead th input[type="checkbox"]:active {
   color: #38bdf8;
 }
 
-/* PRINTABLE / CAPTURE CARD AREA */
+/* PRINT BUTTON EXECUTIVE */
+.btn-executive-print {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.btn-executive-print:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+/* A4 INDICATOR BADGE */
+.fifo-a4-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.fifo-a4-indicator .a4-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(14, 165, 233, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+}
+
+.fifo-a4-indicator .a4-sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* PRINTABLE / CAPTURE CARD AREA (STRICT A4 PORTRAIT: 210mm x 297mm) */
 .fifo-printable-wrapper {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
   overflow-x: auto;
-  padding-bottom: 24px;
+  padding: 10px 0 35px;
 }
 
 .fifo-printable-card {
-  width: 780px;
-  max-width: 100%;
+  width: 210mm;
+  min-width: 210mm;
+  max-width: 210mm;
+  min-height: 297mm;
   background: #ffffff !important;
   color: #000000 !important;
-  border: 2px solid #000000 !important;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-  padding: 18px 24px 28px 24px;
+  border: 1.5px solid #000000 !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.12);
+  padding: 8mm 10mm 10mm 10mm;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   box-sizing: border-box;
+  margin: 0 auto;
 }
 
 .fifo-report-main-header {
   border: 1.5px solid #000000 !important;
   text-align: center;
-  padding: 6px 12px;
-  margin-bottom: 14px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
   background: #ffffff !important;
 }
 
 .fifo-report-main-header h2 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
   margin: 0;
   color: #000000 !important;
   text-transform: uppercase;
@@ -23581,9 +23625,9 @@ thead th input[type="checkbox"]:active {
 
 /* TOP SUMMARY TABLE (STRICT OVERRIDE MIN-WIDTH 980px) */
 .fifo-summary-table-wrap {
-  width: 65%;
+  width: 360px;
   max-width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 table.fifo-summary-table {
@@ -23592,7 +23636,7 @@ table.fifo-summary-table {
   max-width: 100% !important;
   border-collapse: collapse !important;
   border: 1.5px solid #000000 !important;
-  font-size: 0.84rem !important;
+  font-size: 0.72rem !important;
   background: #ffffff !important;
   margin: 0 !important;
   table-layout: fixed !important;
@@ -23600,26 +23644,34 @@ table.fifo-summary-table {
 
 table.fifo-summary-table td {
   border: 1px solid #000000 !important;
-  padding: 5px 8px !important;
+  padding: 2.5px 6px !important;
   font-weight: 700 !important;
   text-align: center !important;
   color: #000000 !important;
   background: #ffffff !important;
   box-sizing: border-box !important;
+  height: 19px !important;
 }
 
 table.fifo-summary-table td.col-summary-label {
-  text-align: center !important;
+  text-align: left !important;
+  padding-left: 8px !important;
   font-weight: 800 !important;
   background: #ffffff !important;
-  width: 48% !important;
+  width: 52% !important;
   color: #000000 !important;
 }
 
-table.fifo-summary-table td.col-summary-val-date,
-table.fifo-summary-table td.col-summary-val-time {
+table.fifo-summary-table td.col-summary-val-date {
   background: #ffffff !important;
   width: 26% !important;
+  font-family: monospace !important;
+  color: #000000 !important;
+}
+
+table.fifo-summary-table td.col-summary-val-time {
+  background: #ffffff !important;
+  width: 22% !important;
   font-family: monospace !important;
   color: #000000 !important;
 }
@@ -23628,20 +23680,19 @@ table.fifo-summary-table td.col-summary-red {
   background: #dc2626 !important;
   color: #ffffff !important;
   font-weight: 900 !important;
-  font-size: 0.95rem !important;
+  font-size: 0.80rem !important;
 }
 
 table.fifo-summary-table td.col-summary-unit {
   background: #ffffff !important;
   font-weight: 700 !important;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: #000000 !important;
 }
 
 /* MAIN MATRIX TABLE (STRICT OVERRIDE MIN-WIDTH 980px) */
 .fifo-matrix-table-wrap {
   width: 100%;
-  overflow-x: auto;
 }
 
 table.fifo-matrix-table {
@@ -23650,7 +23701,7 @@ table.fifo-matrix-table {
   max-width: 100% !important;
   border-collapse: collapse !important;
   border: 1.5px solid #000000 !important;
-  font-size: 0.82rem !important;
+  font-size: 0.72rem !important;
   text-align: center !important;
   background: #ffffff !important;
   margin: 0 !important;
@@ -23662,38 +23713,45 @@ table.fifo-matrix-table th {
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 800 !important;
-  padding: 5px 6px !important;
+  padding: 3px 4px !important;
   text-transform: uppercase !important;
   box-sizing: border-box !important;
 }
 
 table.fifo-matrix-table th.th-spot {
-  width: 26% !important;
+  width: 25% !important;
   vertical-align: middle !important;
-  font-size: 0.88rem !important;
-  letter-spacing: 0.05em;
+  font-size: 0.76rem !important;
 }
 
 table.fifo-matrix-table th.th-level {
-  font-size: 0.88rem !important;
-  letter-spacing: 0.08em;
-  padding: 4px !important;
+  font-size: 0.76rem !important;
+  letter-spacing: 0.06em;
+  padding: 3px !important;
+}
+
+table.fifo-matrix-table th.th-total {
+  width: 15% !important;
+  vertical-align: middle !important;
+  font-size: 0.76rem !important;
+  background: #f1f5f9 !important;
 }
 
 table.fifo-matrix-table th.th-hour {
-  font-size: 0.78rem !important;
-  width: 18.5% !important;
-  padding: 4px 2px !important;
+  font-size: 0.70rem !important;
+  width: 15% !important;
+  padding: 3px 2px !important;
 }
 
 table.fifo-matrix-table td {
   border: 1px solid #000000 !important;
-  padding: 3px 6px !important;
+  padding: 1.5px 4px !important;
   color: #000000 !important;
   font-weight: 600 !important;
-  height: 24px !important;
+  height: 18px !important;
   vertical-align: middle !important;
   box-sizing: border-box !important;
+  font-size: 0.72rem !important;
 }
 
 table.fifo-matrix-table td.col-spot-code {
@@ -23701,20 +23759,21 @@ table.fifo-matrix-table td.col-spot-code {
   background: #ffffff !important;
   font-family: monospace !important;
   font-weight: 800 !important;
-  font-size: 0.88rem !important;
+  font-size: 0.78rem !important;
   letter-spacing: 0.04em;
-  position: relative;
   color: #000000 !important;
 }
 
-table.fifo-matrix-table td.col-spot-code .spot-subname {
-  display: block;
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: #64748b !important;
-  font-family: -apple-system, sans-serif;
-  letter-spacing: normal;
-  margin-top: -2px;
+table.fifo-matrix-table td.col-spot-code .spot-tag {
+  display: inline-block;
+  font-weight: 800;
+}
+
+table.fifo-matrix-table td.col-spot-total {
+  font-weight: 800 !important;
+  background: #f8fafc !important;
+  font-family: monospace !important;
+  font-size: 0.76rem !important;
 }
 
 table.fifo-matrix-table td.col-heat-cell {
@@ -23752,6 +23811,57 @@ table.fifo-matrix-table td.heat-zero {
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 500 !important;
+}
+
+table.fifo-matrix-table tfoot tr.tr-grand-total td {
+  font-weight: 900 !important;
+  background: #e2e8f0 !important;
+  font-size: 0.76rem !important;
+  border-top: 1.5px solid #000000 !important;
+}
+
+/* PRINT MEDIA QUERY FOR STRICT A4 PORTRAIT */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .app-sidebar,
+  .app-header,
+  .fifo-report-top-bar,
+  .fifo-filter-sub-bar,
+  .fifo-a4-indicator,
+  .toast-container,
+  #modalFifoSpotDetail,
+  #modalSpotMapping {
+    display: none !important;
+  }
+  .app-main,
+  .app-body,
+  .content-area,
+  .view-page,
+  .fifo-printable-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+  .fifo-printable-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
 }
 
 /* PATTERN PILL */
