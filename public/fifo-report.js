@@ -250,7 +250,7 @@ async function copyFifoDetailWaybills() {
 }
 
 // --------------------------------------------------------------------------
-// FITUR SALIN GAMBAR LAPORAN KE CLIPBOARD (HTML2CANVAS)
+// FITUR SALIN GAMBAR LAPORAN KE CLIPBOARD (HTML2CANVAS) - OPTIMIZED FAST
 // --------------------------------------------------------------------------
 async function copyFifoReportImage() {
   const card = document.getElementById('fifoReportPrintableCard');
@@ -262,15 +262,30 @@ async function copyFifoReportImage() {
     return;
   }
 
-  if (btn) btn.classList.add('is-loading');
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.innerHTML = `
+      <span class="btn-icon-circle rotating-spinner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </span>
+      <span class="btn-text-main">Menyalin Gambar...</span>
+    `;
+  }
+
+  // Jeda sangat singkat (30ms) agar browser langsung me-render tampilan loading tanpa lag
+  await new Promise((resolve) => setTimeout(resolve, 30));
 
   try {
     const canvas = await html2canvas(card, {
-      scale: 2,
-      useCORS: true,
+      scale: 1.5, // 1.5x scale (HD ~1190px lebar) -> 3x lebih cepat dari scale 2, sangat tajam untuk WA/Feishu
+      useCORS: false, // Bebas delay karena tidak ada gambar eksternal di tabel
       logging: false,
-      backgroundColor: '#ffffff', // Clean white background for A4 sheet
-      width: card.offsetWidth
+      backgroundColor: '#ffffff',
+      imageTimeout: 0,
+      width: card.offsetWidth,
+      height: card.offsetHeight
     });
 
     canvas.toBlob(async (blob) => {
@@ -282,41 +297,77 @@ async function copyFifoReportImage() {
             new ClipboardItem({ 'image/png': blob })
           ]);
           if (btn) {
-            const orig = btn.innerHTML;
-            btn.innerHTML = `<span>✓ Gambar Tersalin!</span>`;
-            setTimeout(() => { btn.innerHTML = orig; }, 2500);
+            btn.classList.remove('is-loading');
+            btn.innerHTML = `
+              <span class="btn-icon-circle" style="background: rgba(16, 185, 129, 0.25); color: #10b981; font-weight: bold;">✓</span>
+              <span class="btn-text-main" style="color: #10b981; font-weight: 800;">Gambar Tersalin!</span>
+            `;
+            setTimeout(() => {
+              btn.innerHTML = origHtml;
+              btn.disabled = false;
+            }, 2500);
           }
-          showAppAlert('Gambar Laporan FIFO Spot berhasil disalin ke clipboard! Siap di-paste (Ctrl + V) ke WhatsApp / Feishu.', false);
+          showAppAlert('Gambar Laporan FIFO Spot (A4) berhasil disalin ke clipboard! Siap di-paste (Ctrl + V) ke WhatsApp / Feishu.', false);
         } else {
           // Fallback unduh jika browser membatasi direct clipboard image
           downloadBlobAsImage(blob, `Laporan_FIFO_Spot_${Date.now()}.png`);
+          if (btn) {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+          }
           showAppAlert('Browser tidak mengizinkan salin gambar langsung. Gambar otomatis diunduh!', false);
         }
       } catch (clipErr) {
+        console.warn('Clipboard write error, fallback download:', clipErr);
         downloadBlobAsImage(blob, `Laporan_FIFO_Spot_${Date.now()}.png`);
+        if (btn) {
+          btn.innerHTML = origHtml;
+          btn.disabled = false;
+          btn.classList.remove('is-loading');
+        }
         showAppAlert('Gambar otomatis diunduh sebagai file PNG.', false);
-      } finally {
-        if (btn) btn.classList.remove('is-loading');
       }
     }, 'image/png');
   } catch (err) {
     console.error('Error copying report image:', err);
     showAppAlert('Gagal menyalin gambar laporan: ' + err.message, true);
-    if (btn) btn.classList.remove('is-loading');
+    if (btn) {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }
   }
 }
 
 async function downloadFifoReportImage() {
   const card = document.getElementById('fifoReportPrintableCard');
+  const btn = document.getElementById('btnDownloadFifoReportImage');
   if (!card || typeof window.html2canvas !== 'function') return;
+
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.innerHTML = `
+      <span class="btn-icon-circle rotating-spinner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </span>
+      <span class="btn-text-main">Membuat PNG...</span>
+    `;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 30));
 
   try {
     const canvas = await html2canvas(card, {
-      scale: 2,
-      useCORS: true,
+      scale: 1.5,
+      useCORS: false,
       logging: false,
       backgroundColor: '#ffffff',
-      width: card.offsetWidth
+      imageTimeout: 0,
+      width: card.offsetWidth,
+      height: card.offsetHeight
     });
 
     const dateStr = (currentFifoReportData?.timestamp?.dateOnly || '').replace(/\//g, '-');
@@ -329,9 +380,25 @@ async function downloadFifoReportImage() {
     a.click();
     document.body.removeChild(a);
 
+    if (btn) {
+      btn.classList.remove('is-loading');
+      btn.innerHTML = `
+        <span class="btn-icon-circle" style="background: rgba(16, 185, 129, 0.25); color: #10b981; font-weight: bold;">✓</span>
+        <span class="btn-text-main" style="color: #10b981; font-weight: 800;">Terunduh!</span>
+      `;
+      setTimeout(() => {
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+      }, 2500);
+    }
     showAppAlert(`Berhasil mengunduh gambar ${filename}!`, false);
   } catch (err) {
     showAppAlert('Gagal mengunduh gambar: ' + err.message, true);
+    if (btn) {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }
   }
 }
 

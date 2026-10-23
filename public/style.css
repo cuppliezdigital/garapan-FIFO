@@ -2036,6 +2036,23 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(255, 255, 255, 0.24);
 }
 
+@keyframes fifoSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.rotating-spinner svg,
+.btn-executive.is-loading .btn-icon-circle svg {
+  animation: fifoSpin 0.75s linear infinite !important;
+}
+
+.btn-executive.is-loading {
+  opacity: 0.88 !important;
+  cursor: wait !important;
+  pointer-events: none !important;
+  filter: brightness(1.08);
+}
+
 /* PRIMARY: IMPORT BUTTON (Sleek Royal Sky/Blue Gradient Glow) */
 .btn-executive-primary {
   background: linear-gradient(135deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%);

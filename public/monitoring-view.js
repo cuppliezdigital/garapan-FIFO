@@ -1561,6 +1561,10 @@ initWaybillDetailModalHandlers();
 initTableSortingAndColumnFilters();
 
 async function copyMonitoringAwbs() {
+  const btn = document.getElementById('copyMonitoringAwbBtn');
+  const textSpan = document.getElementById('copyMonitoringAwbBtnText');
+  const origText = textSpan ? textSpan.textContent : 'Salin AWB';
+  if (textSpan) textSpan.textContent = 'Menyalin...';
   const keyword = (searchInput?.value || '').trim();
   const tlcRaw = (tlcFilterInput?.value || '').trim();
   const selectTlc = (tlcFilter?.value || 'all');
@@ -1582,6 +1586,7 @@ async function copyMonitoringAwbs() {
   });
 
   if (awbs.length === 0) {
+    if (textSpan) textSpan.textContent = origText;
     if (typeof showAppAlert === 'function') {
       showAppAlert(
         isFiltered
@@ -1640,6 +1645,7 @@ async function copyMonitoringAwbs() {
       showAppAlert(`Berhasil menyalin ${scopeDesc} ke clipboard! Siap di-paste ke Excel / WhatsApp.`, false);
     }
   } else {
+    if (textSpan) textSpan.textContent = origText;
     if (typeof showAppAlert === 'function') {
       showAppAlert('Gagal menyalin ke clipboard. Mohon izinkan akses clipboard pada browser Anda.', true);
     }
