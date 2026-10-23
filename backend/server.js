@@ -141,6 +141,61 @@ app.use('/api/pto', ptoRoutes);
 app.use('/api/reports/fifo-spot', fifoReportRoutes);
 app.use('/api/auth', authRoutes);
 
+// ==============================================================================
+// SYSTEM HEALTH CHECK ENDPOINT
+// ==============================================================================
+app.get('/api/health', async (req, res) => {
+  const startTime = Date.now();
+  let dbStatus = 'disconnected';
+  let dbLatencyMs = 0;
+
+  try {
+    const db = require('./config/db');
+    const startDb = Date.now();
+    await db.query('SELECT 1');
+    dbLatencyMs = Date.now() - startDb;
+    dbStatus = 'connected';
+  } catch (err) {
+    dbStatus = 'error: ' + err.message;
+  }
+
+  const uptimeSec = Math.floor(process.uptime());
+  const hours = Math.floor(uptimeSec / 3600);
+  const minutes = Math.floor((uptimeSec % 3600) / 60);
+  const seconds = uptimeSec % 60;
+  const uptimeFormatted = `${hours}j ${minutes}m ${seconds}d`;
+
+  const mem = process.memoryUsage();
+
+  res.setHeader('Cache-Control', 'no-store, no-cache');
+  res.json({
+    status: dbStatus === 'connected' ? 'healthy' : 'degraded',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: uptimeSec,
+    uptimeFormatted,
+    database: {
+      status: dbStatus,
+      latencyMs: dbLatencyMs,
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'db_monitoring_fifo',
+    },
+    services: {
+      jfsWorker: 'active',
+      ptoWorker: 'active',
+    },
+    system: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      memory: {
+        rssMb: Math.round(mem.rss / 1024 / 1024),
+        heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      },
+    },
+    responseTimeMs: Date.now() - startTime,
+  });
+});
+
 const publicDir = path.join(__dirname, '../public');
 app.use(express.static(publicDir, {
   index: false,

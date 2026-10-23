@@ -7,6 +7,7 @@
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
     "build:html": "node scripts/build-html.js",
+    "db:backup": "node scripts/backup-db.js",
     "check": "node scripts/build-html.js && node scripts/check-integrity.js",
     "test": "node scripts/build-html.js && node scripts/check-integrity.js"
   },

@@ -108,6 +108,8 @@ function renderFifoReportUI(data) {
   }
 
   tableBody.innerHTML = html;
+  invalidateFifoCanvasCache();
+  scheduleFifoCanvasPrecache();
 }
 
 // Menentukan class heatmap (Merah, Kuning, Putih/Transparan)
@@ -218,8 +220,46 @@ async function copyFifoDetailWaybills() {
 }
 
 // --------------------------------------------------------------------------
-// FITUR SALIN GAMBAR LAPORAN KE CLIPBOARD (HTML2CANVAS) - OPTIMIZED FAST
 // --------------------------------------------------------------------------
+// FITUR SALIN GAMBAR LAPORAN KE CLIPBOARD (HTML2CANVAS) - ULTRA FAST PRE-CACHED
+// --------------------------------------------------------------------------
+let cachedFifoCanvas = null;
+let precacheTimer = null;
+
+function invalidateFifoCanvasCache() {
+  cachedFifoCanvas = null;
+  if (precacheTimer) clearTimeout(precacheTimer);
+}
+
+function scheduleFifoCanvasPrecache() {
+  if (precacheTimer) clearTimeout(precacheTimer);
+  precacheTimer = setTimeout(async () => {
+    try {
+      const card = document.getElementById('fifoReportPrintableCard');
+      const view = document.getElementById('viewFifoReport');
+      if (card && view && !view.classList.contains('hidden') && card.offsetWidth > 0) {
+        cachedFifoCanvas = await generateFifoReportCanvas(card);
+      }
+    } catch (e) {
+      // background precache non-fatal
+    }
+  }, 400);
+}
+
+async function generateFifoReportCanvas(card) {
+  return await html2canvas(card, {
+    scale: 1.5, // 1.5x HD scale (tajam & responsif)
+    useCORS: false,
+    logging: false,
+    backgroundColor: '#ffffff',
+    imageTimeout: 0,
+    removeContainer: true,
+    foreignObjectRendering: false,
+    width: card.offsetWidth,
+    height: card.offsetHeight
+  });
+}
+
 async function copyFifoReportImage() {
   const card = document.getElementById('fifoReportPrintableCard');
   const btn = document.getElementById('btnCopyFifoReportImage');
@@ -242,19 +282,12 @@ async function copyFifoReportImage() {
     `;
   }
 
-  // Jeda sangat singkat (30ms) agar browser langsung me-render tampilan loading tanpa lag
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  // Jeda sangat singkat (15ms)
+  await new Promise((resolve) => setTimeout(resolve, 15));
 
   try {
-    const canvas = await html2canvas(card, {
-      scale: 1.5, // 1.5x scale (HD ~1190px lebar) -> 3x lebih cepat dari scale 2, sangat tajam untuk WA/Feishu
-      useCORS: false, // Bebas delay karena tidak ada gambar eksternal di tabel
-      logging: false,
-      backgroundColor: '#ffffff',
-      imageTimeout: 0,
-      width: card.offsetWidth,
-      height: card.offsetHeight
-    });
+    const canvas = cachedFifoCanvas || await generateFifoReportCanvas(card);
+    cachedFifoCanvas = canvas; // simpan cache
 
     canvas.toBlob(async (blob) => {
       if (!blob) throw new Error('Gagal mengonversi tabel menjadi gambar.');
@@ -277,7 +310,6 @@ async function copyFifoReportImage() {
           }
           showAppAlert('Gambar Laporan FIFO Spot (A4) berhasil disalin ke clipboard! Siap di-paste (Ctrl + V) ke WhatsApp / Feishu.', false);
         } else {
-          // Fallback unduh jika browser membatasi direct clipboard image
           downloadBlobAsImage(blob, `Laporan_FIFO_Spot_${Date.now()}.png`);
           if (btn) {
             btn.innerHTML = origHtml;
@@ -325,18 +357,11 @@ async function downloadFifoReportImage() {
     `;
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await new Promise((resolve) => setTimeout(resolve, 15));
 
   try {
-    const canvas = await html2canvas(card, {
-      scale: 1.5,
-      useCORS: false,
-      logging: false,
-      backgroundColor: '#ffffff',
-      imageTimeout: 0,
-      width: card.offsetWidth,
-      height: card.offsetHeight
-    });
+    const canvas = cachedFifoCanvas || await generateFifoReportCanvas(card);
+    cachedFifoCanvas = canvas;
 
     const dateStr = (currentFifoReportData?.timestamp?.dateOnly || '').replace(/\//g, '-');
     const filename = `Laporan_FIFO_Spot_${dateStr || Date.now()}.png`;
@@ -359,9 +384,9 @@ async function downloadFifoReportImage() {
         btn.disabled = false;
       }, 2500);
     }
-    showAppAlert(`Berhasil mengunduh gambar ${filename}!`, false);
   } catch (err) {
-    showAppAlert('Gagal mengunduh gambar: ' + err.message, true);
+    console.error('Error downloading report image:', err);
+    showAppAlert('Gagal membuat gambar PNG: ' + err.message, true);
     if (btn) {
       btn.innerHTML = origHtml;
       btn.disabled = false;

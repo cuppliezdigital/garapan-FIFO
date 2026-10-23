@@ -81,6 +81,7 @@ GARAPAN-FIFO
 │   │   └── views/           # Partials view halaman utama
 │   └── vendor/              # Library pihak ketiga (xlsx, html2canvas, jsbarcode)
 ├── scripts/
+│   ├── backup-db.js         # Automated MySQL database backup engine
 │   ├── build-html.js        # Compiler assembly template HTML
 │   └── check-integrity.js   # Automated DOM Integrity Guard test
 ├── backups/                 # Arsip snapshot database (.sql)
@@ -127,7 +128,10 @@ Buka browser di `http://localhost:3000`.
 | :--- | :--- |
 | `npm test` atau `npm run check` | **Automated Integrity Guard**: Menguji keutuhan 100% tag HTML, hierarki kontainer, 8 sub-tab advance, dan keseimbangan CSS dalam 0.2 detik. |
 | `npm run build:html` | Merangkai `index.template.html` beserta seluruh partials menjadi `index.html`. *(Server Express juga otomatis menjalankan ini saat runtime).* |
+| `npm run db:backup` | **Database Backup Engine**: Dump 23 tabel MySQL secara instan ke folder `backups/` dengan auto-retention 7 hari. |
 | `npm start` | Menjalankan server produksi di port 3000. |
+
+> 🩺 **Diagnosa Kesehatan Server**: Akses endpoint `GET http://localhost:3000/api/health` untuk memantau status koneksi MySQL, latency database, status scheduler JFS & PTO, serta penggunaan memori Node.js secara realtime.
 
 ---
 
@@ -144,3 +148,4 @@ Buka browser di `http://localhost:3000`.
 ---
 
 *Dikembangkan dengan standar performa tinggi untuk operasional logistik J&T Cargo.*
+
