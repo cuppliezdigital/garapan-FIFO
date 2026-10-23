@@ -7436,35 +7436,68 @@ thead th input[type="checkbox"]:active {
   }
   .btn-reset-filter {
     height: 36px !important;
-    padding: 0 11px !important;
-    font-size: 0.78rem !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    padding: 0 !important;
     border-radius: 9px !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+  .btn-reset-filter span {
+    display: none !important;
+  }
+  .btn-reset-filter svg {
+    width: 15px !important;
+    height: 15px !important;
+    display: block !important;
+    margin: 0 auto !important;
   }
   .btn-copy-awb {
     height: 36px !important;
-    padding: 0 10px !important;
-    font-size: 0.78rem !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    padding: 0 !important;
     border-radius: 9px !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+  .btn-copy-awb span {
+    display: none !important;
+  }
+  .btn-copy-awb svg {
+    width: 15px !important;
+    height: 15px !important;
+    display: block !important;
+    margin: 0 auto !important;
   }
   .tlc-quick-chips {
     padding: 6px 10px !important;
     gap: 8px !important;
+    overflow: hidden !important;
   }
   .chips-label {
-    font-size: 0.68rem !important;
+    font-size: 0.70rem !important;
+    flex-shrink: 0 !important;
+  }
+  .chips-scroll-wrapper {
+    position: relative !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .chips-nav-arrow {
+    display: none !important; /* Di HP swipe langsung dengan jari, hilangkan panah yang tumpang tindih */
   }
   .tlc-chip {
     padding: 3px 8px !important;
     font-size: 0.72rem !important;
     border-radius: 6px !important;
+    flex-shrink: 0 !important;
   }
   .tlc-chip .chip-count {
     font-size: 0.64rem !important;
     padding: 1px 4px !important;
-  }
-  .chips-nav-arrow {
-    width: 22px !important;
-    height: 22px !important;
   }
 }
 
