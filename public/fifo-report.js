@@ -7,6 +7,12 @@ let currentFifoReportData = null;
 let currentSpotDetailWaybills = [];
 
 async function loadFifoSpotReport(forceRefresh = false) {
+  // Jika data sudah ada di memori dan bukan force refresh, render instan tanpa delay network
+  if (!forceRefresh && currentFifoReportData) {
+    renderFifoReportUI(currentFifoReportData);
+    return;
+  }
+
   const tableBody = document.getElementById('fifoReportTableBody');
   const btnSync = document.getElementById('btnSyncFifoReport');
   if (btnSync) btnSync.classList.add('is-loading');
@@ -109,7 +115,6 @@ function renderFifoReportUI(data) {
 
   tableBody.innerHTML = html;
   invalidateFifoCanvasCache();
-  scheduleFifoCanvasPrecache();
 }
 
 // Menentukan class heatmap (Merah, Kuning, Putih/Transparan)
@@ -224,26 +229,9 @@ async function copyFifoDetailWaybills() {
 // FITUR SALIN GAMBAR LAPORAN KE CLIPBOARD (HTML2CANVAS) - ULTRA FAST PRE-CACHED
 // --------------------------------------------------------------------------
 let cachedFifoCanvas = null;
-let precacheTimer = null;
 
 function invalidateFifoCanvasCache() {
   cachedFifoCanvas = null;
-  if (precacheTimer) clearTimeout(precacheTimer);
-}
-
-function scheduleFifoCanvasPrecache() {
-  if (precacheTimer) clearTimeout(precacheTimer);
-  precacheTimer = setTimeout(async () => {
-    try {
-      const card = document.getElementById('fifoReportPrintableCard');
-      const view = document.getElementById('viewFifoReport');
-      if (card && view && !view.classList.contains('hidden') && card.offsetWidth > 0) {
-        cachedFifoCanvas = await generateFifoReportCanvas(card);
-      }
-    } catch (e) {
-      // background precache non-fatal
-    }
-  }, 400);
 }
 
 async function generateFifoReportCanvas(card) {
