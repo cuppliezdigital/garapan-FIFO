@@ -1,0 +1,269 @@
+<!-- TAB PANE 8: WAJIB KIRIM (MUST-GO QUALITY CONTROL) -->
+          <div id="viewWajibKirim" class="advance-pane hidden">
+            <section class="panel wk-panel">
+              <div class="wk-container">
+
+                <!-- TOP HEADER & CONTROLS -->
+                <div class="wk-header-card">
+                  <div class="wk-header-left">
+                    <div class="wk-badge-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="wk-eyebrow">
+                        <span class="live-dot pulse-amber"></span>
+                        <span>JFS QC REPORT LEADER • MUST-GO DISPATCH INTELLIGENCE</span>
+                      </div>
+                      <h2 class="wk-title">WAJIB KIRIM</h2>
+                      <p class="wk-subtitle">
+                        Sinkronisasi rekonsiliasi otomatis antara kargo <strong>Wajib Berangkat (QC Must-Go)</strong> dan <strong>Stok Fisik Gudang GW-Jakarta</strong>. Mengutamakan koli yang mendekati cut-off armada linehaul.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="wk-header-right">
+                    <div class="wk-sync-meta-box">
+                      <div class="wk-sync-time-label">Terakhir Disinkronkan:</div>
+                      <div id="wkLastSyncText" class="wk-sync-time-val font-mono font-bold">Memuat...</div>
+                    </div>
+                    <button type="button" class="btn-wk-sync" id="btnSyncWajibKirim">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                      </svg>
+                      <span>Sinkronkan WAJIB KIRIM</span>
+                    </button>
+                    <button type="button" class="btn-wk-export" id="btnExportWajibKirim" title="Ekspor data ke file CSV / Excel">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span>Ekspor CSV</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- METRIC SUMMARY GRID -->
+                <div class="wk-stats-grid">
+                  <div class="wk-stat-card">
+                    <div class="wk-stat-header">
+                      <span class="wk-stat-label">Total Koli Wajib Kirim</span>
+                      <span class="wk-stat-icon icon-amber">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+                      </span>
+                    </div>
+                    <div class="wk-stat-val font-mono" id="wkStatTotalKoli">0</div>
+                    <div class="wk-stat-desc">Target Kargo Must-Go</div>
+                  </div>
+
+                  <div class="wk-stat-card">
+                    <div class="wk-stat-header">
+                      <span class="wk-stat-label">Total Bobot Muatan</span>
+                      <span class="wk-stat-icon icon-emerald">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                      </span>
+                    </div>
+                    <div class="wk-stat-val font-mono" id="wkStatTotalWeight">0 kg</div>
+                    <div class="wk-stat-desc">Estimasi Tonase Linehaul</div>
+                  </div>
+
+                  <div class="wk-stat-card">
+                    <div class="wk-stat-header">
+                      <span class="wk-stat-label">Masih Staging di GW</span>
+                      <span class="wk-stat-icon icon-rose">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      </span>
+                    </div>
+                    <div class="wk-stat-val font-mono text-rose-400" id="wkStatTotalStuck">0</div>
+                    <div class="wk-stat-desc">Prioritas Harus Segera Muat</div>
+                  </div>
+
+                  <div class="wk-stat-card">
+                    <div class="wk-stat-header">
+                      <span class="wk-stat-label">Kota / TLC Tujuan</span>
+                      <span class="wk-stat-icon icon-cyan">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      </span>
+                    </div>
+                    <div class="wk-stat-val font-mono" id="wkStatTotalTlc">0</div>
+                    <div class="wk-stat-desc">Destinasi Three-Letter Code</div>
+                  </div>
+                </div>
+
+                <!-- FILTER CONTROLS BAR -->
+                <div class="wk-controls-card">
+                  <div class="wk-controls-top-row">
+                    <!-- PENCARIAN UTAMA -->
+                    <div class="wk-search-box-wrap">
+                      <svg class="wk-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="7"/>
+                        <path d="m21 21-4.3-4.3"/>
+                      </svg>
+                      <input type="text" id="wkGlobalSearch" class="wk-global-search-input" placeholder="Pencarian Utama: Cari No Resi, Koli, TLC, Outlet, GW Tujuan, Nama Barang..." autocomplete="off">
+                      <button type="button" id="btnClearWkGlobalSearch" class="btn-clear-wk-search" title="Bersihkan pencarian">✕</button>
+                    </div>
+
+                    <!-- STATUS PILL FILTERS -->
+                    <div class="wk-status-filters-wrap">
+                      <button type="button" class="wk-status-pill-filter active" data-status="all">Semua</button>
+                      <button type="button" class="wk-status-pill-filter" data-status="stuck">Hanya Staging GW</button>
+                      <button type="button" class="wk-status-pill-filter" data-status="departed">Sudah Berangkat</button>
+                    </div>
+
+                    <!-- RESET BUTTON -->
+                    <button type="button" class="btn-wk-reset" id="btnResetWajibKirim" title="Reset semua filter dan kolom pencarian">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                      </svg>
+                      <span>Reset Filter</span>
+                    </button>
+                  </div>
+
+                  <!-- QUICK TLC PILLS -->
+                  <div class="wk-tlc-bar">
+                    <span class="wk-tlc-label">Filter Cepat TLC:</span>
+                    <div id="wkTlcPillsContainer" class="wk-tlc-pills-list">
+                      <!-- Diisi dinamis oleh JS -->
+                    </div>
+                  </div>
+
+                  <!-- ROW COUNT INFO -->
+                  <div class="wk-count-info-row">
+                    <span id="wkFilterCountText" class="wk-filter-count font-mono">Memuat...</span>
+                    <span class="wk-sort-hint text-muted text-xs">Klik judul kolom untuk urutkan A-Z / Z-A</span>
+                  </div>
+                </div>
+
+                <!-- TABLE SECTION -->
+                <div class="wk-table-card">
+                  <div class="wk-table-responsive">
+                    <table class="wk-table" id="wkJfsTable">
+                      <thead>
+                        <!-- ROW 1: HEADER TITLES WITH SORT INDICATOR -->
+                        <tr class="wk-header-row">
+                          <th style="width: 44px;" class="text-center">#</th>
+                          <th class="wk-th-sortable" data-sort="waybill_no" style="min-width: 175px;">
+                            <div class="th-content">
+                              <span>No Resi &amp; Koli</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable text-center" data-sort="tlc" style="width: 80px;">
+                            <div class="th-content center">
+                              <span>TLC</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="take_site_name" style="min-width: 110px;">
+                            <div class="th-content">
+                              <span>Outlet Asal</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="destination_site_name" style="min-width: 120px;">
+                            <div class="th-content">
+                              <span>Outlet Tujuan</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="first_distribution_name" style="min-width: 120px;">
+                            <div class="th-content">
+                              <span>GW Pengirim</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="send_nextstation" style="min-width: 130px;">
+                            <div class="th-content">
+                              <span>GW Tujuan</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="goods_name" style="min-width: 180px;">
+                            <div class="th-content">
+                              <span>Nama Barang</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable text-right" data-sort="weight" style="width: 95px;">
+                            <div class="th-content right">
+                              <span>Berat</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable text-center" data-sort="inventory_hours" style="width: 105px;">
+                            <div class="th-content center">
+                              <span>Menginap</span>
+                              <span class="sort-arrow sort-desc">▼</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="should_depart_time" style="min-width: 135px;">
+                            <div class="th-content">
+                              <span>Jadwal Cut-off</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th class="wk-th-sortable" data-sort="lost_reson" style="min-width: 160px;">
+                            <div class="th-content">
+                              <span>Alasan QC</span>
+                              <span class="sort-arrow">⇅</span>
+                            </div>
+                          </th>
+                          <th style="width: 85px;" class="text-center">Aksi</th>
+                        </tr>
+
+                        <!-- ROW 2: PER-COLUMN FILTER INPUTS -->
+                        <tr class="wk-filter-row">
+                          <th></th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="waybill" placeholder="Filter Resi..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter text-center" data-col="tlc" placeholder="TLC..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="take_site" placeholder="Filter Asal..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="dest_site" placeholder="Filter Tujuan..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="first_gw" placeholder="GW Asal..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="send_next" placeholder="GW Tujuan..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="goods" placeholder="Filter Barang..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter text-right" data-col="weight" placeholder="Kg..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter text-center" data-col="inventory_hours" placeholder="Jam..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="cutoff" placeholder="Cutoff..." autocomplete="off">
+                          </th>
+                          <th>
+                            <input type="text" class="wk-col-filter" data-col="reason" placeholder="Alasan..." autocomplete="off">
+                          </th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="wkJfsTableBody">
+                        <!-- Diisi otomatis oleh wajib-kirim.js -->
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- PAGINATION BAR -->
+                  <div class="wk-pagination-footer" id="wkPaginationContainer">
+                    <!-- Diisi otomatis oleh wajib-kirim.js -->
+                  </div>
+                </div>
+
+              </div>
+            </section>
+          </div>

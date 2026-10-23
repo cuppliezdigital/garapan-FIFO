@@ -1,0 +1,215 @@
+<!-- TAB PANE 5: PTO (PELACAKAN TOTAL ORDER OMS) -->
+          <div id="viewPto" class="advance-pane hidden">
+            <section class="panel pto-panel">
+              <!-- HEADER SECTION -->
+              <div class="pto-header">
+                <div class="pto-header-titles">
+                  <div class="pto-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="pto-title">PTO &mdash; Pelacakan Total Order (OMS JFS)</h3>
+                    <p class="pto-desc">Pencarian &amp; penelusuran live jutaan data order pelanggan J&amp;T Cargo. Dilengkapi nama barang, berat asli, detail alamat pengirim &amp; penerima, serta rute gateway.</p>
+                  </div>
+                </div>
+
+                <div class="pto-header-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <span class="pto-sync-badge" id="ptoSyncStatusBadge" style="font-size: 0.78rem; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 5px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #38bdf8;"></span>
+                    <span id="ptoSyncStatusText">Auto-Sync Aktif</span>
+                  </span>
+                  <button type="button" class="btn-pto-ghost" id="btnSyncPtoLive" onclick="triggerPtoManualSync()" title="Sinkronkan data live PTO sekarang dari JFS">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span id="btnSyncPtoLiveText">Sinkronkan PTO</span>
+                  </button>
+                  <button type="button" class="btn-pto-ghost" id="btnOpenPtoConfigModal" onclick="openPtoConfigModal()" title="Ganti atau atur Auth Token PTO">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Setting Token PTO</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- FILTER & SEARCH CARD -->
+              <div class="pto-filter-card">
+                <!-- PRESET DATE BUTTONS -->
+                <div class="pto-filter-row">
+                  <div class="pto-preset-chips" id="ptoDatePresets">
+                    <span class="pto-chip-label">Preset Tanggal:</span>
+                    <button type="button" class="pto-chip" data-days="0">Hari Ini</button>
+                    <button type="button" class="pto-chip" data-days="3">3 Hari</button>
+                    <button type="button" class="pto-chip" data-days="7">7 Hari</button>
+                    <button type="button" class="pto-chip" data-days="15">15 Hari</button>
+                    <button type="button" class="pto-chip active" data-days="30">30 Hari (1 Bulan)</button>
+                    <button type="button" class="pto-chip" data-days="custom">Custom Bebas</button>
+                  </div>
+                </div>
+
+                <!-- MAIN CONTROLS ROW -->
+                <form id="ptoFilterForm" class="pto-filter-grid">
+                  <div class="pto-field-group">
+                    <label for="ptoStartDate">Tanggal Awal (Bebas)</label>
+                    <input type="date" id="ptoStartDate" class="pto-input" required />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoEndDate">Tanggal Akhir (Bebas)</label>
+                    <input type="date" id="ptoEndDate" class="pto-input" required />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoSiteCode">Kode Site / Outlet Asal</label>
+                    <input type="text" id="ptoSiteCode" class="pto-input" value="JKT99A" placeholder="Contoh: JKT99A atau kode outlet drop point" style="text-transform: uppercase; font-family: monospace; font-weight: 700; color: #38bdf8;" />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoOrderSource">Sumber Platform</label>
+                    <select id="ptoOrderSource" class="pto-input">
+                      <option value="all">Semua Platform (All)</option>
+                      <option value="shopee">Shopee</option>
+                      <option value="Tokopedia">Tokopedia</option>
+                      <option value="TikTok">TikTok</option>
+                    </select>
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoPageSize">Baris per Halaman</label>
+                    <select id="ptoPageSize" class="pto-input">
+                      <option value="50">50 Baris</option>
+                      <option value="100" selected>100 Baris (Rekomendasi)</option>
+                      <option value="200">200 Baris</option>
+                      <option value="300">300 Baris</option>
+                      <option value="500">500 Baris (Maksimal)</option>
+                    </select>
+                  </div>
+
+                  <div class="pto-field-group full-width">
+                    <label for="ptoWaybillSearch">
+                      <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                          <span>Cari Nomor Resi (AWB) ATAU Nomor Pesanan Marketplace (Resi Sobek)</span>
+                          <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">MULTI-AWB SUPPORT</span>
+                        </span>
+                        <span id="ptoSearchCountBadge" class="pto-search-count-badge hidden">0 Resi</span>
+                      </span>
+                      <small class="text-muted">(Bisa masukkan 1 atau BANYAK resi sekaligus! Copy-paste kolom Excel, pisah Enter/baris baru, spasi, atau koma)</small>
+                    </label>
+                    <div class="pto-search-input-wrap">
+                      <textarea id="ptoWaybillSearch" class="pto-input pto-search-textarea" rows="2" placeholder="Masukkan 1 atau banyak No. Resi / No. Pesanan (contoh: 201692897928, ID266645347008T)... Bisa copy-paste 1 kolom Excel langsung tanpa koma!"></textarea>
+                      <button type="button" class="btn-clear-input" id="btnClearPtoSearch" title="Bersihkan input">✕</button>
+                    </div>
+                    <span style="font-size: 0.74rem; color: #94a3b8; margin-top: 5px; display: block;">💡 <strong>Multi-AWB & Resi Sobek:</strong> Bisa cari banyak resi sekaligus tanpa koma (cukup pisah Enter/baris baru). Tekan <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Ctrl</kbd> + <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Enter</kbd> untuk langsung cari.</span>
+                  </div>
+
+                  <div class="pto-actions-row full-width">
+                    <div class="pto-actions-left">
+                      <button type="submit" class="btn-pto-primary" id="btnSubmitPtoQuery">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <span>Tarik &amp; Cari Data PTO</span>
+                      </button>
+                      <button type="button" class="btn-pto-secondary" id="btnResetPtoFilter">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        <span>Reset</span>
+                      </button>
+                    </div>
+                    <div class="pto-actions-right">
+                      <button type="button" class="btn-pto-tool" id="btnImportPtoExcel" title="Upload file Excel JFS Pelacakan Total Order (36 Kolom) agar nama pengirim, penerima, berat & alamat 100% lengkap">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span>Import Excel PTO</span>
+                      </button>
+                      <input type="file" id="inputPtoExcelFile" accept=".xlsx, .xls, .csv, .tsv" style="display: none;" />
+                      <button type="button" class="btn-pto-tool" id="btnExportPtoExcel" title="Download data halaman ini ke Excel / CSV">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export Excel</span>
+                      </button>
+                      <button type="button" class="btn-pto-tool" id="btnCopyPtoSummary" title="Salin ringkasan nomor resi &amp; nama barang ke clipboard">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        <span id="btnCopyPtoSummaryText">Salin Ringkasan</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <!-- KPI STAT STRIP -->
+              <div class="pto-kpi-strip">
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">TOTAL DATA DITEMUKAN</span>
+                  <span class="pto-kpi-value highlight-cyan" id="ptoKpiTotalOrders">0 Order</span>
+                </div>
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">HALAMAN AKTIF</span>
+                  <span class="pto-kpi-value" id="ptoKpiPageInfo">Halaman 1 / 1</span>
+                </div>
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">TOTAL BERAT HALAMAN INI</span>
+                  <span class="pto-kpi-value highlight-amber" id="ptoKpiTotalWeight">0.00 kg</span>
+                </div>
+                <div class="pto-kpi-item">
+                  <span class="pto-kpi-label">WAKTU RESPON API</span>
+                  <span class="pto-kpi-value" id="ptoKpiResponseTime">0.00s</span>
+                </div>
+              </div>
+
+              <!-- TABLE CARD -->
+              <div class="pto-table-container">
+                <div class="pto-table-responsive">
+                  <table class="pto-data-table" id="ptoTable">
+                    <thead>
+                      <tr>
+                        <th style="width: 45px; text-align: center;">NO</th>
+                        <th style="width: 140px;">NOMOR AWB</th>
+                        <th style="width: 130px;">PLATFORM &amp; PESANAN</th>
+                        <th style="min-width: 200px;">NAMA BARANG</th>
+                        <th style="width: 105px; text-align: right;">BERAT / KOLI</th>
+                        <th style="width: 160px;">TOKO / PERUSAHAAN PENGIRIM</th>
+                        <th style="width: 140px;">PENGIRIM</th>
+                        <th style="width: 130px;">OUTLET ASAL &amp; TLC</th>
+                        <th style="width: 140px;">OUTLET TUJUAN</th>
+                        <th style="width: 150px;">PENERIMA</th>
+                        <th style="width: 140px;">PERUSAHAAN PENERIMA</th>
+                        <th style="width: 120px;">HP PENERIMA</th>
+                        <th style="min-width: 220px;">ALAMAT TUJUAN</th>
+                        <th style="width: 100px; text-align: right;">NILAI / COD</th>
+                        <th style="width: 85px; text-align: center;">AKSI</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ptoTableBody">
+                      <tr>
+                        <td colspan="15" class="pto-empty-state">
+                          <div class="pto-empty-content">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.5; margin-bottom: 8px;">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <circle cx="12" cy="14" r="3"/>
+                            </svg>
+                            <p style="font-weight: 600; color: #cbd5e1;">Belum Ada Data yang Ditampilkan</p>
+                            <span style="font-size: 0.8rem; color: #94a3b8;">Tentukan rentang tanggal atau masukkan nomor resi pada filter di atas, lalu klik <strong>"Tarik &amp; Cari Data PTO"</strong>.</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- PAGINATION BAR -->
+                <div class="pto-pagination-bar" id="ptoPaginationBar">
+                  <div class="pto-pagination-info">
+                    <span id="ptoPaginationRangeText">Menampilkan 0 dari 0 order</span>
+                  </div>
+                  <div class="pto-pagination-controls" id="ptoPaginationControls">
+                    <button type="button" class="btn-page" id="btnPtoFirstPage" disabled title="Halaman Pertama">&laquo;</button>
+                    <button type="button" class="btn-page" id="btnPtoPrevPage" disabled title="Halaman Sebelumnya">&lsaquo;</button>
+                    <div class="pto-page-numbers" id="ptoPageNumbers"></div>
+                    <button type="button" class="btn-page" id="btnPtoNextPage" disabled title="Halaman Berikutnya">&rsaquo;</button>
+                    <button type="button" class="btn-page" id="btnPtoLastPage" disabled title="Halaman Terakhir">&raquo;</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>

@@ -1,0 +1,210 @@
+<!-- TAB PANE 7: CETAK AWB & KOLI RESMI JFS -->
+          <div id="viewPrintAwb" class="advance-pane hidden">
+            <section class="panel print-awb-panel">
+              <div class="print-awb-container">
+                <!-- HEADER & STATUS BAR -->
+                <div class="print-awb-header-card">
+                  <div class="print-awb-header-left">
+                    <div class="print-awb-badge-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect width="12" height="8" x="6" y="14"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="print-awb-eyebrow">
+                        <span class="live-dot pulse-purple"></span>
+                        <span>JFS OFFICIAL CLOUD PRINT • THERMAL &amp; TTD</span>
+                      </div>
+                      <h2 class="print-awb-title">Pusat Cetak AWB &amp; Kolian Resmi JFS</h2>
+                      <p class="print-awb-subtitle">
+                        Cetak label thermal asli J&amp;T Cargo (PDF Alibaba Cloud OSS): Resi Utama, Label Kolian Lengkap, dan Resi dengan Kolom TTD / Bukti Tanda Terima.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="print-awb-header-right">
+                    <div class="print-awb-format-pill">
+                      <span class="pill-dot"></span>
+                      <span>Format Thermal 100×100 / 100×150 / 100×180mm</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- MAIN CONTROLS CARD -->
+                <div class="print-awb-controls-card">
+                  <!-- PILIHAN TIPE CETAK -->
+                  <div class="print-awb-form-section">
+                    <label class="print-awb-label">
+                      <span>1. Pilih Tipe Dokumen Label yang Ingin Dicetak</span>
+                    </label>
+                    <div class="print-type-selector-grid">
+                      <label class="print-type-card active">
+                        <input type="radio" name="printDocType" value="4,5" checked />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-popular">Rekomendasi</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                                <polyline points="2 17 12 22 22 17"/>
+                                <polyline points="2 12 12 17 22 12"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Resi Utama + Semua Kolian</strong>
+                          <span class="print-type-desc">Mencetak label resi induk dan seluruh lembar koli (misal: 5 koli = 5 lembar).</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="4" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-master">Induk</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Resi Utama Saja</strong>
+                          <span class="print-type-desc">Hanya mencetak 1 lembar label induk (Master AWB) tanpa lembar koli anak.</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="5" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-koli">Koli</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Label Kolian Saja</strong>
+                          <span class="print-type-desc">Khusus paket multi-koli: hanya mencetak label koli anak tanpa resi utama.</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="2" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-ttd">TTD / POD</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <path d="M9 15l2 2 4-4"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Resi Lengkap + Kolom TTD</strong>
+                          <span class="print-type-desc">Format 3 rangkap (100x180mm) dilengkapi kolom tanda tangan &amp; cap serah terima.</span>
+                        </div>
+                      </label>
+
+                      <label class="print-type-card">
+                        <input type="radio" name="printDocType" value="1" />
+                        <div class="print-type-content">
+                          <div class="print-type-top">
+                            <span class="print-type-badge badge-manifest">Surat Jalan</span>
+                            <span class="print-type-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                              </svg>
+                            </span>
+                          </div>
+                          <strong class="print-type-name">Surat Jalan / Manifest A4</strong>
+                          <span class="print-type-desc">Format tanda terima serah terima dokumen ekspedisi ukuran penuh (A4).</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- INPUT MULTI-AWB -->
+                  <div class="print-awb-form-section">
+                    <div class="print-awb-input-header">
+                      <label for="printAwbInput" class="print-awb-label">
+                        <span>2. Masukkan Nomor Resi (AWB)</span>
+                        <small class="text-muted">(Bisa copy-paste 1 kolom Excel langsung, dipisah enter/baris baru, spasi, atau koma)</small>
+                      </label>
+                      <div class="print-awb-badge-wrap">
+                        <span id="printAwbCountBadge" class="print-awb-count-badge hidden">0 Resi</span>
+                        <button type="button" class="btn-clear-print-input" id="btnClearPrintAwb" title="Bersihkan input">Bersihkan</button>
+                      </div>
+                    </div>
+                    <div class="print-awb-textarea-wrap">
+                      <textarea id="printAwbInput" class="print-awb-textarea" rows="3" placeholder="Contoh:&#10;570650197323&#10;570637710281&#10;201822795237&#10;(Bisa paste 1 kolom Excel langsung tanpa koma!)..."></textarea>
+                    </div>
+
+                    <!-- QUICK SAMPLES & ACTION BUTTON -->
+                    <div class="print-awb-action-bar">
+                      <div class="print-awb-samples">
+                        <span class="samples-label">Contoh:</span>
+                        <button type="button" class="btn-print-sample" data-sample="570650197323">Resi 1 Koli</button>
+                        <button type="button" class="btn-print-sample" data-sample="570637710281">Resi 2 Koli</button>
+                        <button type="button" class="btn-print-sample" data-sample="570650197323&#10;570637710281&#10;201822795237">Batch 3 Resi</button>
+                      </div>
+
+                      <button type="button" class="btn-generate-print-pdf" id="btnGenerateAwbPrint">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="6 9 6 2 18 2 18 9"/>
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                          <rect width="12" height="8" x="6" y="14"/>
+                        </svg>
+                        <span>Tarik &amp; Cetak Label PDF</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RESULTS SECTION -->
+                <div class="print-awb-results-card">
+                  <!-- SUMMARY TOOLBAR -->
+                  <div id="printAwbSummaryToolbar" class="print-summary-toolbar hidden">
+                    <div class="summary-toolbar-left">
+                      <span class="pulse-green-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+                      <strong id="printSummaryStatusText" class="summary-status-text">Siap Dicetak: 0 Resi</strong>
+                    </div>
+                    <div class="summary-toolbar-right">
+                      <button type="button" class="btn-open-all-pdfs" id="btnOpenAllPdfs">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                        <span>Buka Semua PDF</span>
+                      </button>
+                      <button type="button" class="btn-copy-all-urls" id="btnCopyAllPdfUrls">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        <span>Salin Semua Link</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- RESULTS CONTAINER / LIST -->
+                  <div id="printAwbResultsList" class="print-awb-results-list hidden"></div>
+
+                  <!-- EMPTY STATE -->
+                  <div id="printAwbEmptyState" class="print-awb-empty-state">
+                    <div class="empty-icon-wrap">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect width="12" height="8" x="6" y="14"/>
+                      </svg>
+                    </div>
+                    <h4>Belum Ada Label yang Siap Dicetak</h4>
+                    <p>Masukkan nomor resi AWB pada kotak di atas, pilih tipe dokumen (Resi Utama, Kolian, atau TTD), lalu klik tombol <strong>Tarik &amp; Siapkan Cetak PDF</strong>.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>

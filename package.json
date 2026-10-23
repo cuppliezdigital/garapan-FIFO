@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
-    "check": "node scripts/check-integrity.js",
-    "test": "node scripts/check-integrity.js"
+    "build:html": "node scripts/build-html.js",
+    "check": "node scripts/build-html.js && node scripts/check-integrity.js",
+    "test": "node scripts/build-html.js && node scripts/check-integrity.js"
   },
   "keywords": [],
   "author": "",

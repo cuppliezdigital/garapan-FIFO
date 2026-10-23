@@ -7,10 +7,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const { buildHtml } = require('./build-html');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const INDEX_HTML = path.join(PUBLIC_DIR, 'index.html');
+const INDEX_TEMPLATE = path.join(PUBLIC_DIR, 'index.template.html');
 const STYLE_CSS = path.join(PUBLIC_DIR, 'style.css');
 const THEMES_CSS = path.join(PUBLIC_DIR, 'themes-retro.css');
 
@@ -42,16 +44,27 @@ console.log(` 🛡️  GARAPAN-FIFO: AUTOMATED INTEGRITY & DOM GUARD `);
 console.log(`=======================================================${colors.reset}\n`);
 
 // -----------------------------------------------------------------------------
-// 1. CEK KEBERADAAN FILE UTAMA
+// 1. CEK KEBERADAAN FILE UTAMA & PARTIALS
 // -----------------------------------------------------------------------------
-console.log(`${colors.bold}[1/4] Memeriksa Integritas File Inti...${colors.reset}`);
+console.log(`${colors.bold}[1/5] Memeriksa Integritas File Inti & Partials...${colors.reset}`);
 const requiredFiles = [
+  INDEX_TEMPLATE,
   INDEX_HTML,
   STYLE_CSS,
   THEMES_CSS,
   path.join(PUBLIC_DIR, 'script.js'),
   path.join(PUBLIC_DIR, 'monitoring-view.js'),
   path.join(PUBLIC_DIR, 'fifo-report.js'),
+  path.join(PUBLIC_DIR, 'partials', 'views', 'fifo-report.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'reconcile.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'kendaraan.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'feishu.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'jfs.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'pto.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'barcode.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'print-awb.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'wajib-kirim.html'),
+  path.join(PUBLIC_DIR, 'partials', 'modals', 'modals.html'),
   path.join(ROOT_DIR, 'backend', 'server.js'),
 ];
 
@@ -66,9 +79,21 @@ requiredFiles.forEach((file) => {
 });
 
 // -----------------------------------------------------------------------------
-// 2. CEK STRUKTUR & TAG HTML (PARSER FULL TREE)
+// 2. CEK AUTO-COMPILER HTML PARTIALS
 // -----------------------------------------------------------------------------
-console.log(`\n${colors.bold}[2/4] Memeriksa Keutuhan Tag HTML (Parser Non-Destructive)...${colors.reset}`);
+console.log(`\n${colors.bold}[2/5] Memeriksa Kompilasi HTML Partials...${colors.reset}`);
+try {
+  const res = buildHtml();
+  pass(`Kompilasi HTML berhasil: Template (${res.templateLines} baris) -> Output (${res.outputLines} baris).`);
+} catch (err) {
+  fail(`Kompilasi HTML GAGAL: ${err.message}`);
+  totalErrors++;
+}
+
+// -----------------------------------------------------------------------------
+// 3. CEK STRUKTUR & TAG HTML (PARSER FULL TREE)
+// -----------------------------------------------------------------------------
+console.log(`\n${colors.bold}[3/5] Memeriksa Keutuhan Tag HTML (Parser Non-Destructive)...${colors.reset}`);
 
 const htmlContent = fs.readFileSync(INDEX_HTML, 'utf8');
 
@@ -188,11 +213,10 @@ if (htmlErrors.length === 0 && stack.length === 0) {
 }
 
 // -----------------------------------------------------------------------------
-// 3. CEK HIERARKI DOM KONTAINER UTAMA
+// 4. CEK HIERARKI DOM KONTAINER UTAMA
 // -----------------------------------------------------------------------------
-console.log(`\n${colors.bold}[3/4] Memeriksa Hierarki Kontainer Utama (Cegah Layout Geser)...${colors.reset}`);
+console.log(`\n${colors.bold}[4/5] Memeriksa Hierarki Kontainer Utama (Cegah Layout Geser)...${colors.reset}`);
 
-const expectedAncestry = ['html', 'body', 'div', 'div', 'main'];
 function isCorrectAncestry(arr) {
   if (!arr) return false;
   const str = arr.join('>');
@@ -238,9 +262,9 @@ if (allPanesFound) {
 }
 
 // -----------------------------------------------------------------------------
-// 4. CEK KESEIMBANGAN KURUNG CSS (BRACE BALANCE)
+// 5. CEK KESEIMBANGAN KURUNG CSS (BRACE BALANCE)
 // -----------------------------------------------------------------------------
-console.log(`\n${colors.bold}[4/4] Memeriksa Keseimbangan CSS & Asset Link...${colors.reset}`);
+console.log(`\n${colors.bold}[5/5] Memeriksa Keseimbangan CSS & Asset Link...${colors.reset}`);
 
 function checkCssBraces(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');

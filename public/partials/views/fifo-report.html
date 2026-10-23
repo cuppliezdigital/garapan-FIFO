@@ -1,0 +1,132 @@
+<!-- VIEW: LAPORAN FIFO SPOT (REALTIME JFS) -->
+          <div id="viewFifoReport" class="view-page hidden">
+            <div class="fifo-report-top-bar">
+              <div class="fifo-report-title-area">
+                <div class="fifo-report-badge-row">
+                  <span class="pulse-indicator-live"></span>
+                  <span class="fifo-live-chip">REALTIME INVENTORY JFS</span>
+                  <span class="fifo-role-chip">ADMIN &amp; GM ONLY</span>
+                </div>
+                <h2>Laporan FIFO Spot</h2>
+                <p class="fifo-report-desc">Matriks Aging Inventaris Gudang per Loading Dock / TLC Tujuan (GW-Jakarta)</p>
+              </div>
+
+              <div class="fifo-report-action-buttons">
+                <button type="button" class="btn-executive btn-executive-primary" id="btnCopyFifoReportImage" title="Salin seluruh tabel laporan sebagai gambar ke Clipboard (Siap Paste di WhatsApp/Feishu)">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </span>
+                  <span class="btn-text-main">Salin Gambar</span>
+                </button>
+
+                <button type="button" class="btn-executive btn-executive-secondary" id="btnDownloadFifoReportImage" title="Unduh gambar laporan sebagai file PNG">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </span>
+                  <span class="btn-text-main">Unduh PNG</span>
+                </button>
+
+                <button type="button" class="btn-executive btn-executive-print" id="btnPrintFifoReport" title="Cetak langsung ke Kertas A4 Portrait atau Simpan sebagai PDF">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                  </span>
+                  <span class="btn-text-main">Cetak A4</span>
+                </button>
+
+                <button type="button" class="btn-executive btn-executive-jfs" id="btnSyncFifoReport" title="Tarik &amp; Refresh Data Persediaan Realtime dari Server JFS">
+                  <span class="btn-icon-circle jfs-spin-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  </span>
+                  <span class="btn-text-main">Sync JFS</span>
+                </button>
+
+                <button type="button" class="btn-executive" id="btnOpenSpotMapping" title="Atur mapping kode SPOT TLC Tujuan">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  </span>
+                  <span class="btn-text-main">Master SPOT</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- FILTER SUB-BAR -->
+            <div class="fifo-filter-sub-bar">
+              <label class="fifo-checkbox-label">
+                <input type="checkbox" id="chkFifoOnlyCritical" />
+                <span>Hanya tampilkan Spot yang memiliki paket tertahan</span>
+              </label>
+              <div class="fifo-click-tip">
+                <span class="tip-icon">💡</span>
+                <span>Klik angka pada kolom untuk melihat rincian &amp; menyalin nomor AWB</span>
+              </div>
+            </div>
+
+            <!-- PRINTABLE CARD / CAPTURE AREA (PERSIS CONTOH FOTO UKURAN A4) -->
+            <div class="fifo-printable-wrapper">
+              <div class="fifo-a4-indicator">
+                <span class="a4-badge">📄 FORMAT: A4 PORTRAIT (210 × 297 mm)</span>
+                <span class="a4-sub">Presisi 1 halaman cetak &amp; resolusi tinggi saat disalin ke WhatsApp/Feishu</span>
+              </div>
+
+              <div class="fifo-printable-card" id="fifoReportPrintableCard">
+                <!-- JUDUL RESMI -->
+                <div class="fifo-report-main-header">
+                  <h2>LAPORAN FIFO</h2>
+                </div>
+
+                <!-- TABEL SUMMARY ATAS (PERSIS FORMAT FOTO) -->
+                <div class="fifo-summary-table-wrap">
+                  <table class="fifo-summary-table">
+                    <tbody>
+                      <tr>
+                        <td class="col-summary-label">TANGGAL</td>
+                        <td class="col-summary-val-date" id="fifoReportDate">-</td>
+                        <td class="col-summary-val-time" id="fifoReportTime">-</td>
+                      </tr>
+                      <tr>
+                        <td class="col-summary-label">3. 24 Jam - 36 Jam</td>
+                        <td class="col-summary-red" id="fifoSummary24_36">0</td>
+                        <td class="col-summary-unit">PAKET</td>
+                      </tr>
+                      <tr>
+                        <td class="col-summary-label">4. 48 Jam - 60 Jam</td>
+                        <td class="col-summary-red" id="fifoSummary48_60">0</td>
+                        <td class="col-summary-unit">PAKET</td>
+                      </tr>
+                      <tr>
+                        <td class="col-summary-label">5. 48 Jam - 72 Jam</td>
+                        <td class="col-summary-red" id="fifoSummary48_72">0</td>
+                        <td class="col-summary-unit">PAKET</td>
+                      </tr>
+                      <tr>
+                        <td class="col-summary-label">6. 72 UP</td>
+                        <td class="col-summary-red" id="fifoSummary72_up">0</td>
+                        <td class="col-summary-unit">PAKET</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- TABEL MATRIX SPOT X LEVEL JAM -->
+                <div class="fifo-matrix-table-wrap">
+                  <table class="fifo-matrix-table">
+                    <thead>
+                      <tr>
+                        <th rowspan="2" class="th-spot" style="text-align: center !important; vertical-align: middle !important;">SPOT</th>
+                        <th colspan="4" class="th-level" style="text-align: center !important; vertical-align: middle !important;">LEVEL</th>
+                      </tr>
+                      <tr>
+                        <th class="th-hour" style="text-align: center !important; vertical-align: middle !important; white-space: nowrap !important;">3. 24 Jam - 36 Jam</th>
+                        <th class="th-hour" style="text-align: center !important; vertical-align: middle !important; white-space: nowrap !important;">4. 48 Jam - 60 Jam</th>
+                        <th class="th-hour" style="text-align: center !important; vertical-align: middle !important; white-space: nowrap !important;">5. 48 Jam - 72 Jam</th>
+                        <th class="th-hour" style="text-align: center !important; vertical-align: middle !important; white-space: nowrap !important;">6. 72 UP</th>
+                      </tr>
+                    </thead>
+                    <tbody id="fifoReportTableBody">
+                      <tr><td colspan="5" class="empty-state" style="text-align: center; padding: 24px;">Memuat data Laporan FIFO Spot...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>

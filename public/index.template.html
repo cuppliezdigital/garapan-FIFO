@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monitoring FIFO</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" href="jt_cargo_icon_green.png" />
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#00B075" />
+    <link rel="stylesheet" href="style.css?v=2.9.4" />
+    <link rel="stylesheet" href="themes-retro.css?v=2.9.4" />
+    <script src="vendor/xlsx.full.min.js"></script>
+    <script src="script.js?v=2.9.4" defer></script>
+    <script src="monitoring-view.js?v=2.9.0" defer></script>
+    <script src="branding.js?v=2.7.2" defer></script>
+    <script src="scanner.js?v=2.7.2" defer></script>
+    <script src="reconcile.js?v=2.7.2" defer></script>
+    <script src="jfs.js?v=2.7.2" defer></script>
+    <script src="kendaraan.js?v=2.8.5" defer></script>
+    <script src="feishu.js?v=2.8.5" defer></script>
+    <script src="jsbarcode.min.js"></script>
+    <script src="barcode-gen.js?v=2.7.2" defer></script>
+    <script src="pto.js?v=2.7.2" defer></script>
+    <script src="print-awb.js?v=2.7.2" defer></script>
+    <script src="wajib-kirim.js?v=2.8.5" defer></script>
+    <script src="vendor/html2canvas.min.js"></script>
+    <script src="fifo-report.js?v=2.9.4" defer></script>
+  </head>
+  <body>
+    <div id="loginView" class="auth-page">
+      <div class="auth-shell">
+        <div class="auth-card">
+          <div class="auth-header">
+            <div class="auth-logo" aria-hidden="true">
+              <div id="loginDefaultIcon" class="brand-logo-icon auth-circle-logo">
+                <svg width="34" height="34" viewBox="0 0 64 64" fill="none" aria-label="Robot Mecha Logo">
+                  <defs>
+                    <linearGradient id="armorCyanLogin" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#38bdf8" />
+                      <stop offset="100%" stop-color="#0284c7" />
+                    </linearGradient>
+                    <linearGradient id="laserVisorLogin" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#00f2fe" />
+                      <stop offset="45%" stop-color="#ffffff" />
+                      <stop offset="55%" stop-color="#ffffff" />
+                      <stop offset="100%" stop-color="#00c6ff" />
+                    </linearGradient>
+                    <filter id="neonGlowLogin" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="1.2" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <polygon points="32,6 37,13 27,13" fill="url(#armorCyanLogin)" />
+                  <line x1="32" y1="7" x2="32" y2="14" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+                  <rect x="7" y="25" width="4.5" height="15" rx="2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                  <rect x="52.5" y="25" width="4.5" height="15" rx="2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                  <circle cx="9.25" cy="32.5" r="1.2" fill="#00f2fe"/>
+                  <circle cx="54.75" cy="32.5" r="1.2" fill="#00f2fe"/>
+                  <path d="M14 20 L27 14 L37 14 L50 20 L48 42 L40 52 L32 56 L24 52 L16 42 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2.2" stroke-linejoin="round"/>
+                  <polygon points="26,16 38,16 42,22 22,22" fill="#1e293b" stroke="#0284c7" stroke-width="1.2" />
+                  <path d="M18 24 L32 21 L46 24 L44 40 L38 48 L32 51 L26 48 L20 40 Z" fill="#020617" stroke="#1e293b" stroke-width="1.5"/>
+                  <rect x="20" y="28" width="24" height="6.5" rx="3.25" fill="url(#laserVisorLogin)" filter="url(#neonGlowLogin)"/>
+                  <line x1="26" y1="30" x2="33" y2="30" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+                  <line x1="27" y1="41" x2="37" y2="41" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round"/>
+                  <line x1="29" y1="44.5" x2="35" y2="44.5" stroke="#0284c7" stroke-width="1.5" stroke-linecap="round"/>
+                  <polygon points="29.5,52 34.5,52 32,55" fill="#00f2fe"/>
+                </svg>
+              </div>
+              <img id="loginLogo" class="login-logo-img hidden" alt="Logo aplikasi" />
+            </div>
+            <h1>Monitoring FIFO</h1>
+          </div>
+
+          <form id="loginForm" class="auth-form">
+            <label class="input-field">
+              <span>Username</span>
+              <input type="text" id="loginUsername" name="username" placeholder="Masukkan username" required />
+            </label>
+
+            <label class="input-field">
+              <span>Password</span>
+              <div class="password-input-box">
+                <input type="password" id="loginPassword" name="password" placeholder="Masukkan password" required />
+                <button type="button" class="password-toggle-btn" id="toggleLoginPasswordBtn" aria-label="Lihat password" tabindex="-1" title="Tampilkan / sembunyikan password">
+                  <svg class="eye-icon eye-open hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg class="eye-icon eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                    <line x1="2" x2="22" y1="2" y2="22"/>
+                  </svg>
+                </button>
+              </div>
+            </label>
+
+            <button type="submit" class="primary-btn auth-btn">Masuk</button>
+            <button type="button" class="secondary-btn auth-btn hidden" id="showRegisterBtn" style="display:none;">Buat akun baru</button>
+            <p id="loginMessage" class="auth-message" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="registerModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <h3>Buat Akun Baru</h3>
+          <button type="button" class="close-btn" id="closeRegisterModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="registerForm">
+          <div class="form-grid">
+            <label>
+              <span>Username</span>
+              <input type="text" id="registerUsername" name="username" placeholder="Username" required />
+            </label>
+
+            <label>
+              <span>Password</span>
+              <div class="password-input-box">
+                <input type="password" id="registerPassword" name="password" placeholder="Password" required />
+                <button type="button" class="password-toggle-btn" id="toggleRegisterPasswordBtn" aria-label="Lihat password" tabindex="-1" title="Tampilkan / sembunyikan password">
+                  <svg class="eye-icon eye-open hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg class="eye-icon eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                    <line x1="2" x2="22" y1="2" y2="22"/>
+                  </svg>
+                </button>
+              </div>
+            </label>
+
+            <label>
+              <span>Role</span>
+              <select id="registerRole" name="role">
+                <option value="user" selected>User</option>
+                <option value="client">Client</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelRegisterBtn">Batal</button>
+            <button type="submit" class="primary-btn">Daftar</button>
+          </div>
+
+          <p id="registerMessage" class="auth-message" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="dashboardView" class="app-layout hidden">
+      <!-- SIDEBAR NAVIGATION -->
+      <aside id="appSidebar" class="app-sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-logo-wrap">
+            <div id="sidebarDefaultIcon" class="brand-logo-icon">
+              <svg width="26" height="26" viewBox="0 0 64 64" fill="none" aria-label="Robot Mecha Logo">
+                <defs>
+                  <linearGradient id="armorCyanSidebar" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#38bdf8" />
+                    <stop offset="100%" stop-color="#0284c7" />
+                  </linearGradient>
+                  <linearGradient id="laserVisorSidebar" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#00f2fe" />
+                    <stop offset="45%" stop-color="#ffffff" />
+                    <stop offset="55%" stop-color="#ffffff" />
+                    <stop offset="100%" stop-color="#00c6ff" />
+                  </linearGradient>
+                  <filter id="neonGlowSidebar" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="1.2" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <polygon points="32,6 37,13 27,13" fill="url(#armorCyanSidebar)" />
+                <line x1="32" y1="7" x2="32" y2="14" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+                <rect x="7" y="25" width="4.5" height="15" rx="2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                <rect x="52.5" y="25" width="4.5" height="15" rx="2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                <circle cx="9.25" cy="32.5" r="1.2" fill="#00f2fe"/>
+                <circle cx="54.75" cy="32.5" r="1.2" fill="#00f2fe"/>
+                <path d="M14 20 L27 14 L37 14 L50 20 L48 42 L40 52 L32 56 L24 52 L16 42 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2.2" stroke-linejoin="round"/>
+                <polygon points="26,16 38,16 42,22 22,22" fill="#1e293b" stroke="#0284c7" stroke-width="1.2" />
+                <path d="M18 24 L32 21 L46 24 L44 40 L38 48 L32 51 L26 48 L20 40 Z" fill="#020617" stroke="#1e293b" stroke-width="1.5"/>
+                <rect x="20" y="28" width="24" height="6.5" rx="3.25" fill="url(#laserVisorSidebar)" filter="url(#neonGlowSidebar)"/>
+                <line x1="26" y1="30" x2="33" y2="30" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="27" y1="41" x2="37" y2="41" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="29" y1="44.5" x2="35" y2="44.5" stroke="#0284c7" stroke-width="1.5" stroke-linecap="round"/>
+                <polygon points="29.5,52 34.5,52 32,55" fill="#00f2fe"/>
+              </svg>
+            </div>
+            <img id="sidebarLogoImg" class="sidebar-logo-img hidden" alt="Logo Perusahaan" />
+          </div>
+          <div class="brand-info">
+            <h2 class="brand-name">Monitoring FIFO</h2>
+            <span class="brand-desc">Sistem Monitoring Gudang</span>
+          </div>
+          <button type="button" id="sidebarCloseBtn" class="sidebar-close-btn" aria-label="Tutup Menu">✕</button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-label-group">MENU UTAMA</div>
+          <a href="#/monitoring" class="nav-link active" id="navMonitoring">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="7" height="9" x="3" y="3" rx="1"/>
+                <rect width="7" height="5" x="14" y="3" rx="1"/>
+                <rect width="7" height="9" x="14" y="12" rx="1"/>
+                <rect width="7" height="5" x="3" y="16" rx="1"/>
+              </svg>
+            </span>
+            <span class="nav-text">Monitoring Data</span>
+          </a>
+          <!-- MENU LAPORAN FIFO SPOT (KHUSUS SUPER_ADMIN & ADMIN) -->
+          <a href="#/fifo-report" class="nav-link nav-admin-item" id="navFifoReport">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M3 9h18"/>
+                <path d="M3 15h18"/>
+                <path d="M9 3v18"/>
+                <path d="M15 3v18"/>
+              </svg>
+            </span>
+            <span class="nav-text">Laporan FIFO Spot</span>
+            <span class="nav-pda-tag" style="background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.35);">SPOT</span>
+          </a>
+
+          <!-- MENU ADVANCE (HANYA UNTUK ROLE ADMIN-GM & ADMIN) -->
+          <a href="#/advance" class="nav-link" id="navAdvance">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </span>
+            <span class="nav-text">Advance</span>
+            <span class="nav-pda-tag" style="background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.35);">PRO</span>
+          </a>
+          <a href="#/archive" class="nav-link" id="navArchive">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="5" x="2" y="3" rx="1"/>
+                <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/>
+                <path d="M10 12h4"/>
+              </svg>
+            </span>
+            <span class="nav-text">Arsip Waybill</span>
+          </a>
+          <a href="#/history" class="nav-link" id="navHistory">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <path d="M12 7v5l4 2"/>
+              </svg>
+            </span>
+            <span class="nav-text">History Update</span>
+          </a>
+          <a href="javascript:void(0)" class="nav-link nav-scanner-trigger" id="navScanner">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="8" x2="7" y2="16"/>
+                <line x1="10" y1="8" x2="10" y2="16"/>
+                <line x1="14" y1="8" x2="14" y2="16"/>
+                <line x1="17" y1="8" x2="17" y2="16"/>
+              </svg>
+            </span>
+            <span class="nav-text">Scanner PDA</span>
+            <span class="nav-pda-tag">PDA</span>
+          </a>
+
+          <div class="nav-label-group nav-admin-item">ADMINISTRASI</div>
+          <a href="#/users" class="nav-link nav-admin-item" id="navUsers">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </span>
+            <span class="nav-text">Manajemen User</span>
+          </a>
+          <a href="#/permissions" class="nav-link nav-admin-item" id="navPermissions">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+            </span>
+            <span class="nav-text">Konfigurasi Akses</span>
+          </a>
+          <a href="#/audit" class="nav-link nav-admin-item" id="navAudit">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                <path d="M12 11h4"/>
+                <path d="M12 16h4"/>
+                <path d="M8 11h.01"/>
+                <path d="M8 16h.01"/>
+              </svg>
+            </span>
+            <span class="nav-text">Audit Log</span>
+          </a>
+          <a href="#/settings" class="nav-link nav-admin-item" id="navSettings">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </span>
+            <span class="nav-text">Pengaturan Sistem</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-user-card">
+            <div class="user-avatar-badge">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="user-profile-data">
+              <span id="sidebarUserName" class="sidebar-user-name">User</span>
+              <span id="sidebarUserRole" class="sidebar-user-role">Operator</span>
+            </div>
+          </div>
+          <button type="button" id="sidebarLogoutBtn" class="sidebar-logout-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" x2="9" y1="12" y2="12"/>
+            </svg>
+            <span>Keluar</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- BACKDROP UNTUK MOBILE DRAWER -->
+      <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+      <!-- MAIN CONTENT WRAPPER -->
+      <div class="app-main-layout">
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <button type="button" id="sidebarToggleBtn" class="hamburger-btn" aria-label="Buka Menu Navigasi" title="Menu Navigasi">
+              <div class="menu-btn-inner">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="2.5" class="bento-cube bento-accent" />
+                  <rect x="14" y="3" width="7" height="7" rx="2.5" class="bento-cube" />
+                  <rect x="3" y="14" width="7" height="7" rx="2.5" class="bento-cube" />
+                  <rect x="14" y="14" width="7" height="7" rx="2.5" class="bento-cube" />
+                </svg>
+                <span class="menu-btn-glow"></span>
+              </div>
+            </button>
+            <div>
+              <p class="eyebrow" id="pageEyebrow">Monitoring System</p>
+              <h1 id="pageTitle">FIFO Dashboard</h1>
+            </div>
+          </div>
+
+          <div class="topbar-actions">
+            <!-- TOMBOL SYNC MANDIRI (UNIVERSAL & MOBILE FRIENDLY UNTUK SEMUA AKUN) -->
+            <button class="mobile-sync-btn" id="btnMobileQuickSync" type="button" title="Sinkronkan Data JFS Realtime">
+              <span class="mobile-sync-spin-icon" id="mobileSyncSpinIcon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+              </span>
+              <span class="mobile-sync-text" id="mobileSyncBtnText">Sync</span>
+            </button>
+            <span id="userPill" class="user-pill">User</span>
+            <button class="auto-refresh-toggle-btn" id="autoRefreshToggleBtn" type="button" title="Auto-Refresh tiap 60 detik (cocok untuk layar display gudang)" aria-pressed="false">
+              <span class="auto-refresh-pulse-dot" aria-hidden="true"></span>
+              <span class="auto-refresh-text">Auto 60s: <strong>OFF</strong></span>
+            </button>
+            <button class="secondary-btn" id="logoutBtn" type="button">Logout</button>
+          </div>
+        </header>
+
+        <!-- VIEWS CONTAINER (Hanya satu view yang tampil, tidak menumpuk) -->
+        <main class="app-views-container">
+          <!-- VIEW 1: MONITORING (DEFAULT) -->
+          <div id="viewMonitoring" class="view-page active">
+            <!-- 1. BARIS KARTU UTAMA (SELALU MUNCUL DI ATAS) -->
+            <section class="summary-strip-global">
+              <!-- TOTAL DATA -->
+              <div class="stat-card accent-indigo global-card" id="card-total" style="cursor: pointer;">
+                <div class="global-card-info">
+                  <span class="global-card-title">Total Data</span>
+                  <strong class="global-card-number" id="totalData">0</strong>
+                </div>
+                <div class="stat-icon icon-purple">
+                  <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- SUDAH DIUPDATE -->
+              <div class="stat-card accent-green global-card" id="card-updated" style="cursor: pointer;">
+                <div class="global-card-info">
+                  <span class="global-card-title">Sudah Diupdate</span>
+                  <strong class="global-card-number" id="updatedCardCount">0</strong>
+                </div>
+                <div class="stat-icon icon-green">
+                  <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- ARSIP WAYBILL -->
+              <div class="stat-card accent-cyan global-card" id="card-archive" style="cursor: pointer;">
+                <div class="global-card-info">
+                  <span class="global-card-title">Arsip Waybill</span>
+                  <strong class="global-card-number" id="archiveCardCount">0</strong>
+                </div>
+                <div class="stat-icon icon-cyan">
+                  <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="5" rx="1"></rect>
+                    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                    <path d="M10 12h4"></path>
+                  </svg>
+                </div>
+              </div>
+            </section>
+
+            <!-- LIVE FLOW SPEEDOMETER GW (PC ONLY - MODUL 3) -->
+            <section class="jfs-flow-strip pc-only-flow-widget" id="jfsFlowStrip">
+              <div class="jfs-flow-header">
+                <div class="jfs-flow-title-wrap">
+                  <span class="jfs-flow-pulse"></span>
+                  <span class="jfs-flow-title">Beban Realtime GW-Jakarta</span>
+                  <span class="jfs-flow-site-chip">JKT99A</span>
+                  <span class="jfs-flow-time" id="jfsFlowTime">Memuat data JFS...</span>
+                </div>
+                <div class="jfs-flow-actions">
+                  <button type="button" class="btn-flow-refresh" id="btnRefreshFlowSummary" title="Segarkan Data Beban GW">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+              <div class="jfs-flow-cards-grid">
+                <!-- CARD 1: INBOUND / BONGKAR -->
+                <div class="jfs-flow-card card-inbound" id="flowCardInbound" title="Klik untuk melihat rincian & tren Bongkar GW">
+                  <div class="flow-card-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                      <path d="m3.3 7 8.7 5 8.7-5"/>
+                      <path d="M12 22V12"/>
+                      <path d="m16 12 5 2.8"/>
+                      <path d="m3 14.8 5-2.8"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <span class="flow-card-label">Bongkar (Tiba Hari Ini)</span>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number" id="flowArrivalQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowArrivalWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+
+                <!-- CARD 2: BELUM MUAT / BACKLOG -->
+                <div class="jfs-flow-card card-backlog" id="flowCardBacklog" title="Klik untuk melihat rincian & tren Antrean Belum Muat">
+                  <div class="flow-card-icon icon-amber">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <div class="flow-card-label-row">
+                      <span class="flow-card-label">Antrean Belum Muat</span>
+                      <span class="flow-badge-alert" id="flowBacklogBadge">Backlog</span>
+                    </div>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number text-amber" id="flowBacklogQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowBacklogWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+
+                <!-- CARD 3: OUTBOUND / MUAT TERKIRIM -->
+                <div class="jfs-flow-card card-outbound" id="flowCardOutbound" title="Klik untuk melihat rincian & tren Muat Terkirim GW">
+                  <div class="flow-card-icon icon-emerald">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="1" y="3" width="15" height="13" rx="2"/>
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                      <circle cx="5.5" cy="18.5" r="2.5"/>
+                      <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <span class="flow-card-label">Muat Terkirim</span>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number text-emerald" id="flowSendQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowSendWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+
+                <!-- CARD 4: IN-TRANSIT / DI JALAN -->
+                <div class="jfs-flow-card card-transit" id="flowCardTransit" title="Klik untuk melihat rincian & tren Dalam Perjalanan">
+                  <div class="flow-card-icon icon-cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14"/>
+                      <path d="m12 5 7 7-7 7"/>
+                    </svg>
+                  </div>
+                  <div class="flow-card-info">
+                    <span class="flow-card-label">Dalam Perjalanan</span>
+                    <div class="flow-card-metrics">
+                      <strong class="flow-number text-cyan" id="flowTransitQty">0</strong>
+                      <span class="flow-unit">AWB</span>
+                    </div>
+                    <span class="flow-subtext" id="flowTransitWeight">0 Ton • 0 Koli</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 2. TOMBOL DRAWER KARTU JAM NGUMPET (EXPANDABLE TRIGGER BAR) -->
+            <div class="stuck-drawer-wrap">
+              <button type="button" id="btnToggleStuckDrawer" class="stuck-drawer-toggle">
+                <div class="drawer-toggle-left">
+                  <div class="drawer-icon-box">
+                    <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <span class="drawer-toggle-title">Kategori Jam Stuck (Aging)</span>
+                  <span class="drawer-summary-badge" id="drawerSummaryBadge">36h+: 0 Data</span>
+                </div>
+                <div class="drawer-toggle-right">
+                  <span id="drawerToggleText" class="drawer-toggle-label">Buka Kartu</span>
+                  <svg id="chevronStuckDrawer" class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </button>
+
+              <!-- 3. KONTEN DRAWER (COLLAPSIBLE, DEFAULT: NGUMPET) -->
+              <div id="stuckDrawerContainer" class="stuck-drawer-content is-collapsed">
+                <div class="stuck-drawer-inner">
+                  <!-- MODERN SEGMENTED TAB SWITCHER (CENTERED) -->
+                  <div class="stuck-tab-bar-wrap">
+                    <div class="stuck-tab-switcher">
+                      <button type="button" id="tabStuckPriority" class="stuck-tab-pill active">
+                        <svg class="tab-pill-icon text-amber" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        <span>Prioritas Kritis</span>
+                        <span class="tab-pill-tag tag-amber">36h+</span>
+                      </button>
+                      <button type="button" id="tabStuckAll" class="stuck-tab-pill">
+                        <svg class="tab-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                        </svg>
+                        <span>Semua Level</span>
+                        <span class="tab-pill-tag tag-slate">1-72h</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- UNIFIED 6 STUCK CARDS GRID (NO DUPLICATES, NO DOUBLE TITLES) -->
+                  <div id="stuckCardsGrid" class="stuck-cards-grid mode-priority">
+                    <!-- 1. 1-12 Jam -->
+                    <div class="stat-card stuck-card accent-teal" id="card-1-12" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">1. 1-12 Jam</span>
+                          <span class="stuck-range-badge">1 - 11h</span>
+                        </div>
+                        <div class="stat-icon icon-teal">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 14 14"></polyline>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-1-12">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 2. 12-24 Jam -->
+                    <div class="stat-card stuck-card accent-blue" id="card-12-24" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">2. 12-24 Jam</span>
+                          <span class="stuck-range-badge">12 - 23h</span>
+                        </div>
+                        <div class="stat-icon icon-blue">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 15 13"></polyline>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-12-24">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 3. 24-36 Jam -->
+                    <div class="stat-card stuck-card accent-violet" id="card-24-36" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">3. 24-36 Jam</span>
+                          <span class="stuck-range-badge">24 - 35h</span>
+                        </div>
+                        <div class="stat-icon icon-violet">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-24-36">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 4. 36-48 Jam -->
+                    <div class="stat-card stuck-card accent-amber" id="card-36-48" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">4. 36-48 Jam</span>
+                          <span class="stuck-range-badge">36 - 47h</span>
+                        </div>
+                        <div class="stat-icon icon-amber">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-36-48">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 5. 48-60 Jam -->
+                    <div class="stat-card stuck-card accent-orange" id="card-48-60" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">5. 48-60 Jam</span>
+                          <span class="stuck-range-badge">48 - 59h</span>
+                        </div>
+                        <div class="stat-icon icon-orange">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-48-60">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 6. 60-72 Jam -->
+                    <div class="stat-card stuck-card accent-deep-orange" id="card-60-72" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">6. 60-72 Jam</span>
+                          <span class="stuck-range-badge">60 - 71h</span>
+                        </div>
+                        <div class="stat-icon icon-deep-orange">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-60-72">0</strong>
+                      </div>
+                    </div>
+
+                    <!-- 7. 72 Jam UP -->
+                    <div class="stat-card stuck-card accent-red" id="card-72-up" style="cursor: pointer;">
+                      <div class="stuck-card-header">
+                        <div class="stuck-card-title-group">
+                          <span class="stuck-card-label">7. 72 Jam UP</span>
+                          <span class="stuck-range-badge">≥ 72 Jam</span>
+                        </div>
+                        <div class="stat-icon icon-red">
+                          <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="stuck-card-metric">
+                        <strong class="stuck-count-number" id="count-72-up">0</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="monitoring-quick-bar is-open" id="monitoringQuickBar">
+              <div class="quick-bar-header" id="quickBarHeader">
+                <div class="quick-bar-meta">
+                  <span class="quick-bar-dot"></span>
+                  <span class="quick-bar-label">Operasional Data</span>
+                </div>
+                <button type="button" class="quick-bar-toggle-btn" id="btnToggleQuickBar" title="Buka / Tutup Tombol Operasional">
+                  <span class="quick-bar-toggle-text" id="quickBarToggleText">Sembunyikan</span>
+                  <svg class="quick-bar-chevron is-open" id="chevronQuickBar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              </div>
+              <div class="quick-bar-actions" id="quickBarActions">
+                <button type="button" class="btn-executive btn-executive-jfs" id="btnQuickSyncJfs" title="Tarik & Sinkronkan Data Realtime dari JFS (jfs.jtcargo.co.id)">
+                  <span class="btn-icon-circle jfs-spin-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Sync JFS</span>
+                  <span class="quick-status-chip live" id="jfsLiveBadge">Live</span>
+                </button>
+                <button type="button" class="btn-executive btn-executive-shift" id="btnArchiveCompletedShift" title="Pindahkan semua waybill yang sudah diupdate ke riwayat (dilakukan saat pergantian shift)">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="20" height="5" x="2" y="3" rx="1"/>
+                      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/>
+                      <path d="M10 12h4"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Arsip Selesai</span>
+                </button>
+                <button type="button" class="btn-executive btn-executive-primary" id="importBulkBtn">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Import Bulk Data</span>
+                </button>
+                <button type="button" class="btn-executive btn-executive-secondary" id="downloadTemplateBtn">
+                  <span class="btn-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Template CSV</span>
+                </button>
+                <button type="button" class="btn-executive btn-executive-scanner" id="openScannerBtn" title="Buka Scanner Barcode / PDA Fisik">
+                  <span class="btn-icon-circle scanner-icon-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                      <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                      <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                      <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                      <line x1="7" y1="8" x2="7" y2="16"/>
+                      <line x1="10" y1="8" x2="10" y2="16"/>
+                      <line x1="14" y1="8" x2="14" y2="16"/>
+                      <line x1="17" y1="8" x2="17" y2="16"/>
+                    </svg>
+                  </span>
+                  <span class="btn-text-main">Scanner PDA</span>
+                  <span class="scanner-live-tag">
+                    <span class="scanner-pulse-dot"></span>
+                    <span>READY</span>
+                  </span>
+                </button>
+              </div>
+              <input id="bulkImportInput" type="file" accept=".csv,.txt,.tsv" hidden />
+            </div>
+
+            <section id="monitoringPanel" class="panel">
+              <div class="panel-header">
+                <div class="panel-title-wrap">
+                  <h2>Data Monitoring</h2>
+                  <span id="monitoringTotalBadge" class="panel-counter-badge">0 Data</span>
+                </div>
+
+                <div id="monitoringBulkControls" class="monitoring-bulk-controls" role="region" aria-label="Executive Bulk Action Dock">
+                  <!-- Glowing top neon line -->
+                  <div class="bulk-dock-glow-bar" aria-hidden="true"></div>
+
+                  <!-- TOP HEADER: Title, Count, & Clear -->
+                  <div class="bulk-header-bar">
+                    <div class="bulk-header-left">
+                      <div class="bulk-title-badge">
+                        <span class="bulk-pulse-dot" aria-hidden="true"></span>
+                        <span class="bulk-title-text">KONTROL AKSI MASSAL</span>
+                      </div>
+                      <div class="bulk-count-chip">
+                        <span id="selectedMonitoringCountBadge">0</span>
+                        <span class="bulk-count-sub">Paket Terpilih</span>
+                      </div>
+                    </div>
+
+                    <div class="bulk-header-right">
+                      <button class="bulk-clear-btn" id="clearMonitoringSelectionBtn" type="button" title="Batalkan semua pilihan (✕)" aria-label="Batalkan semua pilihan">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span class="btn-clear-text">Batal</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- WAYBILL SELECTION STRIP (Tags) -->
+                  <div class="bulk-waybill-preview-wrapper" id="bulkWaybillPreviewWrapper">
+                    <div class="bulk-waybill-chips-strip" id="bulkWaybillChipsStrip"></div>
+                  </div>
+
+                  <!-- QUICK ACTION CHIPS (With Glowing Vector SVG Micro-Badges!) -->
+                  <div class="bulk-quick-chips-section">
+                    <div class="bulk-chips-label">Pilih Tindakan Langsung:</div>
+                    <div class="bulk-quick-chips-grid" id="bulkQuickChips">
+                      <button type="button" class="bulk-quick-chip" data-action="Sudah Scan Kirim">
+                        <span class="chip-icon-box chip-icon-emerald">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"></path>
+                            <path d="M15 18H9"></path>
+                            <path d="M19 18h2a1 1 0 0 0 1-1v-5.5a1.5 1.5 0 0 0-.44-1.06L18.5 7.38A1.5 1.5 0 0 0 17.44 7H14v11h1"></path>
+                            <circle cx="7" cy="18" r="2"></circle>
+                            <circle cx="17" cy="18" r="2"></circle>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Sudah Scan Kirim</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Dalam Gudang">
+                        <span class="chip-icon-box chip-icon-blue">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21h18"></path>
+                            <path d="M5 21V7l7-4 7 4v14"></path>
+                            <path d="M9 10h6"></path>
+                            <path d="M9 14h6"></path>
+                            <path d="M9 18h6"></path>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Dalam Gudang</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Miss Route">
+                        <span class="chip-icon-box chip-icon-rose">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 3 21 3 21 8"></polyline>
+                            <line x1="4" y1="20" x2="21" y2="3"></line>
+                            <polyline points="21 16 21 21 16 21"></polyline>
+                            <line x1="15" y1="15" x2="21" y2="21"></line>
+                            <line x1="4" y1="4" x2="9" y2="9"></line>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Miss Route</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Crosslabel">
+                        <span class="chip-icon-box chip-icon-purple">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                            <circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"></circle>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Crosslabel</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="Penangguhan">
+                        <span class="chip-icon-box chip-icon-amber">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Penangguhan</span>
+                      </button>
+                      <button type="button" class="bulk-quick-chip" data-action="manual">
+                        <span class="chip-icon-box chip-icon-cyan">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </span>
+                        <span class="chip-text">Ketik Manual...</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- HIDDEN OR OPTIONAL DROPDOWN SELECT & MANUAL INPUT -->
+                  <div class="bulk-input-row">
+                    <select id="bulkActionSelect" class="filter-select bulk-select hidden" aria-label="Pilih aksi untuk data terpilih">
+                      <option value="">Pilih aksi massal...</option>
+                      <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                      <option value="Dalam Gudang">Dalam Gudang</option>
+                      <option value="Miss Route">Miss Route</option>
+                      <option value="Crosslabel">Crosslabel</option>
+                      <option value="Penangguhan">Penangguhan</option>
+                      <option value="manual">Ketik Manual...</option>
+                    </select>
+                    <div id="bulkActionManualWrapper" class="bulk-manual-wrapper hidden">
+                      <input id="bulkActionManual" class="bulk-action-manual" type="text" placeholder="Tuliskan tindakan / catatan khusus data terpilih..." maxlength="150" />
+                    </div>
+                  </div>
+
+                  <!-- FOOTER EXECUTION BUTTONS -->
+                  <div class="bulk-footer-actions">
+                    <button class="bulk-btn-action bulk-btn-update" id="bulkUpdateBtn" type="button" title="Eksekusi update aksi data terpilih">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span id="bulkUpdateBtnText">Update (<span id="selectedMonitoringCount">0</span>)</span>
+                    </button>
+                    <button class="bulk-btn-action bulk-btn-restore hidden" id="bulkRestoreUpdateBtn" type="button" title="Kembalikan waybill terpilih ke status Pending">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                      </svg>
+                      <span>Restore Pending</span>
+                    </button>
+                    <button class="bulk-btn-action bulk-btn-archive" id="bulkArchiveBtn" type="button" title="Pindahkan data terpilih ke arsip">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                        <rect x="1" y="3" width="22" height="5"></rect>
+                        <line x1="10" y1="12" x2="14" y2="12"></line>
+                      </svg>
+                      <span>Arsipkan (<span id="selectedMonitoringArchiveCount">0</span>)</span>
+                    </button>
+                    <button class="bulk-btn-action bulk-btn-delete hidden" id="bulkDeleteBtn" type="button" title="Hapus permanen nomor resi terpilih">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                      <span>Hapus (<span id="selectedMonitoringDeleteCount">0</span>)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TOOLBAR PENCARIAN & FILTER (KOMPAK & RESPONSIF DI HP) -->
+              <div class="monitoring-filter-bar">
+                <div class="filter-search-box">
+                  <span class="search-box-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </span>
+                  <input id="searchInput" type="text" placeholder="Cari waybill, tgl, outlet, nama barang..." autocomplete="off" />
+                  <button type="button" id="clearSearchBtn" class="clear-search-btn hidden" aria-label="Hapus pencarian">✕</button>
+                </div>
+
+                <div class="filter-controls-cluster">
+                  <div class="filter-select-item tlc-combobox-wrap" id="tlcComboboxWrap">
+                    <span class="filter-icon-prefix" title="Filter TLC / GW">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                        <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+                        <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+                        <path d="M10 6h4"/>
+                        <path d="M10 10h4"/>
+                        <path d="M10 14h4"/>
+                        <path d="M10 18h4"/>
+                      </svg>
+                    </span>
+                    <input type="text" id="tlcFilterInput" class="tlc-combobox-input" placeholder="Cari / Pilih TLC..." autocomplete="off" />
+                    <button type="button" id="clearTlcBtn" class="clear-input-btn hidden" aria-label="Hapus filter TLC" title="Hapus filter TLC">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                    <span class="combobox-arrow" id="toggleTlcDropdownBtn" title="Buka daftar TLC">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </span>
+                    <select id="tlcFilter" class="hidden" aria-label="Filter TLC (Internal)">
+                      <option value="all">Semua TLC</option>
+                    </select>
+                    <div id="tlcDropdownMenu" class="tlc-dropdown-menu hidden"></div>
+                  </div>
+
+                  <button type="button" id="refreshBtn" class="btn-table-refresh" title="Segarkan data tabel" aria-label="Segarkan data tabel">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                      <path d="M3 3v5h5"/>
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                      <path d="M21 21v-5h-5"/>
+                    </svg>
+                  </button>
+
+                  <button type="button" id="resetFilterBtn" class="btn-reset-filter" title="Reset semua filter">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                      <path d="M3 3v5h5"/>
+                    </svg>
+                    <span>Reset</span>
+                  </button>
+                  <button type="button" id="copyMonitoringAwbBtn" class="btn-copy-awb" title="Salin nomor AWB (sesuai hasil pencarian atau seluruh data)" aria-label="Salin nomor AWB">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                    </svg>
+                    <span id="copyMonitoringAwbBtnText">Salin AWB</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- QUICK CHIPS TLC (Opsi Cepat 1-Klik) -->
+              <div id="tlcQuickChipsBar" class="tlc-quick-chips hidden">
+                <span class="chips-label">TLC:</span>
+                <div class="chips-scroll-wrapper">
+                  <button type="button" id="tlcScrollLeftBtn" class="chips-nav-arrow chips-arrow-left hidden" aria-label="Geser kiri">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <div id="tlcChipsContainer" class="chips-list"></div>
+                  <button type="button" id="tlcScrollRightBtn" class="chips-nav-arrow chips-arrow-right hidden" aria-label="Geser kanan">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- TIP PENCARIAN CERDAS (SHOPEE TORN LABEL SAVER) -->
+              <div id="monitoringSearchTip" class="monitoring-search-tip hidden"></div>
+
+              <div class="table-wrap">
+                <table class="monitoring-table">
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="selectAllMonitoring" aria-label="Pilih semua data halaman" /></th>
+                      <th class="sortable-th" data-sort="waybill" title="Klik untuk mengurutkan Waybill"><span>Waybill</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="tanggal" title="Klik untuk mengurutkan Tanggal"><span>Tanggal</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="outlet_asal" title="Klik untuk mengurutkan Outlet Asal"><span>Outlet Asal</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="outlet" title="Klik untuk mengurutkan Outlet Tujuan"><span>Outlet Tujuan</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="stuck" title="Klik untuk mengurutkan Durasi Stuck"><span>Stuck</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="tlc" title="Klik untuk mengurutkan TLC"><span>TLC</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="status" title="Klik untuk mengurutkan Status"><span>Status</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="aksi" title="Klik untuk mengurutkan Aksi"><span>Aksi</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="nama_barang" title="Klik untuk mengurutkan Nama Barang"><span>Nama Barang</span><span class="sort-indicator">↕</span></th>
+                      <th class="sortable-th" data-sort="updated_by" title="Klik untuk mengurutkan Updated By"><span>Updated By</span><span class="sort-indicator">↕</span></th>
+                    </tr>
+                    <tr class="table-column-filter-row">
+                      <th style="text-align: center;"><button type="button" class="btn-clear-col-filters" id="btnClearColumnFilters" title="Hapus semua filter kolom">✕</button></th>
+                      <th><input type="text" class="col-filter-input" data-col="waybill" placeholder="Filter resi..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="tanggal" placeholder="YYYY-MM-DD..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="outlet_asal" placeholder="Outlet asal..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="outlet" placeholder="Outlet tujuan..." autocomplete="off" /></th>
+                      <th>
+                        <select class="col-filter-select" data-col="stuck">
+                          <option value="">Semua</option>
+                          <option value="1-12">1-12 Jam</option>
+                          <option value="12-24">12-24 Jam</option>
+                          <option value="24-36">24-36 Jam</option>
+                          <option value="36-48">36-48 Jam</option>
+                          <option value="48-60">48-60 Jam</option>
+                          <option value="60-72">60-72 Jam</option>
+                          <option value="72">72 Jam UP</option>
+                        </select>
+                      </th>
+                      <th><input type="text" class="col-filter-input" data-col="tlc" placeholder="TLC..." autocomplete="off" /></th>
+                      <th>
+                        <select class="col-filter-select" data-col="status">
+                          <option value="">Semua</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Sudah Diupdate">Sudah Diupdate</option>
+                        </select>
+                      </th>
+                      <th><input type="text" class="col-filter-input" data-col="aksi" placeholder="Aksi..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="nama_barang" placeholder="Nama barang..." autocomplete="off" /></th>
+                      <th><input type="text" class="col-filter-input" data-col="updated_by" placeholder="User..." autocomplete="off" /></th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabel-monitoring"></tbody>
+                </table>
+              </div>
+              <div class="table-pagination" id="monitoringPagination"></div>
+            </section>
+          </div>
+
+          
+          <!-- @include partials/views/fifo-report.html -->
+
+
+          <!-- VIEW 2: ARSIP -->
+          <div id="viewArchive" class="view-page hidden">
+            <section id="archivePanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Arsip Waybill</h2>
+                <div class="panel-actions">
+                  <input id="archiveSearchInput" type="text" placeholder="Cari waybill / outlet / barang..." />
+                  <button type="button" class="primary-btn small-btn" id="restoreArchiveBtn">Pulihkan <span id="selectedArchiveRestoreCount">0</span></button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="archive-table">
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="selectAllArchive" aria-label="Pilih semua arsip" /></th>
+                      <th>Waybill</th><th>Tanggal</th><th>Outlet</th><th>Stuck</th><th>Status</th><th>Aksi</th><th>Updated By</th><th>Update</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archiveTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 3: HISTORY -->
+          <div id="viewHistory" class="view-page hidden">
+            <section id="historyPanel" class="panel audit-panel">
+              <div class="panel-header history-panel-header">
+                <div class="history-header-titles">
+                  <div class="history-header-icon-box">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <div class="history-header-text">
+                    <span class="history-header-eyebrow">LOG AKTIVITAS &amp; ARSIP</span>
+                    <h2 class="history-header-title">Riwayat Pembaruan</h2>
+                  </div>
+                  <span id="historyCountBadge" class="history-count-badge">0 riwayat</span>
+                </div>
+                <div class="panel-actions history-panel-actions">
+                  <input id="historySearchInput" type="text" class="history-search-input" placeholder="Cari waybill / outlet / status / updater..." />
+                  <button type="button" class="btn-danger-modern" id="deleteHistoryBtn">
+                    <span class="btn-danger-icon">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                      </svg>
+                    </span>
+                    <span>Hapus Semua Riwayat</span>
+                  </button>
+                </div>
+              </div>
+              <div class="table-wrap history-table-wrap">
+                <table class="history-table">
+                  <thead>
+                    <tr>
+                      <th class="history-th-waybill">Waybill</th>
+                      <th>Tanggal</th>
+                      <th>Outlet</th>
+                      <th>Status</th>
+                      <th>Aksi</th>
+                      <th>Updated By</th>
+                      <th>Archived At</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 4: USERS -->
+          <div id="viewUsers" class="view-page hidden">
+            <section id="userPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Manajemen User</h2>
+                <div class="panel-actions">
+                  <input id="userSearchInput" type="text" placeholder="Cari username / nama / role..." />
+                  <label class="checkbox-inline"><input type="checkbox" id="selectAllUsers" /> Pilih semua</label>
+                  <button type="button" class="secondary-btn small-btn" id="bulkBlockUsers">Block Terpilih</button>
+                  <button type="button" class="secondary-btn small-btn delete-ghost" id="bulkDeleteUsers">Delete Terpilih</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="headerSelectAllUsers" aria-label="Pilih semua user" /></th>
+                      <th>ID</th>
+                      <th>Username</th>
+                      <th>Nama</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 5: PERMISSIONS / CONFIG -->
+          <div id="viewPermissions" class="view-page hidden">
+            <section id="configPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Konfigurasi Akses User</h2>
+                <div class="panel-actions">
+                  <select id="configUserSelect" class="filter-select" aria-label="Pilih user"></select>
+                  <button type="button" class="secondary-btn small-btn" id="refreshConfigBtn">Refresh</button>
+                  <button type="button" class="primary-btn small-btn" id="saveConfigBtn">Simpan Perubahan</button>
+                </div>
+              </div>
+              <div class="config-grid">
+                <div class="config-card hidden" id="createAccountCard">
+                  <h3>Buat Akun Baru</h3>
+                  <p class="config-hint">Akun admin/user/client dapat dibuat di sini.</p>
+                  <label class="config-row">
+                    <span>Username</span>
+                    <input type="text" id="newAccountUsername" placeholder="username_baru" />
+                  </label>
+                  <label class="config-row">
+                    <span>Nama Lengkap</span>
+                    <input type="text" id="newAccountFullName" placeholder="Nama Lengkap (opsional)" />
+                  </label>
+                  <label class="config-row">
+                    <span>Password</span>
+                    <input type="password" id="newAccountPassword" placeholder="Min 8 char, ada besar/kecil/angka" />
+                  </label>
+                  <label class="config-row">
+                    <span>Role</span>
+                    <select id="newAccountRole" class="filter-select">
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="client">Client (View Only)</option>
+                    </select>
+                  </label>
+                  <button type="button" class="primary-btn small-btn" id="createAccountBtn">Buat Akun</button>
+                  <p id="createAccountMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+
+                <div class="config-card gm-only">
+                  <h3>Ubah Username / Password</h3>
+                  <p class="config-hint">Pilih user dari dropdown atas, lalu ubah username atau password di sini. <strong>Tidak bisa mengubah akun super_admin lain.</strong></p>
+                  <label class="config-row">
+                    <span>Username Baru</span>
+                    <input type="text" id="credNewUsername" placeholder="Kosongkan jika tidak ingin ganti" />
+                  </label>
+                  <label class="config-row">
+                    <span>Password Baru</span>
+                    <input type="password" id="credNewPassword" placeholder="Kosongkan jika tidak ingin ganti (min 8 char, besar/kecil/angka)" />
+                  </label>
+                  <button type="button" class="primary-btn small-btn" id="saveCredentialsBtn">Simpan Kredensial</button>
+                  <p id="credentialsMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+
+                <div class="config-card">
+                  <h3>Role Akun</h3>
+                  <p class="config-hint">Super_admin dapat mengubah role admin. User/Client bisa di-switch.</p>
+                  <label class="config-row">
+                    <span>Role</span>
+                    <select id="configRoleSelect" class="filter-select">
+                      <option value="user">User</option>
+                      <option value="client">Client</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </label>
+                  <button type="button" class="primary-btn small-btn" id="saveRoleBtn">Simpan Role</button>
+                  <p id="roleMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+
+                <div class="config-card config-card-wide">
+                  <h3>Daftar Izin</h3>
+                  <p class="config-hint">Centang izin yang boleh digunakan user ini. <strong>Full Akses</strong> = otomatis mengaktifkan semua izin di bawahnya.</p>
+                  <div id="configPermissionsList" class="permissions-list"></div>
+                  <p id="permissionsMessage" class="auth-message" aria-live="polite"></p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 6: AUDIT LOG -->
+          <div id="viewAudit" class="view-page hidden">
+            <section id="auditPanel" class="panel audit-panel">
+              <div class="panel-header">
+                <h2>Audit Log</h2>
+                <div class="panel-actions">
+                  <input id="auditSearchInput" type="text" placeholder="Cari user / aksi / entity..." />
+                  <button type="button" class="secondary-btn small-btn" id="exportAuditBtn">Export Log</button>
+                  <button type="button" class="secondary-btn small-btn delete-ghost" id="deleteAuditBtn">Hapus Semua Log</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>User</th>
+                      <th>Role</th>
+                      <th>Aksi</th>
+                      <th>Entity</th>
+                      <th>Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody id="auditTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 7: PENGATURAN SISTEM -->
+          <div id="viewSettings" class="view-page hidden">
+            <section id="adminControlPanel" class="panel admin-panel">
+              <div class="admin-toolbar-header">
+                <div class="admin-toolbar-title-wrap">
+                  <div class="admin-toolbar-icon-box">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </div>
+                  <div class="admin-toolbar-text-group">
+                    <span class="admin-toolbar-eyebrow">PUSAT KONTROL &amp; BRANDING</span>
+                    <h3 class="admin-toolbar-title">Pengaturan Sistem &amp; Admin</h3>
+                  </div>
+                </div>
+                <div class="admin-toolbar-badge-modern">
+                  <span class="admin-badge-pulse"></span>
+                  <span>Panel Super Admin</span>
+                </div>
+              </div>
+
+              <div class="settings-shortcuts-bar">
+                <button type="button" class="settings-nav-tile" id="toggleUserPanelBtn">
+                  <div class="tile-icon-wrap icon-blue">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  </div>
+                  <div class="tile-text">
+                    <strong>Manajemen Pengguna</strong>
+                    <span>Kelola akun & status</span>
+                  </div>
+                </button>
+
+                <button type="button" class="settings-nav-tile" id="toggleConfigPanelBtn">
+                  <div class="tile-icon-wrap icon-purple">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                  </div>
+                  <div class="tile-text">
+                    <strong>Konfigurasi Hak Akses</strong>
+                    <span>Atur izin detail peran</span>
+                  </div>
+                </button>
+
+                <button type="button" class="settings-nav-tile" id="toggleHistoryBtn">
+                  <div class="tile-icon-wrap icon-cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <div class="tile-text">
+                    <strong>Riwayat Arsip</strong>
+                    <span>Lihat riwayat data</span>
+                  </div>
+                </button>
+              </div>
+
+              <div class="settings-grid">
+                <!-- KARTU 1: LOGO SIDEBAR (KIRI ATAS) -->
+                <div class="media-setting-card">
+                  <div class="media-card-header">
+                    <div class="media-header-icon icon-blue">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                        <circle cx="9" cy="9" r="2"/>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4>Logo Sidebar (Kiri Atas)</h4>
+                      <p class="media-card-sub">Tampil pada navigasi menu dashboard utama</p>
+                    </div>
+                  </div>
+
+                  <div class="media-card-body">
+                    <div class="media-preview-container">
+                      <span id="sidebarLogoEmptyPlaceholder" class="preview-empty-hint">Belum ada logo sidebar kustom (menggunakan logo bawaan)</span>
+                      <img id="adminSidebarLogoPreview" class="logo-preview-box hidden" alt="Logo sidebar" />
+                      <div class="preview-badge">Pratinjau Sidebar</div>
+                    </div>
+
+                    <div class="media-slider-group">
+                      <div class="media-slider-header">
+                        <label for="sidebarLogoSizeSlider">Ukuran Logo Sidebar:</label>
+                        <strong id="sidebarLogoSizeVal" class="media-badge-val badge-blue">44px</strong>
+                      </div>
+                      <input type="range" id="sidebarLogoSizeSlider" class="media-range-slider slider-blue" min="24" max="90" step="1" value="44" />
+                      <div class="media-slider-hint">
+                        <span>24px (Kecil)</span>
+                        <span>44px (Standar)</span>
+                        <span>90px (Besar)</span>
+                      </div>
+                    </div>
+
+                    <div class="media-card-controls">
+                      <input id="sidebarLogoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+                      <button type="button" class="btn-media-primary" id="uploadSidebarLogoBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Pilih & Unggah Logo</span>
+                      </button>
+                      <button type="button" class="btn-media-danger" id="deleteSidebarLogoBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                        </svg>
+                        <span>Hapus Logo</span>
+                      </button>
+                    </div>
+                    <p id="sidebarLogoMessage" class="auth-message" aria-live="polite"></p>
+                  </div>
+                </div>
+
+                <!-- KARTU 2: LOGO HALAMAN LOGIN -->
+                <div class="media-setting-card">
+                  <div class="media-card-header">
+                    <div class="media-header-icon icon-emerald">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="m10 15 5-3-5-3v6Z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4>Logo Halaman Login</h4>
+                      <p class="media-card-sub">Tampil di formulir login sebelum masuk</p>
+                    </div>
+                  </div>
+
+                  <div class="media-card-body">
+                    <div class="media-preview-container">
+                      <span id="loginLogoEmptyPlaceholder" class="preview-empty-hint">Belum ada logo khusus login (otomatis mengikuti logo sidebar)</span>
+                      <img id="adminLoginLogoPreview" class="logo-preview-box hidden" alt="Logo login" />
+                      <div class="preview-badge">Pratinjau Login</div>
+                    </div>
+
+                    <div class="media-slider-group">
+                      <div class="media-slider-header">
+                        <label for="loginLogoSizeSlider">Ukuran Logo Login:</label>
+                        <strong id="loginLogoSizeVal" class="media-badge-val badge-emerald">52px</strong>
+                      </div>
+                      <input type="range" id="loginLogoSizeSlider" class="media-range-slider slider-emerald" min="24" max="280" step="1" value="52" />
+                      <div class="media-slider-hint">
+                        <span>24px (Kecil)</span>
+                        <span>52px (Standar)</span>
+                        <span>280px (Jumbo)</span>
+                      </div>
+                    </div>
+
+                    <div class="media-card-controls">
+                      <input id="loginLogoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+                      <button type="button" class="btn-media-primary" id="uploadLoginLogoBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Pilih & Unggah Logo</span>
+                      </button>
+                      <button type="button" class="btn-media-danger" id="deleteLoginLogoBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                        </svg>
+                        <span>Hapus Logo</span>
+                      </button>
+                    </div>
+                    <p id="loginLogoMessage" class="auth-message" aria-live="polite"></p>
+                  </div>
+                </div>
+
+                <!-- KARTU 3: LATAR BELAKANG MASUK (WALLPAPER) -->
+                <div class="media-setting-card">
+                  <div class="media-card-header">
+                    <div class="media-header-icon icon-purple">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="20" height="14" x="2" y="5" rx="2"/>
+                        <line x1="2" y1="10" x2="22" y2="10"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4>Latar Belakang Masuk (Wallpaper)</h4>
+                      <p class="media-card-sub">Gambar wallpaper untuk halaman login</p>
+                    </div>
+                  </div>
+
+                  <div class="media-card-body">
+                    <div class="media-preview-container">
+                      <span id="bgEmptyPlaceholder" class="preview-empty-hint">Belum ada background kustom (tema gelap bawaan)</span>
+                      <img id="adminBgPreview" class="bg-preview-box hidden" alt="Background login" />
+                      <div class="preview-badge">Pratinjau Latar</div>
+                    </div>
+
+                    <div class="media-slider-group">
+                      <div class="media-slider-header">
+                        <label for="bgOpacitySlider">Tingkat Kegelapan / Overlay:</label>
+                        <strong id="bgOpacityVal" class="media-badge-val">35%</strong>
+                      </div>
+                      <input type="range" id="bgOpacitySlider" class="media-range-slider" min="0.10" max="0.90" step="0.05" value="0.35" />
+                      <div class="media-slider-hint">
+                        <span>10% Terang</span>
+                        <span>50% Seimbang</span>
+                        <span>90% Gelap</span>
+                      </div>
+                    </div>
+
+                    <div class="media-card-controls">
+                      <input id="bgInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+                      <button type="button" class="btn-media-primary" id="uploadBgBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Pilih & Unggah Latar Belakang</span>
+                      </button>
+                      <button type="button" class="btn-media-danger" id="deleteBgBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                        </svg>
+                        <span>Hapus Latar</span>
+                      </button>
+                    </div>
+                    <p id="bgMessage" class="auth-message" aria-live="polite"></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ZONA PEMELIHARAAN (DANGER ZONE) -->
+              <div class="danger-zone-card">
+                <div class="danger-zone-header">
+                  <div class="danger-zone-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3>Zona Pemeliharaan & Hapus Global</h3>
+                    <p class="config-hint">Tindakan berikut akan menghapus seluruh data monitoring aktif dari database server secara permanen.</p>
+                  </div>
+                </div>
+                <div class="danger-zone-actions">
+                  <button type="button" class="btn-danger-modern btn-danger-large" id="deleteAllMonitoringBtn">
+                    <span class="btn-danger-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                      </svg>
+                    </span>
+                    <span>Hapus Seluruh Data Global</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ============================================================== -->
+          <!-- VIEW ADVANCE: MENU INDUK ADVANCE TOOLS (GM & ADMIN ONLY)       -->
+          <!-- ============================================================== -->
+          <div id="viewAdvance" class="view-page hidden">
+            <!-- SUB-NAVIGATION BAR ADVANCE -->
+            <div class="advance-subnav-bar">
+              <div class="advance-subnav-header">
+                <div class="advance-subnav-title-group">
+                  <div class="advance-subnav-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                      <polyline points="2 17 12 22 22 17"/>
+                      <polyline points="2 12 12 17 22 12"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="advance-subnav-title">Advance Operations &amp; Intelligence</h3>
+                    <p class="advance-subnav-desc">Pusat kendali rekonsiliasi manifest scan, instock kendaraan &amp; capacity, serta otomasi tagihan dokumen Feishu.</p>
+                  </div>
+                </div>
+                <div class="advance-role-pill">
+                  <span class="pulse-dot"></span>
+                  <span>KHUSUS ROLE ADMIN-GM &amp; ADMIN</span>
+                </div>
+              </div>
+
+              <div class="advance-tabs-container">
+                <button type="button" class="advance-tab-btn active" data-advance-tab="reconcile" id="tabBtnAdvanceReconcile" title="Rekonsiliasi Muat-Bongkar &amp; Scan Manifest">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="11" cy="11" r="7"/>
+                      <path d="m21 21-4.3-4.3"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Rekonsiliasi</span>
+                  <span class="advance-tab-pill pill-blue">Manifest</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="kendaraan" id="tabBtnAdvanceKendaraan" title="Monitoring Kendaraan &amp; Instock Capacity">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <rect x="1" y="3" width="15" height="13"/>
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 8"/>
+                      <circle cx="5.5" cy="18.5" r="2.5"/>
+                      <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Monitoring Kendaraan</span>
+                  <span class="advance-tab-pill pill-green">Capacity</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="generator-feishu" id="tabBtnAdvanceFeishu" title="Generator Feishu Tagihan Dokumen">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="m22 2-7 20-4-9-9-4Z"/>
+                      <path d="M22 2 11 13"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Generator Feishu</span>
+                  <span class="advance-tab-pill pill-purple">Tagihan</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="jfs" id="tabBtnAdvanceJfs" title="Integrasi JFS Realtime API">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Integrasi JFS</span>
+                  <span class="advance-tab-pill pill-amber" id="jfsTabPill">Realtime API</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="pto" id="tabBtnAdvancePto" title="PTO - Pelacakan Order Realtime">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Pelacakan PTO</span>
+                  <span class="advance-tab-pill pill-cyan">Order</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="barcode" id="tabBtnAdvanceBarcode" title="Barcode Generator Code 128 (Standar J&T Cargo)">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Barcode Generator</span>
+                  <span class="advance-tab-pill pill-purple">Code 128</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="print-awb" id="tabBtnAdvancePrintAwb" title="Cetak Label Resi &amp; Kolian Resmi JFS (PDF Thermal / TTD)">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                      <rect width="12" height="8" x="6" y="14"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Cetak AWB JFS</span>
+                  <span class="advance-tab-pill pill-pink">Thermal &amp; TTD</span>
+                </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="wajib-kirim" id="tabBtnAdvanceWajibKirim" title="Prioritas Kargo Wajib Berangkat (QC Must-Go vs Stok Gudang)">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                  </span>
+                  <span class="tab-label">WAJIB KIRIM</span>
+                  <span class="advance-tab-pill pill-amber">Must-Go</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- @include partials/advance/reconcile.html -->
+            <!-- @include partials/advance/kendaraan.html -->
+            <!-- @include partials/advance/feishu.html -->
+            <!-- @include partials/advance/jfs.html -->
+            <!-- @include partials/advance/pto.html -->
+            <!-- @include partials/advance/barcode.html -->
+            <!-- @include partials/advance/print-awb.html -->
+            <!-- @include partials/advance/wajib-kirim.html -->
+
+          <!-- AKHIR VIEW ADVANCE -->
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- @include partials/modals/modals.html -->
+
+  </body>
+</html>

@@ -1,0 +1,1397 @@
+<div id="auditDetailModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <h3>Detail Audit</h3>
+          <button type="button" class="close-btn" id="closeAuditDetailBtn" aria-label="Tutup detail audit">×</button>
+        </div>
+        <div id="auditDetailContent" class="audit-detail-content"></div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL UPDATE DATA MONITORING (MODERN & ELEGANT) -->
+    <!-- ============================================ -->
+    <div id="monitoringModal" class="modal hidden update-modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-content update-modal-card">
+        <!-- TOP ACCENT GLOW BAR -->
+        <div class="update-modal-glow-bar" aria-hidden="true"></div>
+
+        <!-- MODAL HEADER -->
+        <div class="update-modal-header">
+          <div class="update-modal-title-group">
+            <div class="update-modal-icon-badge" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="update-modal-eyebrow">
+                <span class="eyebrow-pulse-dot"></span>
+                <span>FIFO MONITORING • DISPATCH ACTION</span>
+              </div>
+              <h3 id="modalTitle" class="update-modal-title">Update Data Monitoring</h3>
+            </div>
+          </div>
+          <button type="button" class="update-modal-close-btn" id="closeModalBtn" aria-label="Tutup modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- WAYBILL CONTEXT SUMMARY CARD -->
+        <div id="modalWaybillContext" class="update-context-card">
+          <div class="context-card-top">
+            <div class="context-waybill-wrap">
+              <span class="context-label">NO. WAYBILL</span>
+              <div class="context-waybill-row">
+                <strong id="modalWaybillText" class="context-waybill-code">-</strong>
+                <button type="button" id="modalCopyWaybillBtn" class="context-copy-btn" title="Salin nomor waybill">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span class="copy-label">Salin</span>
+                </button>
+              </div>
+            </div>
+            <div id="modalStuckBadge" class="context-aging-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span id="modalStuckText">-</span>
+            </div>
+          </div>
+
+          <div class="context-meta-row">
+            <div class="context-meta-item">
+              <span class="meta-label">OUTLET / TLC</span>
+              <span class="meta-value" id="modalOutletText">-</span>
+            </div>
+            <div class="context-meta-item">
+              <span class="meta-label">TANGGAL</span>
+              <span class="meta-value" id="modalDateText">-</span>
+            </div>
+          </div>
+
+          <div class="context-barang-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="barang-icon">
+              <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span id="modalBarangText" class="context-barang-title">-</span>
+          </div>
+        </div>
+
+        <form id="monitoringForm" class="update-monitoring-form">
+          <!-- STATUS TRANSITION PREVIEW STRIP -->
+          <div class="status-preview-section">
+            <div class="status-preview-card">
+              <div class="status-box">
+                <span class="status-caption">STATUS SAAT INI</span>
+                <div class="status-pill-wrap">
+                  <span id="modalCurrentStatusBadge" class="modern-status-badge status-pending">
+                    <span class="badge-dot"></span>
+                    <span id="modalCurrentStatusText">Pending</span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="status-transition-arrow" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </div>
+
+              <div class="status-box">
+                <span class="status-caption">STATUS SETELAH UPDATE</span>
+                <div class="status-pill-wrap">
+                  <span id="modalTargetStatusBadge" class="modern-status-badge status-pending">
+                    <span class="badge-dot"></span>
+                    <span id="modalTargetStatusText">Pending</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <!-- Keep input id="status" for form submission compatibility -->
+            <input type="hidden" id="status" name="status" value="Pending" />
+          </div>
+
+          <!-- QUICK ACTION PILLS (ONE-TOUCH CHIPS) -->
+          <div class="action-selection-section">
+            <div class="section-heading-row">
+              <label class="action-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Pilih Tindakan / Aksi Cepat</span>
+              </label>
+              <span class="action-hint">Klik chip di bawah</span>
+            </div>
+
+            <div class="quick-chips-grid" id="modalQuickChips">
+              <button type="button" class="quick-chip-btn" data-action="Sudah Scan Kirim">
+                <span class="chip-icon-box chip-icon-emerald">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"></path>
+                    <path d="M15 18H9"></path>
+                    <path d="M19 18h2a1 1 0 0 0 1-1v-5.5a1.5 1.5 0 0 0-.44-1.06L18.5 7.38A1.5 1.5 0 0 0 17.44 7H14v11h1"></path>
+                    <circle cx="7" cy="18" r="2"></circle>
+                    <circle cx="17" cy="18" r="2"></circle>
+                  </svg>
+                </span>
+                <span class="chip-text">Sudah Scan Kirim</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Dalam Gudang">
+                <span class="chip-icon-box chip-icon-blue">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21h18"></path>
+                    <path d="M5 21V7l7-4 7 4v14"></path>
+                    <path d="M9 10h6"></path>
+                    <path d="M9 14h6"></path>
+                    <path d="M9 18h6"></path>
+                  </svg>
+                </span>
+                <span class="chip-text">Dalam Gudang</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Miss Route">
+                <span class="chip-icon-box chip-icon-rose">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 3 21 3 21 8"></polyline>
+                    <line x1="4" y1="20" x2="21" y2="3"></line>
+                    <polyline points="21 16 21 21 16 21"></polyline>
+                    <line x1="15" y1="15" x2="21" y2="21"></line>
+                    <line x1="4" y1="4" x2="9" y2="9"></line>
+                  </svg>
+                </span>
+                <span class="chip-text">Miss Route</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Crosslabel">
+                <span class="chip-icon-box chip-icon-purple">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"></circle>
+                  </svg>
+                </span>
+                <span class="chip-text">Crosslabel</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="Penangguhan">
+                <span class="chip-icon-box chip-icon-amber">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </span>
+                <span class="chip-text">Penangguhan</span>
+              </button>
+              <button type="button" class="quick-chip-btn" data-action="manual">
+                <span class="chip-icon-box chip-icon-cyan">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </span>
+                <span class="chip-text">Ketik Manual...</span>
+              </button>
+            </div>
+
+            <!-- DROPDOWN SELECT (CUSTOM STYLED) -->
+            <div class="custom-select-wrap">
+              <div class="custom-select-icon" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 6h16M4 12h16M4 18h10"></path>
+                </svg>
+              </div>
+              <select id="actionSelect" name="actionSelect" class="modern-action-select">
+                <option value="">-- Atau pilih dari dropdown --</option>
+                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                <option value="Dalam Gudang">Dalam Gudang</option>
+                <option value="Miss Route">Miss Route</option>
+                <option value="Crosslabel">Crosslabel</option>
+                <option value="Penangguhan">Penangguhan</option>
+                <option value="manual">Ketik Manual...</option>
+              </select>
+              <div class="custom-select-chevron" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
+
+            <!-- MANUAL INPUT (EXPANDED WHEN MANUAL IS SELECTED) -->
+            <div id="manualActionWrapper" class="manual-action-wrapper hidden">
+              <label for="actionManual" class="manual-action-label">Catatan / Tindakan Khusus:</label>
+              <div class="manual-input-inner">
+                <input type="text" id="actionManual" name="actionManual" class="manual-action-input" placeholder="Contoh: Retur vendor, tunggu konfirmasi client..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL ACTIONS -->
+          <div class="update-modal-footer">
+            <button type="button" class="btn-ghost-cancel" id="cancelBtn">
+              <span>Batal</span>
+            </button>
+            <button type="submit" class="btn-gradient-save" id="saveMonitoringBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Simpan Update</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="importProgressModal" class="modal hidden" aria-hidden="true">
+      <div class="import-progress-card">
+        <div class="import-progress-orbit"><span>↑</span></div>
+        <p class="eyebrow">BULK IMPORT</p>
+        <h3 id="importProgressTitle">Menyiapkan import...</h3>
+        <p id="importProgressDetail">Membaca file data</p>
+        <div class="import-progress-track"><div id="importProgressBar" class="import-progress-bar"></div></div>
+        <div class="import-progress-meta"><strong id="importProgressPercent">0%</strong><span id="importProgressRows">0 data</span></div>
+        <div id="importProgressPulse" class="import-progress-pulse"><span></span><span></span><span></span></div>
+        <div id="importSummary" class="import-summary hidden">
+          <div><strong id="summarySkipped">0</strong><span>Dilewati</span></div>
+          <div><strong id="summaryOverwritten">0</strong><span>Ditimpa</span></div>
+          <div><strong id="summaryDeleted">0</strong><span>Dihapus permanen</span></div>
+          <div><strong id="summaryHistory">0</strong><span>Masuk History</span></div>
+        </div>
+        <button id="closeImportProgressBtn" class="primary-btn small-btn import-close-btn hidden" type="button">Selesai</button>
+      </div>
+    </div>
+
+    <div id="appAlertModal" class="modal hidden" aria-hidden="true">
+      <div class="app-alert-card" role="alertdialog" aria-modal="true" aria-labelledby="appAlertTitle">
+        <div id="appAlertIcon" class="app-alert-icon">!</div>
+        <p class="eyebrow">MONITORING FIFO</p>
+        <h3 id="appAlertTitle">Informasi</h3>
+        <p id="appAlertMessage"></p>
+        <button id="appAlertClose" class="primary-btn app-alert-close" type="button">Mengerti</button>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL SCANNER BARCODE / PDA (HARDWARE TRIGGER) -->
+    <!-- ============================================ -->
+    <div id="scannerModal" class="modal hidden scanner-modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="scannerModalTitle">
+      <div class="scanner-modal-card">
+        <!-- HEADER SCANNER -->
+        <div class="scanner-header">
+          <div class="scanner-brand-wrap">
+            <div class="scanner-brand-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="8" x2="7" y2="16"/>
+                <line x1="10" y1="8" x2="10" y2="16"/>
+                <line x1="14" y1="8" x2="14" y2="16"/>
+                <line x1="17" y1="8" x2="17" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <div class="scanner-title-row">
+                <h3 id="scannerModalTitle">Scanner Barcode / PDA</h3>
+                <span class="scanner-hardware-badge" id="scannerHwStatus" title="Mendukung scan otomatis lewat tombol laser fisik PDA">
+                  <span class="pulse-dot"></span> Laser Ready
+                </span>
+              </div>
+              <p class="scanner-subtext">Arahkan laser PDA atau gunakan kamera untuk membaca waybill</p>
+            </div>
+          </div>
+
+          <div class="scanner-header-actions">
+            <!-- PANDUAN SETTING PDA -->
+            <button type="button" id="scannerGuideToggleBtn" class="scanner-tool-btn" title="Panduan Setting PDA Scanner" aria-label="Panduan Setting PDA">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </button>
+
+            <!-- MUTE / AUDIO TOGGLE -->
+            <button type="button" id="scannerSoundToggleBtn" class="scanner-tool-btn" title="Nyalakan / Matikan Suara Bip Audio" aria-label="Toggle Suara Bip">
+              <svg class="sound-icon-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+              <svg class="sound-icon-off hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <line x1="22" y1="9" x2="16" y2="15"/>
+                <line x1="16" y1="9" x2="22" y2="15"/>
+              </svg>
+            </button>
+
+            <!-- CAMERA TOGGLE -->
+            <button type="button" id="scannerCameraToggleBtn" class="scanner-tool-btn" title="Aktifkan Pemindai Kamera Ponsel / Tablet" aria-label="Toggle Kamera">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                <circle cx="12" cy="13" r="3"/>
+              </svg>
+            </button>
+
+            <!-- CLOSE BUTTON -->
+            <button type="button" id="closeScannerModalBtn" class="scanner-close-btn" aria-label="Tutup Scanner">✕</button>
+          </div>
+        </div>
+
+        <!-- MODE TABS -->
+        <div class="scanner-mode-bar">
+          <button type="button" id="modeCheckBtn" class="scanner-mode-btn active" data-mode="check">
+            <span class="mode-icon">🔍</span>
+            <span class="mode-title">Mode 1: Cek Status FIFO</span>
+          </button>
+          <button type="button" id="modeUpdateBtn" class="scanner-mode-btn" data-mode="update">
+            <span class="mode-icon">⚡</span>
+            <span class="mode-title">Mode 2: Scan &amp; Update Aksi</span>
+          </button>
+        </div>
+
+        <!-- MODE 2 CONFIGURATION BAR (VISIBLE WHEN IN UPDATE MODE) -->
+        <div id="scannerUpdateConfigBar" class="scanner-update-config-bar hidden">
+          <div class="config-bar-inner">
+            <div class="config-header-row">
+              <div class="config-label-wrap">
+                <span class="label-badge">⚡ PILIH AKSI TARGET CEPAT:</span>
+              </div>
+              <div class="config-counter-pill">
+                <span class="counter-label">Diupdate:</span>
+                <strong id="scannerBatchCount" class="counter-value">0</strong>
+              </div>
+            </div>
+
+            <!-- QUICK ACTION CHIPS KHUSUS PDA / TOUCH JEMPOL -->
+            <div id="scannerActionChipsBar" class="scanner-action-chips-bar" role="radiogroup" aria-label="Aksi Target Scanner">
+              <button type="button" class="action-chip-pill active chip-kirim" data-action-val="Sudah Scan Kirim" role="radio" aria-checked="true">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">✓ Scan Kirim</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-tangguh" data-action-val="Penangguhan" role="radio" aria-checked="false">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">⏸ Penangguhan</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-missroute" data-action-val="Miss Route" role="radio" aria-checked="false">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">⚠️ Miss Route</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-crosslabel" data-action-val="Crosslabel" role="radio" aria-checked="false">
+                <span class="chip-dot-indicator"></span>
+                <span class="chip-text">🏷️ Crosslabel</span>
+              </button>
+              <button type="button" class="action-chip-pill chip-manual" data-action-val="manual" role="radio" aria-checked="false">
+                <span class="chip-text">✍️ Ketik Manual...</span>
+              </button>
+            </div>
+
+            <!-- INPUT MANUAL JIKA DIPILIH -->
+            <div id="scannerManualActionWrap" class="scanner-manual-action-wrap hidden">
+              <input type="text" id="scannerManualActionInput" class="scanner-manual-action-input" placeholder="Ketik aksi kustom (misal: Rusak Kemasan, Tertahan)..." maxlength="100" autocomplete="off" />
+            </div>
+
+            <!-- FALLBACK SELECT UNTUK SINKRONISASI DATA -->
+            <select id="scannerActionSelect" class="scanner-dropdown-select hidden">
+              <option value="Sudah Scan Kirim" selected>Sudah Scan Kirim</option>
+              <option value="Penangguhan">Penangguhan</option>
+              <option value="Miss Route">Miss Route</option>
+              <option value="Crosslabel">Crosslabel</option>
+              <option value="manual">✍️ Ketik Manual...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CAMERA VIEWFINDER (TOGGLEABLE) -->
+        <div id="scannerCameraArea" class="scanner-camera-area hidden">
+          <div class="scanner-camera-box">
+            <video id="scannerVideoElement" autoplay playsinline muted></video>
+            <div class="camera-scan-reticle">
+              <div class="reticle-corner corner-tl"></div>
+              <div class="reticle-corner corner-tr"></div>
+              <div class="reticle-corner corner-bl"></div>
+              <div class="reticle-corner corner-br"></div>
+              <div class="reticle-laser-line"></div>
+            </div>
+            <div class="camera-overlay-note">Arahkan barcode / QR code ke dalam kotak</div>
+            <button type="button" id="stopCameraBtn" class="camera-close-action">Matikan Kamera</button>
+          </div>
+        </div>
+
+        <!-- SCANNER INPUT (VISIBLE & FOCUSABLE FOR PDA KEYBOARD WEDGE) -->
+        <div class="scanner-input-container">
+          <form id="scannerBarcodeForm" class="scanner-input-form" onsubmit="return false;">
+            <div class="scanner-input-wrapper">
+              <span class="scanner-input-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                  <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                  <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                  <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                  <line x1="7" y1="8" x2="7" y2="16"/>
+                  <line x1="10" y1="8" x2="10" y2="16"/>
+                  <line x1="14" y1="8" x2="14" y2="16"/>
+                  <line x1="17" y1="8" x2="17" y2="16"/>
+                </svg>
+              </span>
+              <input
+                type="text"
+                id="scannerBarcodeInput"
+                class="scanner-barcode-input"
+                placeholder="Tembak barcode laser PDA atau ketik resi disini..."
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                enterkeyhint="go"
+              />
+              <button type="button" id="scannerClearInputBtn" class="scanner-clear-btn hidden" aria-label="Bersihkan Input">✕</button>
+              <button type="submit" id="scannerSubmitBtn" class="scanner-submit-btn">Proses</button>
+            </div>
+          </form>
+          <div class="scanner-guidance-pill">
+            <span class="guide-laser-dot"></span>
+            <span>Laser PDA Wedge Siap: Tembak fisik laser PDA langsung terbaca otomatis tanpa klik.</span>
+          </div>
+        </div>
+
+        <!-- SCAN RESULT DISPLAY AREA -->
+        <div id="scannerResultArea" class="scanner-result-area">
+          <!-- INITIAL IDLE STATE -->
+          <div id="scannerIdleState" class="scanner-idle-card">
+            <div class="idle-radar-pulse">
+              <div class="radar-circle"></div>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="8" x2="7" y2="16"/>
+                <line x1="10" y1="8" x2="10" y2="16"/>
+                <line x1="14" y1="8" x2="14" y2="16"/>
+                <line x1="17" y1="8" x2="17" y2="16"/>
+              </svg>
+            </div>
+            <h4>Menunggu Tembakan Scanner...</h4>
+            <p>Arahkan laser scanner PDA ke barcode waybill / paket untuk melihat status FIFO atau memperbarui aksi secara instan.</p>
+          </div>
+
+          <!-- DYNAMIC RESULT CARD CONTAINER (FILLED VIA JAVASCRIPT) -->
+          <div id="scannerDynamicCard" class="scanner-dynamic-card hidden"></div>
+        </div>
+
+        <!-- RECENT SCANS STRIP -->
+        <div class="scanner-recent-section">
+          <div class="recent-header">
+            <span class="recent-title">Riwayat Scan Sesi Ini</span>
+            <span id="recentScanCount" class="recent-badge">0 item</span>
+          </div>
+          <div id="scannerRecentList" class="scanner-recent-list">
+            <span class="recent-empty-hint">Belum ada waybill yang di-scan.</span>
+          </div>
+        </div>
+
+        <!-- FOOTER: UNKNOWN WAYBILL DRAWER TRIGGER -->
+        <div class="scanner-footer-bar">
+          <button type="button" id="toggleUnknownDrawerBtn" class="scanner-drawer-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>Daftar Waybill Belum Terdaftar (<strong id="unknownScansCounter">0</strong>)</span>
+          </button>
+        </div>
+
+        <!-- UNREGISTERED DRAWER POPUP -->
+        <div id="unknownScansDrawer" class="unknown-scans-drawer hidden">
+          <div class="drawer-header">
+            <h4>Waybill Tidak Ditemukan / Belum Terdaftar</h4>
+            <button type="button" id="closeUnknownDrawerBtn" class="close-btn-mini">✕</button>
+          </div>
+          <div class="drawer-body">
+            <p class="drawer-tip">Daftar resi di bawah adalah hasil scan yang tidak ditemukan di sistem. Anda dapat menyalin semuanya untuk laporan ke supervisor.</p>
+            <div id="unknownScansList" class="unknown-scans-list">
+              <div class="unknown-empty-state">Belum ada waybill tidak ditemukan.</div>
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" id="copyUnknownScansBtn" class="secondary-btn small-btn">Salin Semua Nomor Resi</button>
+            <button type="button" id="clearUnknownScansBtn" class="secondary-btn small-btn text-danger">Bersihkan Daftar</button>
+          </div>
+        </div>
+
+        <!-- PDA SETTINGS GUIDE DRAWER POPUP -->
+        <div id="scannerGuideDrawer" class="unknown-scans-drawer hidden">
+          <div class="drawer-header">
+            <h4>Panduan Setting Scanner PDA Fisik</h4>
+            <button type="button" id="closeScannerGuideBtn" class="close-btn-mini">✕</button>
+          </div>
+          <div class="drawer-body" style="font-size: 0.82rem; line-height: 1.5; color: #cbd5e1; max-height: 300px; overflow-y: auto;">
+            <p style="margin-bottom: 10px; color: #38bdf8; font-weight: 700;">Agar tembakan laser PDA langsung terbaca otomatis:</p>
+            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;">
+              <strong style="color: #fbbf24;">1. Merk Zebra (Aplikasi DataWedge):</strong>
+              <ol style="padding-left: 18px; margin: 5px 0;">
+                <li>Buka aplikasi <strong>DataWedge</strong> di menu PDA.</li>
+                <li>Pilih <strong>Profile0 (Default)</strong>.</li>
+                <li>Pastikan menu <strong>Keystroke Output</strong> dicentang (Enabled).</li>
+                <li>Pilih <strong>Basic Data Formatting</strong> ➔ Centang <strong>Send ENTER key</strong>.</li>
+              </ol>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;">
+              <strong style="color: #fbbf24;">2. Merk Honeywell (Aplikasi ScanWedge / Settings):</strong>
+              <ol style="padding-left: 18px; margin: 5px 0;">
+                <li>Buka <strong>Settings</strong> ➔ <strong>Scanning</strong> ➔ <strong>Internal Scanner</strong>.</li>
+                <li>Pilih <strong>Default Profile</strong> ➔ <strong>Data Processing Settings</strong>.</li>
+                <li>Pastikan <strong>Wedge Method</strong> = <em>Keyboard</em> dan <strong>Suffix</strong> = <em>\n</em> (Enter).</li>
+              </ol>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 10px 12px;">
+              <strong style="color: #fbbf24;">3. Merk Point Mobile / Sunmi / Urovo / Chainway:</strong>
+              <p style="margin: 5px 0;">Buka aplikasi <strong>Scanner / EmKit</strong> bawaan ➔ Set <strong>Output Mode</strong> = <em>Keyboard Wedge</em> ➔ Set <strong>Terminator / Suffix</strong> = <em>Enter (\n)</em>.</p>
+            </div>
+            <div style="margin-top: 10px; padding: 8px 10px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; font-size: 0.74rem; color: #34d399;">
+              ⚡ <strong>Fitur Auto-Burst Aktif:</strong> Sekarang sekalipun PDA belum disetting akhiran Enter, sistem web ini sudah otomatis membaca dan mengeksekusi resi dalam 160 milidetik setelah laser ditembakkan!
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" id="gotItGuideBtn" class="primary-btn small-btn" style="width: 100%;">Siap, Saya Mengerti</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL INPUT CEPAT WAYBILL (DARI SCANNER PDA) -->
+    <!-- ============================================ -->
+    <div id="scannerQuickAddModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="quickAddTitle">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">INPUT CEPAT WAYBILL</span>
+            <h3 id="quickAddTitle">Daftarkan Waybill ke Monitoring</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeQuickAddModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="scannerQuickAddForm">
+          <div class="form-grid">
+            <label>
+              <span>Nomor Waybill *</span>
+              <input type="text" id="quickAddWaybill" name="waybill" placeholder="WBxxxxxxxx" required readonly />
+            </label>
+
+            <label>
+              <span>Tanggal Masuk *</span>
+              <input type="date" id="quickAddTanggal" name="tanggal" required />
+            </label>
+
+            <label>
+              <span>Outlet Tujuan *</span>
+              <input type="text" id="quickAddOutlet" name="outlet" placeholder="Contoh: SMQ008A / Outlet Tujuan" required />
+            </label>
+
+            <label>
+              <span>TLC / GW</span>
+              <input type="text" id="quickAddTlc" name="tlc" placeholder="Contoh: BDJ99A / TLC GW" />
+            </label>
+
+            <label>
+              <span>Nama Barang</span>
+              <input type="text" id="quickAddNamaBarang" name="nama_barang" placeholder="Contoh: Paket Elektronik / Pakaian" />
+            </label>
+
+            <label>
+              <span>Aksi Awal</span>
+              <select id="quickAddAksi" name="aksi">
+                <option value="Dalam Gudang" selected>Dalam Gudang</option>
+                <option value="Sudah Scan Kirim">Sudah Scan Kirim</option>
+                <option value="Miss Route">Miss Route</option>
+                <option value="Crosslabel">Crosslabel</option>
+                <option value="Penangguhan">Penangguhan</option>
+                <option value="Investigasi">Investigasi</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelQuickAddBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="submitQuickAddBtn">Daftarkan Sekarang</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL INPUT / SCAN KENDARAAN (APPSHEET STYLE)-->
+    <!-- ============================================ -->
+    <div id="kendaraanInputModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="kendaraanModalTitle">
+      <div class="modal-content modal-kendaraan-appsheet">
+        <div class="modal-header" style="padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); margin-bottom: 12px;">
+          <div>
+            <span class="eyebrow text-emerald" style="font-size: 0.72rem; letter-spacing: 0.06em;">APPSHEET INSTOCK SCANNER</span>
+            <h3 id="kendaraanModalTitle" style="font-size: 1.15rem; margin: 2px 0 0 0;">Input Kendaraan Baru</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeKendaraanModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="kendaraanForm">
+          <input type="hidden" id="kendaraanId" name="id" />
+
+          <div class="appsheet-form-stack">
+            <!-- 1. AWB -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label" for="kendaraanAwb">AWB</label>
+              <div class="appsheet-input-wrap">
+                <input type="text" id="kendaraanAwb" class="appsheet-input" placeholder="Scan / ketik nomor resi..." required autofocus />
+                <span class="appsheet-input-icon" id="btnScanAwbIcon" title="Scan Barcode PDA">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="6" height="6" x="3" y="3" rx="1"/>
+                    <rect width="6" height="6" x="15" y="3" rx="1"/>
+                    <rect width="6" height="6" x="15" y="15" rx="1"/>
+                    <rect width="6" height="6" x="3" y="15" rx="1"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- 2. TLC_Tujuan -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">TLC_Tujuan<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn active" data-group="tlc" data-val="BDJ">BDJ</button>
+                <button type="button" class="appsheet-toggle-btn" data-group="tlc" data-val="PNK">PNK</button>
+              </div>
+              <input type="hidden" id="kendaraanTujuan" value="BDJ" />
+            </div>
+
+            <!-- 3. TipeMotor -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">TipeMotor<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn active" data-group="tipe" data-val="Motor Bensin">Motor Bensin</button>
+                <button type="button" class="appsheet-toggle-btn" data-group="tipe" data-val="Motor Listrik">Motor Listrik</button>
+              </div>
+              <div class="appsheet-btn-group-single">
+                <button type="button" class="appsheet-toggle-btn" data-group="tipe" data-val="Sepeda Listrik">Sepeda Listrik</button>
+              </div>
+              <input type="hidden" id="kendaraanTipe" value="Motor Bensin" />
+            </div>
+
+            <!-- 4A. Dokumen (Conditional for Motor) -->
+            <div class="appsheet-field" id="wrapFieldDokumen">
+              <label class="appsheet-field-label">Dokumen<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn" data-group="dokumen" data-val="Lengkap">Lengkap</button>
+                <button type="button" class="appsheet-toggle-btn active" data-group="dokumen" data-val="Tidak">Tidak</button>
+              </div>
+              <input type="hidden" id="kendaraanStatusDokumen" value="Tidak" />
+            </div>
+
+            <!-- 4B. Status Aki (Conditional for Sepeda Listrik) -->
+            <div class="appsheet-field hidden" id="wrapFieldStatusAki">
+              <label class="appsheet-field-label">Status Aki<span class="required-star">*</span></label>
+              <div class="appsheet-btn-group-2">
+                <button type="button" class="appsheet-toggle-btn active" data-group="aki" data-val="ON">ON</button>
+                <button type="button" class="appsheet-toggle-btn" data-group="aki" data-val="OFF">OFF</button>
+              </div>
+              <input type="hidden" id="kendaraanStatusAki" value="ON" />
+            </div>
+
+            <!-- 5. koli -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">koli</label>
+              <div class="appsheet-stepper-wrap">
+                <input type="number" id="kendaraanKoli" class="appsheet-stepper-val" value="1" min="1" max="99" />
+                <div class="appsheet-stepper-actions">
+                  <button type="button" class="appsheet-stepper-btn" id="btnKoliMinus" title="Kurangi">−</button>
+                  <button type="button" class="appsheet-stepper-btn" id="btnKoliPlus" title="Tambah">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Keterangan -->
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">Keterangan</label>
+              <textarea id="kendaraanKeterangan" class="appsheet-textarea" placeholder="Contoh: Packing kayu, kunci ada..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" id="cancelKendaraanModalBtn" style="padding: 10px 18px;">Batal</button>
+            <button type="submit" class="primary-btn" id="submitKendaraanBtn" style="padding: 10px 22px;">Simpan Unit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL MASTER GATEWAY & PIC WHATSAPP (122 GW) -->
+    <!-- ============================================ -->
+    <div id="masterGatewaysModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="gwModalTitle">
+      <div class="modal-content modal-gateways-wide">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">DATABASE MASTER PIC GATEWAY</span>
+            <h3 id="gwModalTitle">122 PIC Gateway &amp; 14.317 Outlet Terdaftar</h3>
+            <p class="modal-subtitle">Daftar PIC Gateway digunakan otomatis untuk menagih unit Motor HOLD via WhatsApp dan bot Feishu.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeMasterGatewaysBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div class="gateways-modal-toolbar">
+          <div class="gateways-search-wrap">
+            <input type="text" id="searchGatewayInput" placeholder="Cari Kode TLC (BDJ99A), Nama Gateway, Kota, atau PIC..." />
+            <button type="button" class="btn-clear-search hidden" id="btnClearGatewaySearch">×</button>
+          </div>
+          <div class="gateways-toolbar-right" style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" class="btn-executive-shift" id="btnOpenBulkImportGatewayPic" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>Import Massal PIC</span>
+            </button>
+            <div class="gateways-stat-badge">
+              <span id="gatewayCountBadge">122 Gateway</span> &bull; <span>14.317 Outlet</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gateways-table-wrap">
+          <table class="reconcile-table gateways-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">NO</th>
+                <th>KODE TLC</th>
+                <th>NAMA GATEWAY</th>
+                <th>AREA / WILAYAH</th>
+                <th>NAMA PIC GATEWAY</th>
+                <th style="text-align: center;">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="masterGatewaysTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer-bar">
+          <button type="button" class="secondary-btn" id="closeMasterGatewaysBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL EDIT PIC GATEWAY CEPAT                 -->
+    <!-- ============================================ -->
+    <div id="editGatewayPicModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="editPicTitle">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">UPDATE KONTAK PIC</span>
+            <h3 id="editPicTitle">Edit PIC Gateway</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeEditPicModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+        <form id="editGatewayPicForm">
+          <input type="hidden" id="editPicGatewayCode" />
+          <div class="form-grid single-col">
+            <label>
+              <span>Kode Gateway</span>
+              <input type="text" id="editPicGatewayLabel" readonly disabled style="opacity: 0.7;" />
+            </label>
+            <label>
+              <span>Nama PIC Gateway *</span>
+              <input type="text" id="editPicName" placeholder="Contoh: erasmushumanika@jtcargo / Yoga" required />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelEditPicBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="saveEditPicBtn">Simpan PIC</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL IMPORT MASSAL PIC GATEWAY              -->
+    <!-- ============================================ -->
+    <div id="bulkImportGatewayPicModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="bulkPicTitle">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-emerald">UPDATE MASSAL DATABASE PIC</span>
+            <h3 id="bulkPicTitle">Import Massal PIC Gateway</h3>
+            <p class="modal-subtitle">Paste data dari Excel atau upload file CSV/Excel 2 kolom: <strong>Nama Gateway</strong> dan <strong>Nama PIC</strong>. Format @ terserah Anda.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeBulkImportPicBtn" aria-label="Tutup modal">×</button>
+        </div>
+        <form id="bulkImportGatewayPicForm">
+          <div class="form-grid single-col" style="gap: 14px;">
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">File CSV / TXT (Opsional)</span>
+              <input type="file" id="bulkPicFileInput" accept=".csv,.txt,.tsv" style="width: 100%; padding: 8px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1;" />
+            </label>
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Atau Paste Langsung dari Excel / Tabel (Kolom 1: Gateway, Kolom 2: PIC)</span>
+              <textarea id="bulkPicTextarea" rows="8" placeholder="Contoh isi tabel (bisa langsung Ctrl+V dari Excel):
+GW-Jakarta	@Budi
+GW-Bandung	Siti
+GW-Surabaya	@Agus Pratama
+GW-Semarang	Hendra" style="width: 100%; font-family: monospace; font-size: 0.82rem; padding: 10px; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 6px; color: #f8fafc;"></textarea>
+            </label>
+            <div style="font-size: 0.76rem; color: #94a3b8; line-height: 1.4; background: rgba(30, 41, 59, 0.5); padding: 8px 12px; border-radius: 6px; border-left: 3px solid #38bdf8;">
+              💡 <strong>Tips:</strong> Tidak perlu nomor HP. Penulisan nama dan tanda <code>@</code> akan disimpan 100% apa adanya sesuai yang Anda ketik/paste tanpa paksaan format sistem.
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="secondary-btn" id="closeBulkImportPicBottomBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="btnSubmitBulkPic" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>Simpan Massal PIC</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DAFTARKAN OUTLET BARU (FEISHU / MAPPING)-->
+    <!-- ============================================ -->
+    <div id="registerOutletModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="registerOutletTitle">
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow text-cyan">DATABASE OUTLET &amp; PIC</span>
+            <h3 id="registerOutletTitle">Daftarkan Outlet Baru</h3>
+            <p class="modal-subtitle">Petakan kode outlet ke Gateway &amp; Tagging PIC agar dikenali otomatis di Generator Feishu &amp; Monitoring.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeRegisterOutletBtn" aria-label="Tutup modal">×</button>
+        </div>
+        <form id="registerOutletForm">
+          <div class="form-grid single-col" style="gap: 14px;">
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Kode Outlet / Asal <span class="text-rose">*</span></span>
+              <input type="text" id="regOutletCode" placeholder="Contoh: GRT013B" style="text-transform: uppercase; font-family: monospace; font-weight: 700; color: #38bdf8;" required />
+            </label>
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Gateway Tujuan / Induk <span class="text-rose">*</span></span>
+              <input type="text" list="regGatewayDatalist" id="regOutletGateway" placeholder="Ketik atau pilih gateway (contoh: GW-GarutMitra, GW-Bandung)..." required />
+              <datalist id="regGatewayDatalist"></datalist>
+            </label>
+            <label>
+              <span style="font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;">Tagging PIC (Opsional)</span>
+              <input type="text" id="regOutletPic" placeholder="Contoh: Yoga / Siti / erasmushumanika@jtcargo (Kosongkan bila otomatis mewarisi PIC Gateway)" />
+            </label>
+            <div style="font-size: 0.76rem; color: #94a3b8; line-height: 1.4; background: rgba(30, 41, 59, 0.5); padding: 8px 12px; border-radius: 6px; border-left: 3px solid #38bdf8;">
+              💡 <strong>Otomatis:</strong> Begitu disimpan, outlet ini langsung tersimpan permanen di database dan baris tabel di Generator Feishu langsung otomatis terhubung ke Gateway &amp; Tagging PIC.
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="secondary-btn" id="cancelRegisterOutletBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="btnSubmitRegisterOutlet" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>Simpan &amp; Daftarkan</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL BEBAN FLOW GATEWAY (DRILL-DOWN) -->
+    <!-- ============================================ -->
+    <div id="jfsFlowDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="flowDetailTitle">
+      <div class="modal-content" style="max-width: 980px; width: 96%;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 12px; margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow text-cyan" id="flowDetailEyebrow">DATA REALTIME GATEWAY JAKARTA</span>
+            <h3 id="flowDetailTitle" style="color: #f8fafc; font-size: 1.2rem; margin: 2px 0 0 0;">Detail Beban GW</h3>
+            <p class="modal-subtitle" id="flowDetailSubtitle" style="font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0 0;">Rincian volume AWB, tonase, koli, dan tren harian.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeFlowDetailBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div class="flow-detail-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- 1. VIEW TREN HARIAN (RINGKASAN BULANAN) -->
+          <div id="flowTrendView" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- SUMMARY CARDS ROW -->
+            <div class="flow-detail-summary-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+              <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 14px; border-radius: 8px;">
+                <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Hari Ini (AWB)</span>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #f8fafc; margin-top: 4px;" id="modalMetricAwb">0</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 14px; border-radius: 8px;">
+                <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Tonase</span>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #38bdf8; margin-top: 4px;" id="modalMetricWeight">0 Ton</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 14px; border-radius: 8px;">
+                <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Koli</span>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #a5b4fc; margin-top: 4px;" id="modalMetricPcs">0 Koli</div>
+              </div>
+            </div>
+
+            <!-- TABLE TITLE & ACTIONS -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div>
+                <h4 style="margin: 0; font-size: 0.92rem; color: #e2e8f0; font-weight: 700;">Tren Harian Bulan Ini (JFS Gateway)</h4>
+                <span style="font-size: 0.72rem; color: #38bdf8;">💡 Klik angka pada kolom AWB untuk melihat rincian seluruh waybill di tanggal tersebut</span>
+              </div>
+              <span style="font-size: 0.72rem; color: #94a3b8;">Diperbarui otomatis dari Gateway</span>
+            </div>
+
+            <!-- TREND BREAKDOWN TABLE -->
+            <div style="max-height: 340px; overflow-y: auto; border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 8px;">
+              <table class="jfs-table" style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                <thead style="position: sticky; top: 0; background: #0f172a; z-index: 2;">
+                  <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Tanggal</th>
+                    <th style="padding: 8px 12px; text-align: right; color: #38bdf8;">AWB (Klik Detail)</th>
+                    <th style="padding: 8px 12px; text-align: right; color: #94a3b8;">Koli</th>
+                    <th style="padding: 8px 12px; text-align: right; color: #94a3b8;">Berat (Ton)</th>
+                    <th style="padding: 8px 12px; text-align: center; color: #94a3b8;">Porsi Harian</th>
+                  </tr>
+                </thead>
+                <tbody id="modalFlowTrendTableBody">
+                  <tr><td colspan="5" class="text-center text-muted py-4">Memuat data tren...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 2. VIEW DRILL-DOWN WAYBILL LIST PER TANGGAL (PAGINATED & SEARCHABLE) -->
+          <div id="flowWaybillListView" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- NAV HEADER -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.85); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.2);">
+              <button type="button" id="btnBackToFlowTrend" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; color: #38bdf8; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="m15 18-6-6 6-6"/></svg>
+                <span>‹ Kembali ke Tren Harian</span>
+              </button>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="flowListDateBadge" style="font-family: monospace; font-weight: 800; color: #f8fafc; font-size: 0.95rem;">-</span>
+                <span id="flowListCountBadge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-weight: 800; font-size: 0.82rem; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.4);">0 AWB</span>
+              </div>
+            </div>
+
+            <!-- SEARCH & FILTER ROW -->
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="flowListSearchInput" placeholder="Cari nomor waybill / resi JFS (contoh: 100005965900)..." style="flex: 1; padding: 8px 12px; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 6px; color: #f8fafc; font-size: 0.82rem;" />
+              <button type="button" id="btnFlowListSearch" class="primary-btn" style="padding: 8px 16px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <span>Cari Resi</span>
+              </button>
+            </div>
+
+            <!-- DRILL-DOWN WAYBILLS TABLE -->
+            <div style="max-height: 380px; overflow-y: auto; overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 8px;">
+              <table class="jfs-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+                <thead style="position: sticky; top: 0; background: #0f172a; z-index: 2;">
+                  <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">No. Waybill</th>
+                    <th style="padding: 8px 10px; text-align: center; color: #94a3b8;">Koli</th>
+                    <th style="padding: 8px 10px; text-align: right; color: #94a3b8;">Berat (Kg)</th>
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Hub Asal</th>
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Tujuan Dispatch</th>
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Jam Tiba</th>
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Jam Kirim</th>
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Petugas Scan</th>
+                    <th style="padding: 8px 12px; text-align: left; color: #94a3b8;">Armada Dispatch</th>
+                  </tr>
+                </thead>
+                <tbody id="modalFlowWaybillsTableBody">
+                  <tr><td colspan="9" class="text-center text-muted py-4">Pilih tanggal untuk melihat rincian waybill.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- DRILL-DOWN PAGINATION -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <span id="flowListPaginationSummary" style="font-size: 0.76rem; color: #94a3b8;">Menampilkan 0 data</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" id="btnFlowListPrev" class="page-btn" style="padding: 4px 10px;">‹</button>
+                <span id="flowListPageIndicator" style="font-size: 0.8rem; color: #e2e8f0; font-weight: 700;">Hal 1</span>
+                <button type="button" id="btnFlowListNext" class="page-btn" style="padding: 4px 10px;">›</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="primary-btn" id="closeFlowDetailBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL INFORMASI WAYBILL / RESI        -->
+    <!-- ============================================ -->
+    <div id="waybillDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="wbDetailTitle">
+      <div class="modal-content waybill-detail-modal-card" style="max-width: 680px; width: 95%;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 12px; margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow text-emerald" id="wbDetailTitle">DETAIL LENGKAP WAYBILL</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+              <h3 id="wbDetailWaybillNo" style="color: #f8fafc; font-size: 1.35rem; font-family: monospace; font-weight: 800; margin: 0;">-</h3>
+              <button type="button" class="btn-copy-small" id="btnCopyWbDetailNumber" title="Salin No Resi" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Salin</span>
+              </button>
+            </div>
+            <p class="modal-subtitle" style="font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0 0;">Informasi penanganan, status inventaris, asal-tujuan outlet, dan riwayat stuck.</p>
+          </div>
+          <button type="button" class="close-btn" id="closeWaybillDetailBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div class="waybill-detail-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- BARCODE CODE 128 INTERAKTIF -->
+          <div class="wb-detail-barcode-box" id="wbDetailBarcodeBox">
+            <canvas id="wbDetailBarcodeCanvas"></canvas>
+            <div class="wb-detail-barcode-actions">
+              <button type="button" class="btn-wb-detail-barcode-copy" id="btnCopyWbDetailBarcode" title="Salin Gambar Barcode ke Clipboard (Siap Paste di WA/Excel)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+                <span>📋 Salin Barcode</span>
+              </button>
+              <button type="button" class="btn-wb-detail-barcode-dl" id="btnDownloadWbDetailBarcode" title="Unduh File Barcode PNG">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Unduh PNG</span>
+              </button>
+              <button type="button" class="btn-wb-detail-print-pdf" id="btnPrintWbOfficialPdf" title="Cetak / Buka Label Thermal PDF Resmi JFS J&T Cargo">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect width="12" height="8" x="6" y="14"/>
+                </svg>
+                <span>🖨️ Cetak Label JFS (PDF)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- STATUS & AGING BANNER -->
+          <div class="wb-detail-banner" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 16px; border-radius: 10px;">
+            <div>
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 4px;">Status Waybill</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="wbDetailStatusBadge" class="modern-status-badge status-pending">Pending</span>
+                <span id="wbDetailClientBadge" class="badge" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.35); font-weight: 700; font-size: 0.75rem;">JFS</span>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 4px;">Durasi Stuck (Aging)</span>
+              <span id="wbDetailStuckBadge" class="badge badge-stuck" style="font-size: 0.95rem; font-weight: 700; padding: 4px 10px;">-</span>
+            </div>
+          </div>
+
+          <!-- EXTRA JFS DATA BANNER (PROBLEM / REFUND / COD) -->
+          <div id="wbDetailAlertBanner" class="hidden" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #f87171; font-weight: 800; font-size: 0.8rem;">⚠️ PERHATIAN:</span>
+            <div id="wbDetailAlertBadges" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+          </div>
+
+          <!-- GRID ATTRIBUTES -->
+          <div class="wb-detail-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <!-- OUTLET ASAL & KOTA -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #38bdf8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+                <span>OUTLET &amp; KOTA ASAL</span>
+              </div>
+              <strong id="wbDetailOutletAsal" style="font-size: 1.05rem; color: #f8fafc; font-family: monospace;">-</strong>
+              <div id="wbDetailOriginCity" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">-</div>
+            </div>
+
+            <!-- OUTLET TUJUAN & KOTA -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #a78bfa; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>OUTLET &amp; KOTA TUJUAN</span>
+              </div>
+              <strong id="wbDetailOutletTujuan" style="font-size: 1.05rem; color: #f8fafc; font-family: monospace;">-</strong>
+              <div id="wbDetailDestCity" style="font-size: 0.8rem; color: #c084fc; margin-top: 2px; font-weight: 600;">-</div>
+            </div>
+
+            <!-- BERAT & KOLI -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #34d399; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                <span>BERAT &amp; JUMLAH KOLI</span>
+              </div>
+              <strong id="wbDetailWeightKoli" style="font-size: 1rem; color: #f8fafc;">0.00 kg • 1 Koli</strong>
+            </div>
+
+            <!-- TLC -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #fb923c; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/></svg>
+                <span>KODE TLC / GATEWAY</span>
+              </div>
+              <strong id="wbDetailTlc" style="font-size: 0.95rem; color: #f8fafc; font-family: monospace;">-</strong>
+            </div>
+
+            <!-- TANGGAL & JAM SCAN IN GATEWAY -->
+            <div class="wb-detail-item" style="grid-column: span 2; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>WAKTU SCAN MASUK GATEWAY</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <strong id="wbDetailTanggal" style="font-size: 0.95rem; color: #f8fafc;">-</strong>
+                <span id="wbDetailScanInTime" style="font-size: 0.8rem; color: #38bdf8; font-family: monospace;">-</span>
+              </div>
+            </div>
+
+            <!-- NAMA BARANG (FULL WIDTH) -->
+            <div class="wb-detail-item" style="grid-column: span 2; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #fbbf24; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                <span>NAMA BARANG / DESKRIPSI PAKET</span>
+              </div>
+              <div id="wbDetailNamaBarang" style="font-size: 0.95rem; color: #f8fafc; word-break: break-word;">-</div>
+            </div>
+
+            <!-- TINDAKAN / AKSI -->
+            <div class="wb-detail-item" style="grid-column: span 2; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #38bdf8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>AKSI / TINDAKAN PENANGANAN</span>
+              </div>
+              <strong id="wbDetailAksi" style="font-size: 1rem; color: #38bdf8;">-</strong>
+            </div>
+
+            <!-- DIAKSIKAN OLEH & TERAKHIR DIUPDATE -->
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>DIAKSIKAN OLEH</span>
+              </div>
+              <span id="wbDetailUpdatedBy" style="font-size: 0.9rem; color: #e2e8f0;">-</span>
+            </div>
+
+            <div class="wb-detail-item" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(148, 163, 184, 0.12); padding: 12px; border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.76rem; font-weight: 600; margin-bottom: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>TERAKHIR DIUPDATE</span>
+              </div>
+              <span id="wbDetailUpdatedAt" style="font-size: 0.9rem; color: #e2e8f0;">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 14px;">
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="secondary-btn" id="btnWbDetailCopyAll" title="Salin seluruh info waybill ke clipboard" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span>Salin Semua Info</span>
+            </button>
+            <button type="button" class="primary-btn" id="btnWbDetailEditAction" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>Update / Edit Tindakan</span>
+            </button>
+          </div>
+          <button type="button" class="secondary-btn" id="closeWaybillDetailBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL PASTE EXCEL MULTI-AWB & OUTLET         -->
+    <!-- ============================================ -->
+    <div id="feishuBatchModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="batchModalTitle">
+      <div class="modal-content modal-kendaraan-appsheet" style="width: min(560px, 95%);">
+        <div class="modal-header" style="padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); margin-bottom: 12px;">
+          <div>
+            <span class="eyebrow text-emerald" style="font-size: 0.72rem; letter-spacing: 0.06em;">INPUT EXCEL CEPAT</span>
+            <h3 id="batchModalTitle" style="font-size: 1.15rem; margin: 2px 0 0 0;">Paste dari Excel (AWB &amp; Outlet)</h3>
+          </div>
+          <button type="button" class="close-btn" id="closeFeishuBatchModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <form id="feishuBatchForm">
+          <div class="appsheet-form-stack">
+            <div class="appsheet-field">
+              <label class="appsheet-field-label">Tempel Kolom dari Excel / Spreadsheet</label>
+              <textarea id="feishuBatchTextarea" class="appsheet-textarea" style="min-height: 180px; font-family: monospace; font-size: 0.88rem;" placeholder="Bisa paste 2 kolom dari Excel (AWB dan Outlet):&#10;201807259055&#9;JKT074A&#10;201794393906&#9;BDJ001A&#10;201810520416&#9;SUB002A&#10;&#10;Atau paste nomor AWB saja (satu per baris):&#10;201807259055&#10;201794393906" required></textarea>
+              <span style="font-size: 0.75rem; color: #94a3b8; line-height: 1.4; display: block; margin-top: 4px;">
+                💡 <strong>Format:</strong> Cukup blok 2 kolom di Excel (<code>Nomor AWB</code> dan <code>Outlet / Asal</code>), copy (Ctrl+C), lalu paste (Ctrl+V) di sini. Sistem langsung memecah dan mencocokkan PIC-nya!
+              </span>
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" id="cancelFeishuBatchModalBtn" style="padding: 10px 18px;">Batal</button>
+            <button type="submit" class="primary-btn" id="submitFeishuBatchBtn" style="padding: 10px 22px;">Masukkan ke Tabel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL LENGKAP ORDER PTO               -->
+    <!-- ============================================ -->
+    <div id="ptoDetailModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="ptoDetailModalTitle">
+      <div class="modal-content modal-pto-detail-card" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 12px; margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow text-emerald" style="font-size: 0.72rem; letter-spacing: 0.06em;">PELACAKAN TOTAL ORDER (OMS)</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+              <h3 id="ptoDetailModalTitle" style="color: #f8fafc; font-size: 1.35rem; font-family: monospace; font-weight: 800; margin: 0;">-</h3>
+              <button type="button" class="btn-copy-small" id="btnCopyPtoWaybillNo" title="Salin No Resi" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Salin</span>
+              </button>
+            </div>
+            <p id="ptoDetailModalSubtitle" style="font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0 0;">Informasi detail fisik paket, pengirim, penerima, dan rute gateway langsung dari OMS JFS.</p>
+          </div>
+          <button type="button" class="close-btn" id="closePtoDetailModalBtn" aria-label="Tutup modal">×</button>
+        </div>
+
+        <div id="ptoDetailModalBody" class="pto-detail-body">
+          <!-- Dynamic Content -->
+        </div>
+
+        <div class="modal-actions" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 14px;">
+          <button type="button" class="btn-pto-tool" id="btnCopyPtoSingleDetail">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Salin Seluruh Info</span>
+          </button>
+          <button type="button" class="secondary-btn" id="closePtoDetailModalBottomBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL SETTING TOKEN PTO                      -->
+    <!-- ============================================ -->
+    <div id="ptoConfigModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="ptoConfigTitle">
+      <div class="modal-content small-modal" style="max-width: 480px; width: 95%;">
+        <div class="modal-header">
+          <h3 id="ptoConfigTitle">Konfigurasi Auth Token PTO</h3>
+          <button type="button" class="close-btn" id="closePtoConfigModalBtn" aria-label="Tutup">×</button>
+        </div>
+        <form id="ptoConfigForm" style="padding: 16px 20px;">
+          <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 14px; line-height: 1.4;">
+            Masukkan token aktif akun JFS (SPV Area / Customer Platform). Token ini otomatis dipakai saat menarik data Pelacakan Total Order (PTO).
+          </p>
+          <div class="form-group-jfs">
+            <label for="ptoInputToken" style="font-size: 0.82rem; font-weight: 700; color: #cbd5e1; margin-bottom: 6px; display: block;">PTO Auth Token</label>
+            <input type="text" id="ptoInputToken" class="jfs-input" placeholder="Contoh: 1478b74425e143139ccba26a46944ea4" required style="font-family: monospace; font-size: 0.85rem;" />
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+            <button type="button" class="secondary-btn" id="cancelPtoConfigBtn">Batal</button>
+            <button type="submit" class="primary-btn" id="btnSavePtoConfig">Simpan Token</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DETAIL WAYBILL SPOT FIFO               -->
+    <!-- ============================================ -->
+    <div id="modalFifoSpotDetail" class="modal hidden" aria-hidden="true" role="dialog">
+      <div class="modal-content" style="max-width: 820px; width: 95%;">
+        <div class="modal-header">
+          <div>
+            <h3 id="fifoDetailModalTitle">Rincian AWB Spot</h3>
+            <p id="fifoDetailModalSub" style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Level Jam</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="panel-counter-badge" id="fifoDetailCountBadge">0 Paket</span>
+            <button type="button" class="close-btn" id="btnCloseFifoDetailModal" aria-label="Tutup">✕</button>
+          </div>
+        </div>
+        <div style="padding: 14px 20px; max-height: 60vh; overflow-y: auto;">
+          <table class="monitoring-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">No</th>
+                <th>Waybill</th>
+                <th>Outlet Tujuan</th>
+                <th>Durasi Stuck</th>
+                <th>Nama Barang</th>
+              </tr>
+            </thead>
+            <tbody id="fifoDetailTableBody"></tbody>
+          </table>
+        </div>
+        <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid rgba(148, 163, 184, 0.15);">
+          <button type="button" class="primary-btn" id="btnCopyFifoDetailWaybills" style="display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Salin Semua Resi</span>
+          </button>
+          <button type="button" class="secondary-btn" id="btnCloseFifoDetailModalBottom">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL MASTER MAPPING SPOT                    -->
+    <!-- ============================================ -->
+    <div id="modalSpotMapping" class="modal hidden" aria-hidden="true" role="dialog">
+      <div class="modal-content" style="max-width: 900px; width: 95%;">
+        <div class="modal-header">
+          <div>
+            <h3>Master Mapping SPOT FIFO</h3>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Kelola kode loading bay / SPOT TLC Tujuan untuk Laporan FIFO</p>
+          </div>
+          <button type="button" class="close-btn" id="btnCloseSpotMappingModal" aria-label="Tutup">✕</button>
+        </div>
+        <div style="padding: 16px 20px;">
+          <form id="spotMappingForm" style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+            <h4 id="spotMappingFormTitle" style="color: #38bdf8; font-size: 0.92rem; margin-bottom: 10px;">Tambah SPOT Baru</h4>
+            <input type="hidden" id="spotMappingId" value="" />
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr 1fr 2fr; gap: 10px; align-items: end;">
+              <div>
+                <label style="font-size: 0.78rem; color: #94a3b8; display: block; margin-bottom: 4px;">Kode SPOT</label>
+                <input type="text" id="spotMappingCode" placeholder="Misal: JKT99A" required style="width: 100%; text-transform: uppercase;" />
+              </div>
+              <div>
+                <label style="font-size: 0.78rem; color: #94a3b8; display: block; margin-bottom: 4px;">Nama Gateway</label>
+                <input type="text" id="spotMappingName" placeholder="Misal: GW-Jakarta" required style="width: 100%;" />
+              </div>
+              <div>
+                <label style="font-size: 0.78rem; color: #94a3b8; display: block; margin-bottom: 4px;">No Urut</label>
+                <input type="number" id="spotMappingOrder" placeholder="1" style="width: 100%;" />
+              </div>
+              <div>
+                <label style="font-size: 0.78rem; color: #94a3b8; display: block; margin-bottom: 4px;">Pola TLC / Outlet (Koma)</label>
+                <input type="text" id="spotMappingPatterns" placeholder="Misal: GW-Jakarta,JKT" style="width: 100%;" />
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+              <button type="button" class="secondary-btn small-btn" id="btnResetSpotMappingForm">Batal</button>
+              <button type="submit" class="primary-btn small-btn">Simpan SPOT</button>
+            </div>
+          </form>
+
+          <div style="max-height: 45vh; overflow-y: auto;">
+            <table class="monitoring-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">Urut</th>
+                  <th style="width: 110px;">Kode SPOT</th>
+                  <th>Nama Gateway</th>
+                  <th>Pola TLC / Outlet</th>
+                  <th style="width: 130px; text-align: right;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="spotMappingTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>

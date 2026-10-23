@@ -12,6 +12,7 @@ const kendaraanRoutes = require('./routes/kendaraanRoutes');
 const jfsRoutes = require('./routes/jfsRoutes');
 const ptoRoutes = require('./routes/ptoRoutes');
 const fifoReportRoutes = require('./routes/fifoReportRoutes');
+const { buildHtml } = require('../scripts/build-html');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -149,6 +150,7 @@ app.use(express.static(publicDir, {
 }));
 
 app.get('/', (req, res) => {
+  try { buildHtml(); } catch (e) { console.warn('⚠️ Build HTML warning:', e.message); }
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
