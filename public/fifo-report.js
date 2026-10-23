@@ -65,17 +65,12 @@ function renderFifoReportUI(data) {
 
   // 3. Render Table Matrix 43 SPOT
   const tableBody = document.getElementById('fifoReportTableBody');
-  const tableFoot = document.getElementById('fifoReportTableFoot');
   if (!tableBody) return;
 
   const onlyCritical = document.getElementById('chkFifoOnlyCritical')?.checked || false;
 
   let html = '';
   let visibleCount = 0;
-  let running24_36 = 0;
-  let running48_60 = 0;
-  let running48_72 = 0;
-  let running72_up = 0;
 
   spots.forEach((spot, idx) => {
     const isCritical = spot.c72_up > 0 || spot.c48_72 >= 4 || spot.c48_60 >= 6 || spot.c24_36 >= 6;
@@ -86,12 +81,6 @@ function renderFifoReportUI(data) {
     const cls48_60 = getHeatClass(spot.c48_60);
     const cls48_72 = getHeatClass(spot.c48_72);
     const cls72_up = getHeatClass(spot.c72_up, true); // Level 72 UP lebih sensitif merah
-
-    const rowTotal = (spot.c24_36 || 0) + (spot.c48_60 || 0) + (spot.c48_72 || 0) + (spot.c72_up || 0);
-    running24_36 += (spot.c24_36 || 0);
-    running48_60 += (spot.c48_60 || 0);
-    running48_72 += (spot.c48_72 || 0);
-    running72_up += (spot.c72_up || 0);
 
     html += `
       <tr>
@@ -110,36 +99,15 @@ function renderFifoReportUI(data) {
         <td class="col-heat-cell ${cls72_up}" onclick="openFifoCellDetail(${idx}, '72_up', '6. 72 UP')" title="Klik untuk lihat resi">
           <span class="cell-num">${spot.c72_up || 0}</span>
         </td>
-        <td class="col-spot-total font-bold">${rowTotal}</td>
       </tr>
     `;
   });
 
   if (visibleCount === 0) {
-    html = `<tr><td colspan="6" class="empty-state" style="text-align: center; padding: 20px;">Tidak ada spot yang cocok dengan filter.</td></tr>`;
+    html = `<tr><td colspan="5" class="empty-state" style="text-align: center; padding: 20px;">Tidak ada spot yang cocok dengan filter.</td></tr>`;
   }
 
   tableBody.innerHTML = html;
-
-  // Render Table Foot (GRAND TOTAL)
-  if (tableFoot) {
-    const grand24_36 = sum.c24_36 ?? running24_36;
-    const grand48_60 = sum.c48_60 ?? running48_60;
-    const grand48_72 = sum.c48_72 ?? running48_72;
-    const grand72_up = sum.c72_up ?? running72_up;
-    const grandTotal = sum.total_stuck ?? (grand24_36 + grand48_60 + grand48_72 + grand72_up);
-
-    tableFoot.innerHTML = `
-      <tr class="tr-grand-total">
-        <td class="col-spot-code font-bold">TOTAL</td>
-        <td class="col-heat-cell font-bold">${grand24_36}</td>
-        <td class="col-heat-cell font-bold">${grand48_60}</td>
-        <td class="col-heat-cell font-bold">${grand48_72}</td>
-        <td class="col-heat-cell font-bold">${grand72_up}</td>
-        <td class="col-spot-total font-bold">${grandTotal}</td>
-      </tr>
-    `;
-  }
 }
 
 // Menentukan class heatmap (Merah, Kuning, Putih/Transparan)

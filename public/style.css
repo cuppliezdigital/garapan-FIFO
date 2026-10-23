@@ -23739,31 +23739,31 @@ table.fifo-matrix-table th {
 
 table.fifo-matrix-table th.th-spot {
   text-align: center !important;
-  width: 25% !important;
+  width: 20% !important;
   vertical-align: middle !important;
-  font-size: 0.76rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
 }
 
 table.fifo-matrix-table th.th-level {
   text-align: center !important;
-  font-size: 0.76rem !important;
-  letter-spacing: 0.06em;
-  padding: 3px !important;
-}
-
-table.fifo-matrix-table th.th-total {
-  text-align: center !important;
-  width: 15% !important;
   vertical-align: middle !important;
-  font-size: 0.76rem !important;
-  background: #f1f5f9 !important;
+  width: 80% !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.08em;
+  padding: 4px !important;
+  font-weight: 800 !important;
 }
 
 table.fifo-matrix-table th.th-hour {
   text-align: center !important;
-  font-size: 0.70rem !important;
-  width: 15% !important;
-  padding: 3px 2px !important;
+  vertical-align: middle !important;
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  width: 20% !important;
+  padding: 4px 4px !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
 }
 
 table.fifo-matrix-table td {
@@ -23778,6 +23778,7 @@ table.fifo-matrix-table td {
 }
 
 table.fifo-matrix-table td.col-spot-code {
+  width: 20% !important;
   text-align: center !important;
   background: #ffffff !important;
   font-family: monospace !important;
@@ -23792,14 +23793,9 @@ table.fifo-matrix-table td.col-spot-code .spot-tag {
   font-weight: 800;
 }
 
-table.fifo-matrix-table td.col-spot-total {
-  font-weight: 800 !important;
-  background: #f8fafc !important;
-  font-family: monospace !important;
-  font-size: 0.76rem !important;
-}
-
 table.fifo-matrix-table td.col-heat-cell {
+  width: 20% !important;
+  text-align: center !important;
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.15s ease;
   user-select: none;
