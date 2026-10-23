@@ -23726,6 +23726,8 @@ table.fifo-matrix-table {
 }
 
 table.fifo-matrix-table th {
+  text-align: center !important;
+  vertical-align: middle !important;
   border: 1px solid #000000 !important;
   background: #ffffff !important;
   color: #000000 !important;
@@ -23736,18 +23738,21 @@ table.fifo-matrix-table th {
 }
 
 table.fifo-matrix-table th.th-spot {
+  text-align: center !important;
   width: 25% !important;
   vertical-align: middle !important;
   font-size: 0.76rem !important;
 }
 
 table.fifo-matrix-table th.th-level {
+  text-align: center !important;
   font-size: 0.76rem !important;
   letter-spacing: 0.06em;
   padding: 3px !important;
 }
 
 table.fifo-matrix-table th.th-total {
+  text-align: center !important;
   width: 15% !important;
   vertical-align: middle !important;
   font-size: 0.76rem !important;
@@ -23755,6 +23760,7 @@ table.fifo-matrix-table th.th-total {
 }
 
 table.fifo-matrix-table th.th-hour {
+  text-align: center !important;
   font-size: 0.70rem !important;
   width: 15% !important;
   padding: 3px 2px !important;
