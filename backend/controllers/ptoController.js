@@ -415,7 +415,7 @@ exports.queryOrders = async (req, res) => {
 
     // Normalize size (allow 20, 50, 100, 200, 300, 500)
     let parsedSize = parseInt(size, 10) || 100;
-    if (parsedSize > 500) parsedSize = 500;
+    if (parsedSize > 1000) parsedSize = 1000;
     if (parsedSize < 10) parsedSize = 20;
 
     const parsedCurrent = Math.max(1, parseInt(current, 10) || 1);

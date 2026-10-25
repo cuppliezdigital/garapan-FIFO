@@ -402,7 +402,7 @@ async function queryInventory(req, res) {
     } = req.body || {};
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 50));
+    const limitNum = Math.min(1000, Math.max(1, parseInt(limit, 10) || 50));
     const offset = (pageNum - 1) * limitNum;
 
     const conditions = ['1=1'];
