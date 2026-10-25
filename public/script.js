@@ -199,7 +199,7 @@ const navLinks = {
 let currentAdvanceTab = 'reconcile';
 
 function switchAdvanceTab(tabName, updateUrl = true) {
-  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim'];
+  const validTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim', 'gudang-rute'];
   const tab = validTabs.includes(tabName) ? tabName : 'reconcile';
   currentAdvanceTab = tab;
 
@@ -322,7 +322,7 @@ function handleHashRoute() {
   const queryStr = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
   const urlParams = new URLSearchParams(queryStr);
 
-  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim'];
+  const advanceSubTabs = ['reconcile', 'kendaraan', 'generator-feishu', 'jfs', 'pto', 'barcode', 'print-awb', 'wajib-kirim', 'gudang-rute'];
   let target = baseRoute;
   let advanceSubTab = 'reconcile';
   if (baseRoute === 'fifo-report' || baseRoute === 'fiforeport') {
