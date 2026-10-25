@@ -63,7 +63,8 @@ const requiredFiles = [
   path.join(PUBLIC_DIR, 'partials', 'advance', 'pto.html'),
   path.join(PUBLIC_DIR, 'partials', 'advance', 'barcode.html'),
   path.join(PUBLIC_DIR, 'partials', 'advance', 'print-awb.html'),
-  path.join(PUBLIC_DIR, 'partials', 'advance', 'wajib-kirim.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'wajib-kirim.html'),
+  path.join(PUBLIC_DIR, 'partials', 'advance', 'gudang-rute.html'),
   path.join(PUBLIC_DIR, 'partials', 'modals', 'modals.html'),
   path.join(ROOT_DIR, 'backend', 'server.js'),
 ];
@@ -237,7 +238,7 @@ if (isCorrectAncestry(fifoReportAncestry)) {
   totalErrors++;
 }
 
-// Cek keberadaan 8 Sub-Tab Advance
+// Cek keberadaan 9 Sub-Tab Advance
 const requiredAdvancePanes = [
   'viewReconcile',
   'viewKendaraan',
@@ -246,7 +247,8 @@ const requiredAdvancePanes = [
   'viewPto',
   'viewBarcodeGen',
   'viewPrintAwb',
-  'viewWajibKirim'
+  'viewWajibKirim',
+  'viewGudangRute'
 ];
 
 let allPanesFound = true;
@@ -258,7 +260,7 @@ requiredAdvancePanes.forEach((id) => {
   }
 });
 if (allPanesFound) {
-  pass(`Semua 8 Sub-Tab Advance (Rekonsiliasi, Kendaraan, Feishu, JFS, PTO, Barcode, Cetak AWB, Wajib Kirim) lengkap.`);
+  pass(`Semua 9 Sub-Tab Advance (Rekonsiliasi, Kendaraan, Feishu, JFS, PTO, Barcode, Cetak AWB, Wajib Kirim, Gudang & Rute) lengkap.`);
 }
 
 // -----------------------------------------------------------------------------

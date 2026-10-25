@@ -17560,3 +17560,26 @@ table.fifo-matrix-table tfoot tr.tr-grand-total td {
   border-radius: 6px;
   font-family: monospace;
 }
+
+
+/* GUDANG & RUTE (INTERNAL / EKSTERNAL) PANEL */
+.gudang-rute-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: rgba(17, 24, 39, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  padding: 22px 20px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 768px) {
+  .gudang-rute-panel {
+    padding: 16px 14px;
+    border-radius: 14px;
+    gap: 16px;
+  }
+}

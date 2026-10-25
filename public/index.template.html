@@ -27,7 +27,8 @@
     <script src="print-awb.js?v=2.7.2" defer></script>
     <script src="wajib-kirim.js?v=2.8.5" defer></script>
     <script src="vendor/html2canvas.min.js"></script>
-    <script src="fifo-report.js?v=2.9.6" defer></script>
+    <script src="fifo-report.js?v=2.9.6" defer></script>
+    <script src="gudang-rute.js?v=2.9.0" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -1721,6 +1722,16 @@
                   <span class="tab-label">WAJIB KIRIM</span>
                   <span class="advance-tab-pill pill-amber">Must-Go</span>
                 </button>
+                <button type="button" class="advance-tab-btn" data-advance-tab="gudang-rute" id="tabBtnAdvanceGudangRute" title="Paket Simpan Gudang &amp; Rute Internal Eksternal (Analisis Stok &amp; POD)">
+                  <span class="tab-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                  </span>
+                  <span class="tab-label">Gudang &amp; Rute</span>
+                  <span class="advance-tab-pill pill-cyan">Analisis Feishu</span>
+                </button>
               </div>
             </div>
 
@@ -1731,7 +1742,8 @@
             <!-- @include partials/advance/pto.html -->
             <!-- @include partials/advance/barcode.html -->
             <!-- @include partials/advance/print-awb.html -->
-            <!-- @include partials/advance/wajib-kirim.html -->
+            <!-- @include partials/advance/wajib-kirim.html -->
+            <!-- @include partials/advance/gudang-rute.html -->
 
           <!-- AKHIR VIEW ADVANCE -->
           </div>

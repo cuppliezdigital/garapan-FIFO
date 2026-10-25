@@ -11,7 +11,8 @@ const auditRoutes = require('./routes/auditRoutes');
 const kendaraanRoutes = require('./routes/kendaraanRoutes');
 const jfsRoutes = require('./routes/jfsRoutes');
 const ptoRoutes = require('./routes/ptoRoutes');
-const fifoReportRoutes = require('./routes/fifoReportRoutes');
+const fifoReportRoutes = require('./routes/fifoReportRoutes');
+const gudangRuteRoutes = require('./routes/gudangRuteRoutes');
 const { buildHtml } = require('../scripts/build-html');
 
 const app = express();
@@ -138,7 +139,8 @@ app.use('/api', auditRoutes);
 app.use('/api', kendaraanRoutes);
 app.use('/api/jfs', jfsRoutes);
 app.use('/api/pto', ptoRoutes);
-app.use('/api/reports/fifo-spot', fifoReportRoutes);
+app.use('/api/reports/fifo-spot', fifoReportRoutes);
+app.use('/api/gudang-rute', gudangRuteRoutes);
 app.use('/api/auth', authRoutes);
 
 // ==============================================================================

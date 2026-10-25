@@ -217,6 +217,7 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   const paneBarcode = document.getElementById('viewBarcodeGen');
   const panePrintAwb = document.getElementById('viewPrintAwb');
   const paneWajibKirim = document.getElementById('viewWajibKirim');
+  const paneGudangRute = document.getElementById('viewGudangRute');
 
   if (paneReconcile) {
     paneReconcile.classList.toggle('hidden', tab !== 'reconcile');
@@ -250,6 +251,10 @@ function switchAdvanceTab(tabName, updateUrl = true) {
     panePrintAwb.classList.toggle('hidden', tab !== 'print-awb');
     panePrintAwb.classList.toggle('active', tab === 'print-awb');
   }
+  if (paneGudangRute) {
+    paneGudangRute.classList.toggle('hidden', tab !== 'gudang-rute');
+    paneGudangRute.classList.toggle('active', tab === 'gudang-rute');
+  }
 
   if (updateUrl) {
     history.replaceState(null, '', `#/advance?tab=${tab}`);
@@ -278,6 +283,10 @@ function switchAdvanceTab(tabName, updateUrl = true) {
   } else if (tab === 'print-awb') {
     if (typeof initPrintAwbModule === 'function') {
       initPrintAwbModule();
+    }
+  } else if (tab === 'gudang-rute') {
+    if (typeof loadGudangRuteDashboard === 'function') {
+      loadGudangRuteDashboard();
     }
   }
 }
