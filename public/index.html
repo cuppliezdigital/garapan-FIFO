@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="jt_cargo_icon_green.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#00B075" />
-    <link rel="stylesheet" href="style.css?v=2.9.5" />
+    <link rel="stylesheet" href="style.css?v=2.9.8" />
     <link rel="stylesheet" href="themes-retro.css?v=2.9.5" />
     <script src="vendor/xlsx.full.min.js"></script>
     <script src="script.js?v=2.9.7" defer></script>
@@ -29,7 +29,7 @@
     <script src="vendor/html2canvas.min.js"></script>
     <script src="fifo-report.js?v=2.9.6" defer></script>
 
-    <script src="gudang-rute.js?v=2.9.7" defer></script>
+    <script src="gudang-rute.js?v=2.9.8" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -3677,9 +3677,9 @@
 <div id="viewGudangRute" class="advance-pane hidden">
   <section class="panel gudang-rute-panel">
     <!-- HEADER SECTION -->
-    <div class="gudang-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color, #334155);">
+    <div class="gudang-header-bar">
       <div style="display: flex; align-items: center; gap: 14px;">
-        <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(99, 102, 241, 0.2)); border: 1px solid rgba(14, 165, 233, 0.4); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+        <div class="gudang-icon-box">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
@@ -3687,10 +3687,10 @@
         </div>
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-color, #f8fafc);">Paket Simpan Gudang &amp; Rute (Internal / Eksternal)</h3>
+            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc;">Paket Simpan Gudang &amp; Rute (Internal / Eksternal)</h3>
             <span class="advance-tab-pill pill-cyan" style="font-size: 0.75rem;">Feishu Live Stream</span>
           </div>
-          <p style="margin: 4px 0 0; font-size: 0.82rem; color: var(--text-muted, #94a3b8);">Analisis stok &amp; waybill tersimpan dari Feishu (258MB). Otomatis enrich nama barang, customer, rute &amp; pelacakan alur POD real-time.</p>
+          <p style="margin: 4px 0 0; font-size: 0.82rem; color: #94a3b8;">Analisis stok &amp; waybill tersimpan dari Feishu (258MB). Otomatis enrich nama barang, customer, rute &amp; pelacakan alur POD real-time.</p>
         </div>
       </div>
 
@@ -3701,17 +3701,17 @@
           <span id="gudangBatchTimeLabel">Batch: Memuat...</span>
         </div>
 
-        <button type="button" class="btn btn-primary" id="btnImportLatestGudang" onclick="importLatestGudangRuteFile()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 16px; border-radius: 8px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none; color: #fff; cursor: pointer;">
+        <button type="button" class="btn btn-primary" id="btnImportLatestGudang" onclick="importLatestGudangRuteFile()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 16px; border-radius: 8px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           <span id="btnImportLatestText">⚡ Baca File Terbaru (Downloads)</span>
         </button>
 
-        <button type="button" class="btn btn-primary" id="btnEnrichCurrentPage" onclick="enrichCurrentPage()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; cursor: pointer;" title="Otomatis enrich 50 waybill yang sedang tampil di halaman ini tanpa harus klik 1 per 1">
+        <button type="button" class="btn btn-primary" id="btnEnrichCurrentPage" onclick="enrichCurrentPage()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);" title="Otomatis enrich 50 waybill yang sedang tampil di halaman ini tanpa harus klik 1 per 1">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           <span id="btnEnrichPageText">⚡ Enrich Halaman Ini (50 Resi)</span>
         </button>
 
-        <button type="button" class="btn btn-primary" id="btnBulkEnrichJfs" onclick="promptBulkEnrich()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; color: #fff; cursor: pointer;" title="Auto-enrich 100 s/d 1.000 waybill sekaligus di latar belakang dari JFS">
+        <button type="button" class="btn btn-primary" id="btnBulkEnrichJfs" onclick="promptBulkEnrich()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);" title="Auto-enrich 100 s/d 1.000 waybill sekaligus di latar belakang dari JFS">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           <span id="btnBulkEnrichText">⚡ Auto-Enrich Massal (100 - 500)</span>
         </button>
@@ -3729,84 +3729,84 @@
     </div>
 
     <!-- LIVE IMPORT PROGRESS BANNER (HIDDEN BY DEFAULT) -->
-    <div id="gudangImportProgressBar" style="display: none; margin-bottom: 20px; padding: 14px 18px; border-radius: 10px; background: rgba(14, 165, 233, 0.12); border: 1px solid rgba(14, 165, 233, 0.35);">
+    <div id="gudangImportProgressBar" style="display: none; padding: 16px 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.12) 100%); border: 1px solid rgba(56, 189, 248, 0.4); box-shadow: 0 8px 24px rgba(2, 132, 199, 0.15);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-weight: 600; font-size: 0.88rem; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
-          <span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
+        <span style="font-weight: 700; font-size: 0.9rem; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+          <span class="spinner-small" style="display: inline-block; width: 15px; height: 15px; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
           <span id="gudangProgressTitle">Memproses File Excel 258MB...</span>
         </span>
-        <span id="gudangProgressCount" style="font-size: 0.8rem; font-weight: 700; color: #f8fafc;">0 waybill</span>
+        <span id="gudangProgressCount" style="font-size: 0.82rem; font-weight: 700; color: #f8fafc; font-family: monospace;">0 waybill</span>
       </div>
-      <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden;">
+      <div style="width: 100%; height: 7px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden;">
         <div id="gudangProgressFill" style="width: 100%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); animation: pulse 1.5s infinite;"></div>
       </div>
-      <p id="gudangProgressMessage" style="margin: 6px 0 0; font-size: 0.76rem; color: #94a3b8;">Sedang membaca stream XML &amp; meng-enrich dengan basis data...</p>
+      <p id="gudangProgressMessage" style="margin: 8px 0 0; font-size: 0.78rem; color: #94a3b8;">Sedang membaca stream XML &amp; meng-enrich dengan basis data...</p>
     </div>
 
     <!-- KPI CARDS -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px;">
+    <div class="gudang-kpi-grid">
       <!-- CARD 1: TOTAL WAYBILL -->
-      <div style="padding: 14px 16px; border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); display: flex; flex-direction: column;">
-        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8);">Total Waybill Simpan</span>
+      <div class="gudang-kpi-card kpi-cyan">
+        <span style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; font-weight: 600;">Total Waybill Simpan</span>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
-          <span id="kpiGudangTotal" style="font-size: 1.5rem; font-weight: 700; color: #38bdf8;">0</span>
-          <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">paket</span>
+          <span id="kpiGudangTotal" style="font-size: 1.55rem; font-weight: 800; color: #38bdf8; letter-spacing: -0.02em;">0</span>
+          <span style="font-size: 0.75rem; color: #94a3b8;">paket</span>
         </div>
       </div>
 
       <!-- CARD 2: TOTAL BERAT & VOLUME -->
-      <div style="padding: 14px 16px; border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); display: flex; flex-direction: column;">
-        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8);">Total Berat &amp; Volume</span>
+      <div class="gudang-kpi-card kpi-purple">
+        <span style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; font-weight: 600;">Total Berat &amp; Volume</span>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
-          <span id="kpiGudangBerat" style="font-size: 1.35rem; font-weight: 700; color: #a78bfa;">0 kg</span>
-          <span id="kpiGudangVolume" style="font-size: 0.8rem; color: var(--text-muted, #94a3b8);">(0 m³)</span>
+          <span id="kpiGudangBerat" style="font-size: 1.4rem; font-weight: 800; color: #a78bfa; letter-spacing: -0.02em;">0 kg</span>
+          <span id="kpiGudangVolume" style="font-size: 0.8rem; color: #94a3b8;">(0 m³)</span>
         </div>
       </div>
 
       <!-- CARD 3: DATA TER-ENRICH -->
-      <div style="padding: 14px 16px; border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); display: flex; flex-direction: column;">
-        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8);">Terisi Nama Barang &amp; HP</span>
+      <div class="gudang-kpi-card kpi-emerald">
+        <span style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; font-weight: 600;">Terisi Nama Barang &amp; HP</span>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
-          <span id="kpiGudangEnriched" style="font-size: 1.5rem; font-weight: 700; color: #34d399;">0</span>
-          <span id="kpiGudangEnrichPercent" style="font-size: 0.78rem; color: #34d399; font-weight: 600;">(0%)</span>
+          <span id="kpiGudangEnriched" style="font-size: 1.55rem; font-weight: 800; color: #34d399; letter-spacing: -0.02em;">0</span>
+          <span id="kpiGudangEnrichPercent" style="font-size: 0.8rem; color: #34d399; font-weight: 700;">(0%)</span>
         </div>
       </div>
 
       <!-- CARD 4: PAKET BERMASALAH -->
-      <div style="padding: 14px 16px; border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); display: flex; flex-direction: column;">
-        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8);">Paket Bermasalah / Retur</span>
+      <div class="gudang-kpi-card kpi-rose">
+        <span style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; font-weight: 600;">Paket Bermasalah / Retur</span>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
-          <span id="kpiGudangProblem" style="font-size: 1.5rem; font-weight: 700; color: #f87171;">0</span>
-          <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">kasus</span>
+          <span id="kpiGudangProblem" style="font-size: 1.55rem; font-weight: 800; color: #f87171; letter-spacing: -0.02em;">0</span>
+          <span style="font-size: 0.75rem; color: #94a3b8;">kasus</span>
         </div>
       </div>
 
       <!-- CARD 5: RATA-RATA AGING -->
-      <div style="padding: 14px 16px; border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); display: flex; flex-direction: column;">
-        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8);">Rata-rata Durasi Simpan</span>
+      <div class="gudang-kpi-card kpi-amber">
+        <span style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; font-weight: 600;">Rata-rata Durasi Simpan</span>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
-          <span id="kpiGudangAvgHours" style="font-size: 1.5rem; font-weight: 700; color: #fbbf24;">0</span>
-          <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Jam</span>
+          <span id="kpiGudangAvgHours" style="font-size: 1.55rem; font-weight: 800; color: #fbbf24; letter-spacing: -0.02em;">0</span>
+          <span style="font-size: 0.75rem; color: #94a3b8;">Jam</span>
         </div>
       </div>
     </div>
 
     <!-- FILTER & SEARCH CARD -->
-    <div style="padding: 16px 20px; border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); margin-bottom: 20px;">
+    <div style="padding: 16px 20px; border-radius: 14px; background: linear-gradient(145deg, rgba(30, 41, 59, 0.65), rgba(15, 23, 42, 0.85)); border: 1px solid rgba(148, 163, 184, 0.16); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);">
       <form id="gudangFilterForm" onsubmit="handleGudangFilterSubmit(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: flex-end;">
         <!-- SEARCH -->
         <div style="grid-column: span 2; min-width: 260px;">
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Pencarian (Resi / Wildcard / Barang / Orang)</label>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Pencarian Bebas (Resi / Multi-Resi / Barang / Orang)</label>
           <div style="position: relative;">
-            <input type="text" id="gudangSearchInput" placeholder="Tempel banyak resi (pisah enter / koma / spasi) atau cari barang, toko, penerima..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;" />
+            <input type="text" id="gudangSearchInput" class="col-filter-input" placeholder="Tempel banyak resi (pisah enter / koma / spasi) atau cari barang, toko, penerima..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.25); background: #0b1220; color: #f8fafc; font-size: 0.85rem;" />
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
         </div>
 
         <!-- HOLDING GATEWAY -->
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Posisi Gudang Saat Ini</label>
-          <select id="gudangFilterHoldingGw" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Posisi Gudang Saat Ini</label>
+          <select id="gudangFilterHoldingGw" class="col-filter-input" style="width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.25); background: #0b1220; color: #f8fafc; font-size: 0.85rem;">
             <option value="ALL" selected>🌐 Semua Gateway (Nasional ~1 Juta Paket)</option>
             <option value="GW-Jakarta">GW-Jakarta</option>
           </select>
@@ -3814,16 +3814,16 @@
 
         <!-- GW TUJUAN -->
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Gateway Tujuan</label>
-          <select id="gudangFilterDestGw" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Gateway Tujuan</label>
+          <select id="gudangFilterDestGw" class="col-filter-input" style="width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.25); background: #0b1220; color: #f8fafc; font-size: 0.85rem;">
             <option value="ALL">Semua Tujuan</option>
           </select>
         </div>
 
         <!-- TIPE JALUR -->
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Tipe Jalur (Rute)</label>
-          <select id="gudangFilterTipeJalur" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Tipe Jalur (Rute)</label>
+          <select id="gudangFilterTipeJalur" class="col-filter-input" style="width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.25); background: #0b1220; color: #f8fafc; font-size: 0.85rem;">
             <option value="ALL">Semua Jalur</option>
             <option value="干线">干线 (Eksternal Trunk)</option>
             <option value="支线">支线 (Internal Feeder)</option>
@@ -3832,8 +3832,8 @@
 
         <!-- AGING DURATION -->
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Kategori Jam Stuck</label>
-          <select id="gudangFilterAging" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Kategori Jam Stuck</label>
+          <select id="gudangFilterAging" class="col-filter-input" style="width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.25); background: #0b1220; color: #f8fafc; font-size: 0.85rem;">
             <option value="ALL">Semua Durasi</option>
             <option value="1-12">1-12 Jam</option>
             <option value="12-24">12-24 Jam</option>
@@ -3847,8 +3847,8 @@
 
         <!-- ENRICH STATUS -->
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Status Rincian Produk</label>
-          <select id="gudangFilterEnrich" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Status Rincian Produk</label>
+          <select id="gudangFilterEnrich" class="col-filter-input" style="width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.25); background: #0b1220; color: #f8fafc; font-size: 0.85rem;">
             <option value="all">Semua Data</option>
             <option value="enriched">Hanya Ada Nama Barang</option>
             <option value="unenriched">Belum Terisi</option>
@@ -3857,10 +3857,10 @@
 
         <!-- ACTION BUTTONS -->
         <div style="display: flex; gap: 8px;">
-          <button type="submit" class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; font-weight: 600; border-radius: 6px; cursor: pointer;">
+          <button type="submit" class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; font-weight: 700; border-radius: 7px; background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid rgba(56, 189, 248, 0.35); cursor: pointer;">
             Terapkan Filter
           </button>
-          <button type="button" class="btn btn-secondary" onclick="resetGudangFilter()" style="padding: 8px 12px; font-size: 0.82rem; border-radius: 6px; cursor: pointer;">
+          <button type="button" class="btn btn-secondary" onclick="resetGudangFilter()" style="padding: 8px 12px; font-size: 0.82rem; border-radius: 7px; cursor: pointer;">
             Reset
           </button>
         </div>
@@ -3868,65 +3868,73 @@
     </div>
 
     <!-- INVENTORY TABLE CONTAINER -->
-    <div style="border-radius: 10px; background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); overflow: hidden; margin-bottom: 16px;">
-      <div style="overflow-x: auto; max-height: 650px;">
-        <table class="table" id="tableGudangRute" style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
-          <thead style="position: sticky; top: 0; background: var(--table-header-bg, #0f172a); z-index: 10; border-bottom: 2px solid var(--border-color, #334155);">
+    <div class="gudang-table-card">
+      <div style="overflow-x: auto; max-height: 680px;">
+        <table class="gudang-table" id="tableGudangRute">
+          <thead>
             <tr>
-              <th style="padding: 12px 10px; width: 45px; text-align: center;">No</th>
-              <th style="padding: 12px 10px; min-width: 130px;">Waybill (AWB)</th>
-              <th style="padding: 12px 10px; min-width: 200px;">⭐ Nama Barang</th>
-              <th style="padding: 12px 10px; min-width: 160px;">Pengirim &amp; Toko</th>
+              <th style="padding: 12px 8px; width: 45px; text-align: center;">No</th>
+              <th style="padding: 12px 10px; min-width: 145px;">Waybill (AWB)</th>
+              <th style="padding: 12px 10px; min-width: 190px;">⭐ Nama Barang</th>
+              <th style="padding: 12px 10px; min-width: 150px;">Pengirim &amp; Toko</th>
+              <th style="padding: 12px 10px; min-width: 140px;">Asal (GW &amp; Outlet)</th>
               <th style="padding: 12px 10px; min-width: 160px;">Penerima &amp; HP</th>
-              <th style="padding: 12px 10px; min-width: 180px;">Alamat Lengkap Penerima</th>
+              <th style="padding: 12px 10px; min-width: 140px;">Tujuan (GW &amp; Outlet)</th>
+              <th style="padding: 12px 10px; min-width: 180px;">Alamat Penerima</th>
               <th style="padding: 12px 10px; min-width: 120px;">Gudang Saat Ini</th>
-              <th style="padding: 12px 10px; min-width: 110px; text-align: center;">Durasi Simpan</th>
-              <th style="padding: 12px 10px; min-width: 150px;">Alur Rute &amp; Tipe</th>
-              <th style="padding: 12px 10px; min-width: 100px; text-align: center;">Status</th>
-              <th style="padding: 12px 10px; min-width: 140px; text-align: center;">Aksi</th>
+              <th style="padding: 12px 10px; min-width: 105px; text-align: center;">Durasi Simpan</th>
+              <th style="padding: 12px 10px; min-width: 140px;">Rute &amp; Tipe</th>
+              <th style="padding: 12px 10px; min-width: 95px; text-align: center;">Status</th>
+              <th style="padding: 12px 10px; min-width: 130px; text-align: center;">Aksi</th>
             </tr>
-            <!-- ROW 2: PENCARIAN DI SETIAP KOLOM (MULTI-COLUMN & MULTI-SEARCH) -->
-            <tr style="background: rgba(15, 23, 42, 0.95); border-bottom: 2px solid var(--border-color, #334155);">
+            <!-- ROW 2: PENCARIAN DI SETIAP KOLOM (13 KOLOM LENGKAP) -->
+            <tr>
               <th style="padding: 6px 4px; text-align: center;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllColumnFilters()" title="Bersihkan semua pencarian kolom" style="padding: 3px 6px; font-size: 0.68rem; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.3);">✕</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllColumnFilters()" title="Bersihkan semua filter" style="padding: 3px 6px; font-size: 0.68rem; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.3);">✕</button>
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchWaybill" placeholder="Resi (bisa banyak / *)..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #38bdf8; font-family: monospace;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchWaybill" class="col-filter-input" placeholder="Resi (bisa banyak / *)..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #38bdf8; font-family: monospace;" />
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchNamaBarang" placeholder="Cari barang (bisa a|b)..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #f8fafc;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchNamaBarang" class="col-filter-input" placeholder="Cari barang (bisa a|b)..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #f8fafc;" />
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchPengirim" placeholder="Pengirim / seller..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchPengirim" class="col-filter-input" placeholder="Pengirim / seller..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #cbd5e1;" />
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchPenerima" placeholder="Penerima / HP..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchAsal" class="col-filter-input" placeholder="GW / Outlet asal..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #38bdf8;" />
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchAlamat" placeholder="Cari jalan / kota..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchPenerima" class="col-filter-input" placeholder="Penerima / HP..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #cbd5e1;" />
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchHoldingGw" placeholder="Posisi gudang..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchTujuan" class="col-filter-input" placeholder="GW / Outlet tujuan..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #c084fc;" />
               </th>
-              <th style="padding: 6px 6px; text-align: center;">
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchAlamat" class="col-filter-input" placeholder="Jalan / kota..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchHoldingGw" class="col-filter-input" placeholder="Posisi gudang..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px; text-align: center;">
                 <div style="display: flex; gap: 3px; align-items: center; justify-content: center;">
-                  <input type="number" id="colSearchDurasiMin" placeholder="Min" onkeyup="handleColumnSearch(event)" style="width: 44px; padding: 3px 4px; font-size: 0.7rem; border-radius: 3px; border: 1px solid #475569; background: #0f172a; color: #fbbf24; text-align: center;" />
+                  <input type="number" id="colSearchDurasiMin" class="col-filter-input" placeholder="Min" onkeyup="handleColumnSearch(event)" style="width: 44px; padding: 4px 3px; font-size: 0.7rem; border-radius: 4px; border: 1px solid #475569; background: #0b1220; color: #fbbf24; text-align: center;" />
                   <span style="font-size: 0.68rem; color: #64748b;">-</span>
-                  <input type="number" id="colSearchDurasiMax" placeholder="Max" onkeyup="handleColumnSearch(event)" style="width: 44px; padding: 3px 4px; font-size: 0.7rem; border-radius: 3px; border: 1px solid #475569; background: #0f172a; color: #fbbf24; text-align: center;" />
+                  <input type="number" id="colSearchDurasiMax" class="col-filter-input" placeholder="Max" onkeyup="handleColumnSearch(event)" style="width: 44px; padding: 4px 3px; font-size: 0.7rem; border-radius: 4px; border: 1px solid #475569; background: #0b1220; color: #fbbf24; text-align: center;" />
                 </div>
               </th>
-              <th style="padding: 6px 6px;">
-                <input type="text" id="colSearchRute" placeholder="Rute / tujuan..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              <th style="padding: 6px;">
+                <input type="text" id="colSearchRute" class="col-filter-input" placeholder="Rute / jalur..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 5px 7px; font-size: 0.74rem; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #cbd5e1;" />
               </th>
-              <th style="padding: 6px 6px; text-align: center;">
-                <select id="colSearchStatus" onchange="handleColumnSearch(event)" style="width: 100%; padding: 3px 4px; font-size: 0.7rem; border-radius: 3px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;">
+              <th style="padding: 6px; text-align: center;">
+                <select id="colSearchStatus" class="col-filter-input" onchange="handleColumnSearch(event)" style="width: 100%; padding: 4px 5px; font-size: 0.7rem; border-radius: 4px; border: 1px solid #475569; background: #0b1220; color: #cbd5e1;">
                   <option value="ALL">Semua</option>
                   <option value="ya">Bermasalah</option>
                   <option value="tidak">Normal</option>
                 </select>
               </th>
-              <th style="padding: 6px 6px; text-align: center;">
-                <button type="button" class="btn btn-primary btn-sm" onclick="applyColumnFilters()" style="width: 100%; padding: 4px 6px; font-size: 0.72rem; font-weight: 600; border-radius: 4px;">
+              <th style="padding: 6px; text-align: center;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="applyColumnFilters()" style="width: 100%; padding: 5px 8px; font-size: 0.74rem; font-weight: 700; border-radius: 5px; background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid rgba(56, 189, 248, 0.4); cursor: pointer;">
                   🔍 Cari
                 </button>
               </th>
@@ -3934,13 +3942,16 @@
           </thead>
           <tbody id="tbodyGudangRute">
             <tr>
-              <td colspan="11" style="text-align: center; padding: 40px 10px; color: var(--text-muted, #94a3b8);">
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: #64748b;">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                  </svg>
-                  <p style="margin: 0; font-size: 0.9rem;">Belum ada data dimuat. Silakan klik tombol <b>[ ⚡ Baca File Terbaru (Downloads) ]</b> untuk memulai analisis.</p>
+              <td colspan="13" style="text-align: center; padding: 45px 15px; color: var(--text-muted, #94a3b8);">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                  <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                  </div>
+                  <p style="margin: 0; font-size: 0.92rem; font-weight: 600; color: #e2e8f0;">Data Gudang &amp; Rute Siap Dimuat</p>
+                  <p style="margin: 0; font-size: 0.8rem; color: #94a3b8;">Silakan klik tombol <b>[ ⚡ Baca File Terbaru (Downloads) ]</b> untuk memulai analisis dari file Feishu 258MB.</p>
                 </div>
               </td>
             </tr>
@@ -3949,14 +3960,14 @@
       </div>
 
       <!-- PAGINATION CONTROLS -->
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border-color, #334155); background: var(--table-footer-bg, #0f172a); font-size: 0.8rem; flex-wrap: wrap; gap: 10px;">
-        <div style="color: var(--text-muted, #94a3b8);" id="gudangPaginationInfo">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid rgba(148, 163, 184, 0.15); background: rgba(15, 23, 42, 0.98); font-size: 0.82rem; flex-wrap: wrap; gap: 12px;">
+        <div style="color: #94a3b8;" id="gudangPaginationInfo">
           Menampilkan 0 dari 0 waybill
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <label style="color: var(--text-muted, #94a3b8); display: flex; align-items: center; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <label style="color: #94a3b8; display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
             Baris:
-            <select id="gudangPageSize" onchange="changeGudangPageSize(this.value)" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #1e293b); color: var(--text-color, #fff); font-size: 0.8rem;">
+            <select id="gudangPageSize" onchange="changeGudangPageSize(this.value)" style="padding: 4px 8px; border-radius: 5px; border: 1px solid #475569; background: #0b1220; color: #f8fafc; font-size: 0.8rem;">
               <option value="25">25</option>
               <option value="50" selected>50</option>
               <option value="100">100</option>
@@ -3964,9 +3975,9 @@
             </select>
           </label>
           <div style="display: flex; gap: 6px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnGudangPrev" onclick="navigateGudangPage(-1)" disabled style="padding: 4px 10px;">&laquo; Prev</button>
-            <span id="gudangCurrentPageBadge" style="padding: 4px 10px; border-radius: 4px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-weight: 600;">Halaman 1 / 1</span>
-            <button type="button" class="btn btn-secondary btn-sm" id="btnGudangNext" onclick="navigateGudangPage(1)" disabled style="padding: 4px 10px;">Next &raquo;</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnGudangPrev" onclick="navigateGudangPage(-1)" disabled style="padding: 5px 12px; border-radius: 6px;">&laquo; Prev</button>
+            <span id="gudangCurrentPageBadge" style="padding: 5px 12px; border-radius: 6px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-weight: 700; font-size: 0.8rem;">Halaman 1 / 1</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnGudangNext" onclick="navigateGudangPage(1)" disabled style="padding: 5px 12px; border-radius: 6px;">Next &raquo;</button>
           </div>
         </div>
       </div>
@@ -3977,66 +3988,70 @@
 <!-- ============================================================================== -->
 <!-- POP-UP MODAL: LACAK ALUR SCAN (POD) - 100% PERSIS SCREENSHOT USER -->
 <!-- ============================================================================== -->
-<div id="modalPodTraceGudang" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; overflow-y: auto; padding: 20px; align-items: center; justify-content: center;">
-  <div style="position: relative; width: 100%; max-width: 1200px; background: var(--modal-bg, #0f172a); border-radius: 12px; border: 1px solid var(--border-color, #334155); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; max-height: 92vh;">
+<div id="modalPodTraceGudang" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.82); z-index: 9999; overflow-y: auto; padding: 20px; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+  <div style="position: relative; width: 100%; max-width: 1200px; background: #0f172a; border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.7); overflow: hidden; display: flex; flex-direction: column; max-height: 92vh;">
     <!-- MODAL HEADER -->
-    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color, #334155); display: flex; justify-content: space-between; align-items: center; background: var(--card-bg, #1e293b);">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <div style="padding: 16px 22px; border-bottom: 1px solid rgba(148, 163, 184, 0.16); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e293b, #0f172a);">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         </div>
         <div>
-          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 10px;">
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span>Rekaman POD &mdash; Lacak Alur Scan Waybill</span>
-            <span id="modalPodWaybillTitle" style="color: #38bdf8; font-family: monospace; background: rgba(56, 189, 248, 0.1); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 1rem;">-</span>
+            <span id="modalPodWaybillTitle" style="color: #38bdf8; font-family: 'JetBrains Mono', monospace; background: rgba(56, 189, 248, 0.12); padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.35); font-size: 1.05rem; letter-spacing: 0.02em;">-</span>
+            <button type="button" class="btn-copy-mini" id="modalBtnCopyAwbHeader" onclick="copyModalAwbToClipboard(this)" title="Salin nomor AWB" style="padding: 4px 10px; font-size: 0.74rem;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span style="margin-left: 4px; font-weight: 600;">Salin AWB</span>
+            </button>
           </h3>
-          <p id="modalPodSubtitle" style="margin: 2px 0 0; font-size: 0.78rem; color: #94a3b8;">Data live real-time terhubung langsung ke J&amp;T Cargo Operating Platform.</p>
+          <p id="modalPodSubtitle" style="margin: 3px 0 0; font-size: 0.78rem; color: #94a3b8;">Data live real-time terhubung langsung ke J&amp;T Cargo Operating Platform.</p>
         </div>
       </div>
-      <button type="button" onclick="closePodModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 4px 8px; line-height: 1; border-radius: 6px;" title="Tutup Modal">&times;</button>
+      <button type="button" onclick="closePodModal()" style="background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); color: #cbd5e1; font-size: 1.4rem; cursor: pointer; padding: 2px 10px; line-height: 1; border-radius: 8px; transition: all 0.15s ease;" title="Tutup Modal" onmouseover="this.style.background='rgba(248, 113, 113, 0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(148, 163, 184, 0.1)'; this.style.color='#cbd5e1'">&times;</button>
     </div>
 
     <!-- MODAL BODY -->
-    <div style="padding: 20px; overflow-y: auto; flex: 1;">
+    <div style="padding: 22px; overflow-y: auto; flex: 1;">
       <!-- TOP ROUTE PANELS (PERSIS SCREENSHOT USER!) -->
-      <div style="background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.82rem; line-height: 1.6;">
-        <div style="display: flex; gap: 8px; margin-bottom: 6px; align-items: baseline;">
-          <strong style="color: #38bdf8; min-width: 260px; font-weight: 700;">| Rekaman pod - Routing Dinamis:</strong>
+      <div style="background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9)); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; font-size: 0.84rem; line-height: 1.7; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);">
+        <div style="display: flex; gap: 10px; margin-bottom: 6px; align-items: baseline;">
+          <strong style="color: #38bdf8; min-width: 270px; font-weight: 700;">| Rekaman pod - Routing Dinamis:</strong>
           <span id="podDynamicRouteText" style="color: #f8fafc; font-weight: 600; word-break: break-all;">-</span>
         </div>
-        <div style="display: flex; gap: 8px; margin-bottom: 6px; align-items: baseline;">
-          <strong style="color: #94a3b8; min-width: 260px;">| Record pod - Rencana Rute:</strong>
+        <div style="display: flex; gap: 10px; margin-bottom: 6px; align-items: baseline;">
+          <strong style="color: #94a3b8; min-width: 270px; font-weight: 600;">| Record pod - Rencana Rute:</strong>
           <span id="podPlannedRouteText" style="color: #cbd5e1; word-break: break-all;">-</span>
         </div>
-        <div style="display: flex; gap: 8px; margin-bottom: 6px; align-items: baseline;">
-          <strong style="color: #10b981; min-width: 260px; font-weight: 600;">| Riwayat pod - Rute Aktual:</strong>
+        <div style="display: flex; gap: 10px; margin-bottom: 6px; align-items: baseline;">
+          <strong style="color: #34d399; min-width: 270px; font-weight: 700;">| Riwayat pod - Rute Aktual:</strong>
           <span id="podActualRouteText" style="color: #6ee7b7; word-break: break-all;">-</span>
         </div>
-        <div style="display: flex; gap: 8px; align-items: baseline;">
-          <strong style="color: #f59e0b; min-width: 260px; font-weight: 600;">| Riwayat pod - Rute Rencana Pengembalian:</strong>
+        <div style="display: flex; gap: 10px; align-items: baseline;">
+          <strong style="color: #fbbf24; min-width: 270px; font-weight: 700;">| Riwayat pod - Rute Rencana Pengembalian:</strong>
           <span id="podReturnRouteText" style="color: #fcd34d; word-break: break-all;">-</span>
         </div>
       </div>
 
       <!-- POD SCAN TABLE (18 SCAN STEPS PERSIS SCREENSHOT USER!) -->
-      <div style="border: 1px solid var(--border-color, #334155); border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
+      <div style="border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 10px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);">
         <div style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
-            <thead style="background: var(--table-header-bg, #0f172a); border-bottom: 1px solid var(--border-color, #334155);">
+            <thead style="background: linear-gradient(180deg, #1e293b, #0f172a); border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
               <tr>
-                <th style="padding: 10px 8px; width: 45px; text-align: center;">No.</th>
-                <th style="padding: 10px 10px; min-width: 140px;">Waktu scan ↕</th>
-                <th style="padding: 10px 10px; min-width: 140px;">waktu unggah ↕</th>
-                <th style="padding: 10px 12px; min-width: 130px;">Jenis scan</th>
-                <th style="padding: 10px 8px; min-width: 80px;">Tipe scan</th>
-                <th style="padding: 10px 14px; min-width: 420px;">deskripsi track record</th>
-                <th style="padding: 10px 8px; min-width: 70px; text-align: right;">Berat</th>
-                <th style="padding: 10px 8px; min-width: 90px; text-align: right;">berat volumetrik</th>
+                <th style="padding: 10px 8px; width: 45px; text-align: center; color: #94a3b8;">No.</th>
+                <th style="padding: 10px 10px; min-width: 140px; color: #cbd5e1;">Waktu scan ↕</th>
+                <th style="padding: 10px 10px; min-width: 140px; color: #cbd5e1;">waktu unggah ↕</th>
+                <th style="padding: 10px 12px; min-width: 130px; color: #cbd5e1;">Jenis scan</th>
+                <th style="padding: 10px 8px; min-width: 80px; color: #cbd5e1;">Tipe scan</th>
+                <th style="padding: 10px 14px; min-width: 420px; color: #cbd5e1;">deskripsi track record</th>
+                <th style="padding: 10px 8px; min-width: 70px; text-align: right; color: #cbd5e1;">Berat</th>
+                <th style="padding: 10px 8px; min-width: 90px; text-align: right; color: #cbd5e1;">berat volumetrik</th>
               </tr>
             </thead>
             <tbody id="tbodyPodScans">
               <tr>
-                <td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">
+                <td colspan="8" style="text-align: center; padding: 35px; color: #94a3b8;">
                   Memuat riwayat scan dari JFS Operating Platform...
                 </td>
               </tr>
@@ -4046,23 +4061,30 @@
       </div>
 
       <!-- SECTION: INFORMASI PENDAFTARAN PAKET BERMASALAH -->
-      <div style="border: 1px solid var(--border-color, #334155); border-radius: 8px; overflow: hidden; background: var(--card-bg, #1e293b);">
-        <div style="padding: 10px 16px; font-weight: 700; font-size: 0.82rem; color: #f87171; border-bottom: 1px solid var(--border-color, #334155); display: flex; align-items: center; gap: 8px;">
+      <div style="border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 10px; overflow: hidden; background: rgba(30, 41, 59, 0.5);">
+        <div style="padding: 11px 18px; font-weight: 700; font-size: 0.84rem; color: #f87171; border-bottom: 1px solid rgba(248, 113, 113, 0.2); display: flex; align-items: center; gap: 8px; background: rgba(248, 113, 113, 0.1);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span>| Informasi pendaftaran paket bermasalah</span>
         </div>
-        <div id="podAbnormalContainer" style="padding: 12px 16px; font-size: 0.8rem; color: #cbd5e1;">
+        <div id="podAbnormalContainer" style="padding: 14px 18px; font-size: 0.82rem; color: #cbd5e1;">
           <span style="color: #94a3b8;">Tidak ada catatan paket bermasalah aktif.</span>
         </div>
       </div>
     </div>
 
     <!-- MODAL FOOTER -->
-    <div style="padding: 12px 20px; border-top: 1px solid var(--border-color, #334155); background: var(--card-bg, #1e293b); display: flex; justify-content: space-between; align-items: center;">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="copyPodTraceText()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Salin Rute &amp; Scan
-      </button>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="closePodModal()">Tutup</button>
+    <div style="padding: 14px 22px; border-top: 1px solid rgba(148, 163, 184, 0.16); background: #1e293b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-primary btn-sm" id="modalBtnCopyAwbFooter" onclick="copyModalAwbToClipboard(this)" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid rgba(56, 189, 248, 0.4);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Salin Nomor AWB</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyPodTraceText()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Salin Riwayat POD</span>
+        </button>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closePodModal()" style="padding: 6px 16px;">Tutup</button>
     </div>
   </div>
 </div>

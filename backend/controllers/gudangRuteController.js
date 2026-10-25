@@ -381,9 +381,13 @@ async function queryInventory(req, res) {
       col_pengirim = '',
       col_penerima = '',
       col_alamat = '',
+      col_asal = '',
+      col_tujuan = '',
+      col_holding_gw = '',
       col_rute = '',
       col_durasi_min = '',
       col_durasi_max = '',
+      col_status = '',
       holding_gw = '',
       gw_tujuan = '',
       tipe_jalur = '',
@@ -506,6 +510,33 @@ async function queryInventory(req, res) {
     if (col_alamat && col_alamat.trim()) {
       conditions.push('g.alamat_penerima LIKE ?');
       params.push(`%${col_alamat.trim()}%`);
+    }
+
+    // 6b. Per-Column Filter: Asal (GW Asal & Outlet Asal)
+    if (col_asal && col_asal.trim()) {
+      const p = `%${col_asal.trim()}%`;
+      conditions.push('(g.gw_asal LIKE ? OR g.outlet_asal LIKE ?)');
+      params.push(p, p);
+    }
+
+    // 6c. Per-Column Filter: Tujuan (GW Tujuan, Outlet Tujuan & Akhir)
+    if (col_tujuan && col_tujuan.trim()) {
+      const p = `%${col_tujuan.trim()}%`;
+      conditions.push('(g.gw_tujuan LIKE ? OR g.outlet_tujuan LIKE ? OR g.outlet_akhir LIKE ? OR g.gw_tujuan_2 LIKE ?)');
+      params.push(p, p, p, p);
+    }
+
+    // 6d. Per-Column Filter: Holding Gateway
+    if (col_holding_gw && col_holding_gw.trim()) {
+      conditions.push('g.holding_gw LIKE ?');
+      params.push(`%${col_holding_gw.trim()}%`);
+    }
+
+    // 6e. Per-Column Filter: Status (Problem / Normal)
+    if (col_status === 'ya') {
+      conditions.push("(g.is_problem = 'ya' OR g.is_problem = '1')");
+    } else if (col_status === 'tidak') {
+      conditions.push("(g.is_problem IS NULL OR (g.is_problem != 'ya' AND g.is_problem != '1'))");
     }
 
     // 7. Per-Column Filter: Rute & Outlet Tujuan

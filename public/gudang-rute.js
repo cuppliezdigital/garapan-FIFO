@@ -10,11 +10,15 @@ let gudangState = {
   col_waybill: '',
   col_nama_barang: '',
   col_pengirim: '',
+  col_asal: '',
   col_penerima: '',
+  col_tujuan: '',
   col_alamat: '',
+  col_holding_gw: '',
   col_rute: '',
   col_durasi_min: '',
   col_durasi_max: '',
+  col_status: 'ALL',
   holdingGw: 'ALL',
   destGw: 'ALL',
   tipeJalur: 'ALL',
@@ -27,7 +31,8 @@ let gudangState = {
   isLoading: false,
   activeTraceWaybill: null,
   activeTraceData: null,
-  pollTimer: null
+  pollTimer: null,
+  bulkTimer: null
 };
 
 // 1. Initial Dashboard Load
@@ -66,12 +71,12 @@ async function fetchGudangFileInfo() {
   }
 }
 
-// 3. Trigger 1-Click Import from Downloads
+// 3. Trigger 1-Click Import from Downloads (Default: ALL Gateways Se-Indonesia)
 async function importLatestGudangRuteFile() {
   const btn = document.getElementById('btnImportLatestGudang');
   const btnText = document.getElementById('btnImportLatestText');
   
-  if (!confirm('Mulai baca file Excel terbaru (258MB) dari folder Downloads secara streaming?\nProses berlangsung di latar belakang dengan Smart-Merge anti timpa.')) {
+  if (!confirm('Mulai baca file Excel terbaru (258MB) dari folder Downloads secara streaming?\nProses berlangsung di latar belakang dengan Smart-Merge anti timpa untuk seluruh waybill nasional.')) {
     return;
   }
 
@@ -154,12 +159,11 @@ async function checkGudangImportStatus() {
 
       if (json.progress?.status === 'success') {
         showGudangProgress(false);
-        // Refresh table & file info
         fetchGudangFileInfo();
         fetchGudangInventory();
       } else if (json.progress?.status === 'error') {
         showGudangProgress(false);
-        alert('Impor gagal: ' + (json.progress?.message || 'Error'));
+        alert('Gagal mengimpor file: ' + (json.progress?.message || 'Unknown error'));
       }
     }
   } catch (err) {
@@ -167,7 +171,7 @@ async function checkGudangImportStatus() {
   }
 }
 
-// 4. Fetch Inventory Records
+// 4. Fetch Inventory from Server with Column Search & Pagination
 async function fetchGudangInventory() {
   if (gudangState.isLoading) return;
   gudangState.isLoading = true;
@@ -176,10 +180,10 @@ async function fetchGudangInventory() {
   if (tbody) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="11" style="text-align: center; padding: 40px; color: #94a3b8;">
-          <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <span class="spinner-small" style="display: inline-block; width: 16px; height: 16px; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
-            <span>Memuat data stok &amp; rute gudang...</span>
+        <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div class="spinner-small" style="width: 24px; height: 24px; border: 3px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data inventaris...</span>
           </div>
         </td>
       </tr>
@@ -199,11 +203,15 @@ async function fetchGudangInventory() {
         col_waybill: gudangState.col_waybill,
         col_nama_barang: gudangState.col_nama_barang,
         col_pengirim: gudangState.col_pengirim,
+        col_asal: gudangState.col_asal,
         col_penerima: gudangState.col_penerima,
+        col_tujuan: gudangState.col_tujuan,
         col_alamat: gudangState.col_alamat,
+        col_holding_gw: gudangState.col_holding_gw,
         col_rute: gudangState.col_rute,
         col_durasi_min: gudangState.col_durasi_min,
         col_durasi_max: gudangState.col_durasi_max,
+        col_status: gudangState.col_status,
         holding_gw: gudangState.holdingGw,
         gw_tujuan: gudangState.destGw,
         tipe_jalur: gudangState.tipeJalur,
@@ -222,23 +230,16 @@ async function fetchGudangInventory() {
       throw new Error(json.error || 'Gagal memuat data inventaris');
     }
 
-    // Populate filter dropdowns if options not filled
     populateGudangDropdowns(json.holdingGateways, json.destGateways);
-
-    // Update KPI Cards
     updateGudangKpis(json.stats);
-
-    // Render Table
     renderGudangTable(json.data);
-
-    // Update Pagination
     updateGudangPagination(json.pagination);
   } catch (err) {
     console.error('fetchGudangInventory error:', err);
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="11" style="text-align: center; padding: 30px; color: #f87171;">
+          <td colspan="13" style="text-align: center; padding: 35px 15px; color: #f87171;">
             Gagal memuat data: ${err.message}
           </td>
         </tr>
@@ -275,7 +276,7 @@ function populateGudangDropdowns(holdingGws = [], destGws = []) {
   const selHolding = document.getElementById('gudangFilterHoldingGw');
   if (selHolding && holdingGws && holdingGws.length > 0 && selHolding.options.length <= 2) {
     const curVal = selHolding.value;
-    selHolding.innerHTML = '<option value="ALL">Semua Gateway</option>';
+    selHolding.innerHTML = '<option value="ALL">🌐 Semua Gateway (Nasional ~1 Juta Paket)</option>';
     holdingGws.forEach(gw => {
       const opt = document.createElement('option');
       opt.value = gw;
@@ -299,6 +300,7 @@ function populateGudangDropdowns(holdingGws = [], destGws = []) {
   }
 }
 
+// 5. RENDER GUDANG TABLE (13 KOLOM DENGAN ASAL & TUJUAN LENGKAP)
 function renderGudangTable(rows = []) {
   const tbody = document.getElementById('tbodyGudangRute');
   if (!tbody) return;
@@ -306,8 +308,11 @@ function renderGudangTable(rows = []) {
   if (rows.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="11" style="text-align: center; padding: 40px; color: #94a3b8;">
-          Tidak ada data waybill yang cocok dengan filter atau pencarian saat ini.
+        <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <p style="margin: 0; font-size: 0.92rem; font-weight: 600; color: #cbd5e1;">Tidak ada data waybill yang cocok</p>
+            <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Coba sesuaikan filter atau bersihkan pencarian di setiap kolom.</p>
+          </div>
         </td>
       </tr>
     `;
@@ -318,132 +323,178 @@ function renderGudangTable(rows = []) {
   const html = rows.map((r, idx) => {
     const no = startNo + idx;
 
-    // Aging color
+    // Aging pill color
     const durasi = Number(r.durasi_jam) || 0;
-    let badgeColor = '#34d399';
-    let badgeBg = 'rgba(52, 211, 153, 0.15)';
+    let agingClass = 'aging-pill-green';
     if (durasi > 72) {
-      badgeColor = '#f87171';
-      badgeBg = 'rgba(248, 113, 113, 0.2)';
+      agingClass = 'aging-pill-red';
     } else if (durasi > 48) {
-      badgeColor = '#fb923c';
-      badgeBg = 'rgba(251, 146, 60, 0.2)';
+      agingClass = 'aging-pill-orange';
     } else if (durasi > 24) {
-      badgeColor = '#fbbf24';
-      badgeBg = 'rgba(251, 191, 36, 0.18)';
+      agingClass = 'aging-pill-amber';
     } else if (durasi > 12) {
-      badgeColor = '#38bdf8';
-      badgeBg = 'rgba(56, 189, 248, 0.15)';
+      agingClass = 'aging-pill-cyan';
     }
 
     // Goods name display
     const hasGoods = Boolean(r.nama_barang && r.nama_barang.trim());
     const goodsDisplay = hasGoods 
-      ? `<div style="font-weight: 600; color: #f8fafc; font-size: 0.84rem; line-height: 1.3;" title="${escapeHtml(r.nama_barang)}">${escapeHtml(r.nama_barang)}</div>`
+      ? `<div style="font-weight: 600; color: #f8fafc; font-size: 0.84rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${escapeHtml(r.nama_barang)}">
+           <span style="color: #34d399; margin-right: 3px;">●</span>${escapeHtml(r.nama_barang)}
+         </div>`
       : `<span style="font-size: 0.76rem; color: #64748b; font-style: italic;">Belum ada nama barang</span>`;
 
     // Sender display
     const senderDisplay = `
-      <div style="font-weight: 600; color: #e2e8f0;">${escapeHtml(r.pengirim || '-')}</div>
-      ${r.perusahaan_pengirim ? `<div style="font-size: 0.74rem; color: #94a3b8;">${escapeHtml(r.perusahaan_pengirim)}</div>` : ''}
-      ${r.no_hp_pengirim ? `<div style="font-size: 0.74rem; color: #38bdf8; font-family: monospace;">${escapeHtml(r.no_hp_pengirim)}</div>` : ''}
+      <div style="font-weight: 600; color: #f1f5f9; font-size: 0.82rem; line-height: 1.3;">${escapeHtml(r.pengirim || '-')}</div>
+      ${r.perusahaan_pengirim ? `<div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">${escapeHtml(r.perusahaan_pengirim)}</div>` : ''}
+      ${r.no_hp_pengirim ? `<div style="font-size: 0.72rem; color: #38bdf8; font-family: monospace; margin-top: 2px;">📞 ${escapeHtml(r.no_hp_pengirim)}</div>` : ''}
+    `;
+
+    // Origin location display (Gateway & Outlet Asal)
+    const asalDisplay = `
+      <div class="loc-route-container">
+        <div class="loc-row">
+          <span style="font-size: 0.68rem; color: #64748b; font-weight: 600;">GW:</span>
+          <span class="badge-gw badge-gw-origin" title="Gateway Pengirim">${escapeHtml(r.gw_asal || '-')}</span>
+        </div>
+        <div class="loc-row">
+          <span style="font-size: 0.68rem; color: #64748b; font-weight: 600;">OUTLET:</span>
+          <span class="badge-outlet" title="Outlet / Cabang Pengirim">${escapeHtml(r.outlet_asal || '-')}</span>
+        </div>
+        ${r.tgl_buka ? `<div style="font-size: 0.68rem; color: #64748b; margin-top: 1px;" title="Waktu Buka Resi">🕒 ${escapeHtml(r.tgl_buka.substring(0, 16))}</div>` : ''}
+      </div>
     `;
 
     // Receiver display with WA link
     const cleanPhone = (r.no_hp_penerima || '').replace(/\D/g, '');
     const waLink = cleanPhone.length >= 8 
-      ? `<a href="https://wa.me/${cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone}" target="_blank" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.72rem; color: #22c55e; text-decoration: none; margin-left: 4px;" title="Chat WhatsApp">WA &raquo;</a>` 
+      ? `<a href="https://wa.me/${cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone}" target="_blank" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.72rem; color: #22c55e; text-decoration: none; margin-left: 4px; font-weight: 700;" title="Chat WhatsApp">WA &raquo;</a>` 
       : '';
 
     const receiverDisplay = `
-      <div style="font-weight: 600; color: #e2e8f0;">${escapeHtml(r.penerima || '-')}</div>
-      ${r.perusahaan_penerima ? `<div style="font-size: 0.74rem; color: #94a3b8;">${escapeHtml(r.perusahaan_penerima)}</div>` : ''}
-      ${r.no_hp_penerima ? `<div style="font-size: 0.74rem; color: #38bdf8; font-family: monospace;">${escapeHtml(r.no_hp_penerima)} ${waLink}</div>` : ''}
+      <div style="font-weight: 600; color: #f1f5f9; font-size: 0.82rem; line-height: 1.3;">${escapeHtml(r.penerima || '-')}</div>
+      ${r.perusahaan_penerima ? `<div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">${escapeHtml(r.perusahaan_penerima)}</div>` : ''}
+      ${r.no_hp_penerima ? `<div style="font-size: 0.72rem; margin-top: 2px; display: flex; align-items: center; gap: 4px;"><span style="color: #38bdf8; font-family: monospace;">📞 ${escapeHtml(r.no_hp_penerima)}</span> ${waLink}</div>` : ''}
+    `;
+
+    // Destination location display (Gateway & Outlet Tujuan)
+    const tujuanDisplay = `
+      <div class="loc-route-container">
+        <div class="loc-row">
+          <span style="font-size: 0.68rem; color: #64748b; font-weight: 600;">GW:</span>
+          <span class="badge-gw badge-gw-dest" title="Gateway Tujuan">${escapeHtml(r.gw_tujuan || '-')}</span>
+        </div>
+        <div class="loc-row">
+          <span style="font-size: 0.68rem; color: #64748b; font-weight: 600;">OUTLET:</span>
+          <span class="badge-outlet badge-outlet-dest" title="Outlet Tujuan">${escapeHtml(r.outlet_tujuan || '-')}</span>
+        </div>
+        ${r.outlet_akhir && r.outlet_akhir !== r.outlet_tujuan ? `
+          <div class="loc-row" title="Outlet Akhir">
+            <span style="font-size: 0.65rem; color: #a78bfa;">AKHIR:</span>
+            <span style="font-size: 0.68rem; color: #c4b5fd; font-family: monospace;">${escapeHtml(r.outlet_akhir)}</span>
+          </div>` : ''}
+      </div>
     `;
 
     // Address
     const addressDisplay = r.alamat_penerima 
-      ? `<div style="font-size: 0.76rem; color: #cbd5e1; max-width: 220px; word-break: break-word; line-height: 1.3;" title="${escapeHtml(r.alamat_penerima)}">${escapeHtml(r.alamat_penerima)}</div>` 
-      : `<span style="font-size: 0.74rem; color: #64748b;">-</span>`;
+      ? `<div style="font-size: 0.75rem; color: #cbd5e1; max-width: 200px; word-break: break-word; line-height: 1.35;" title="${escapeHtml(r.alamat_penerima)}">${escapeHtml(r.alamat_penerima)}</div>` 
+      : `<span style="font-size: 0.72rem; color: #64748b;">-</span>`;
 
     // Problem badge
     const isProblem = (r.is_problem === 'ya' || r.is_problem === '1');
-    const problemBadge = isProblem 
-      ? `<span style="padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.35);">Bermasalah</span>`
-      : `<span style="padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; background: rgba(148, 163, 184, 0.1); color: #94a3b8;">Normal</span>`;
-
-    // Route & line type
-    const routeDisplay = `
-      <div style="font-weight: 600; color: #e2e8f0; font-size: 0.78rem;">${escapeHtml(r.rute || (r.holding_gw + ' → ' + (r.gw_tujuan || '-')))}</div>
-      <div style="font-size: 0.72rem; color: #a78bfa; margin-top: 2px;">
-        ${escapeHtml(r.tipe_jalur || 'Eksternal/Internal')} | Dest: <b>${escapeHtml(r.outlet_tujuan || '-')}</b>
-      </div>
-    `;
 
     return `
-      <tr style="border-bottom: 1px solid var(--border-color, #334155); transition: background 0.15s ease;" onmouseover="this.style.background='rgba(56, 189, 248, 0.04)'" onmouseout="this.style.background='transparent'">
-        <td style="padding: 10px 8px; text-align: center; color: #94a3b8;">${no}</td>
+      <tr>
+        <!-- 1. NO -->
+        <td style="padding: 10px 8px; text-align: center; color: #94a3b8; font-weight: 600;">${no}</td>
         
-        <!-- WAYBILL -->
+        <!-- 2. WAYBILL (AWB) WITH COPY BUTTON -->
         <td style="padding: 10px 10px;">
-          <div style="font-family: monospace; font-weight: 700; color: #38bdf8; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="openPodTraceModal('${r.waybill}')" title="Klik untuk lacak alur scan POD">
-            <span>${r.waybill}</span>
+          <div class="gudang-awb-cell">
+            <span class="gudang-awb-text" onclick="openPodTraceModal('${r.waybill}')" title="Klik untuk lacak alur scan POD">${r.waybill}</span>
+            <button type="button" class="btn-copy-mini" onclick="copyAwbToClipboard('${r.waybill}', this, event)" title="Salin nomor AWB">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
           </div>
-          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">
-            ${Number(r.berat || 0).toFixed(1)} kg | ${Number(r.volume || 0).toFixed(3)} m³
+          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px; display: flex; gap: 6px;">
+            <span style="font-family: monospace; font-weight: 600; color: #cbd5e1;">${Number(r.berat || 0).toFixed(1)} kg</span>
+            <span style="color: #64748b;">•</span>
+            <span style="color: #94a3b8;">${Number(r.volume || 0).toFixed(3)} m³</span>
           </div>
         </td>
 
-        <!-- NAMA BARANG -->
+        <!-- 3. NAMA BARANG -->
         <td style="padding: 10px 10px;">${goodsDisplay}</td>
 
-        <!-- PENGIRIM -->
+        <!-- 4. PENGIRIM & TOKO -->
         <td style="padding: 10px 10px;">${senderDisplay}</td>
 
-        <!-- PENERIMA -->
+        <!-- 5. ASAL (GW & OUTLET PENGIRIM) -->
+        <td style="padding: 10px 10px;">${asalDisplay}</td>
+
+        <!-- 6. PENERIMA & HP -->
         <td style="padding: 10px 10px;">${receiverDisplay}</td>
 
-        <!-- ALAMAT -->
+        <!-- 7. TUJUAN (GW & OUTLET PENERIMA) -->
+        <td style="padding: 10px 10px;">${tujuanDisplay}</td>
+
+        <!-- 8. ALAMAT LENGKAP -->
         <td style="padding: 10px 10px;">${addressDisplay}</td>
 
-        <!-- GUDANG SAAT INI -->
+        <!-- 9. GUDANG SAAT INI -->
         <td style="padding: 10px 10px;">
-          <span style="font-weight: 600; color: #e2e8f0; font-size: 0.8rem;">${escapeHtml(r.holding_gw || '-')}</span>
-          <div style="font-size: 0.72rem; color: #94a3b8;">${escapeHtml(r.status_simpan || 'Di Gudang')}</div>
+          <span style="font-weight: 700; color: #e2e8f0; font-size: 0.82rem;">${escapeHtml(r.holding_gw || '-')}</span>
+          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">${escapeHtml(r.status_simpan || 'Di Gudang')}</div>
         </td>
 
-        <!-- DURASI SIMPAN -->
+        <!-- 10. DURASI SIMPAN -->
         <td style="padding: 10px 10px; text-align: center;">
-          <span style="display: inline-block; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; background: ${badgeBg}; color: ${badgeColor};">
+          <span class="aging-pill ${agingClass}">
             ${durasi.toFixed(1)} Jam
           </span>
-          <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">${escapeHtml(r.durasi_kategori || '')}</div>
+          <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 3px;">${escapeHtml(r.durasi_kategori || '')}</div>
         </td>
 
-        <!-- RUTE & JALUR -->
-        <td style="padding: 10px 10px;">${routeDisplay}</td>
-
-        <!-- STATUS -->
-        <td style="padding: 10px 10px; text-align: center;">
-          ${problemBadge}
-          ${r.status_penangguhan ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">${escapeHtml(r.status_penangguhan)}</div>` : ''}
+        <!-- 11. RUTE & JALUR -->
+        <td style="padding: 10px 10px;">
+          <div style="font-weight: 600; color: #f1f5f9; font-size: 0.78rem; line-height: 1.25;">
+            ${escapeHtml(r.rute || (r.holding_gw + ' → ' + (r.gw_tujuan || '-')))}
+          </div>
+          <div style="margin-top: 3px;">
+            <span style="padding: 1px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; background: rgba(167, 139, 250, 0.15); color: #c084fc; border: 1px solid rgba(167, 139, 250, 0.3);">
+              ${escapeHtml(r.tipe_jalur || 'Eksternal/Internal')}
+            </span>
+          </div>
         </td>
 
-        <!-- AKSI -->
+        <!-- 12. STATUS -->
         <td style="padding: 10px 10px; text-align: center;">
-          <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
-            <button type="button" class="btn btn-primary btn-sm" onclick="openPodTraceModal('${r.waybill}')" style="width: 100%; padding: 4px 8px; font-size: 0.74rem; font-weight: 600; border-radius: 4px;" title="Lacak riwayat 18 scan POD & alur rute">
-              🔍 Lacak POD
+          ${isProblem ? `
+            <span class="badge-problem-yes" title="${escapeHtml(r.status_penangguhan || 'Paket Bermasalah')}">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Bermasalah
+            </span>` : `
+            <span class="badge-problem-no">Normal</span>`}
+          ${r.status_penangguhan ? `<div style="font-size: 0.68rem; color: #f59e0b; margin-top: 3px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(r.status_penangguhan)}">${escapeHtml(r.status_penangguhan)}</div>` : ''}
+        </td>
+
+        <!-- 13. AKSI -->
+        <td style="padding: 10px 10px; text-align: center;">
+          <div style="display: flex; flex-direction: column; gap: 5px; align-items: center; min-width: 110px;">
+            <button type="button" class="btn-track-pod" onclick="openPodTraceModal('${r.waybill}')" title="Lacak riwayat 18 scan POD real-time">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Lacak POD
             </button>
             <div style="display: flex; gap: 4px; width: 100%;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="openPrintAwbFromGudang('${r.waybill}')" style="flex: 1; padding: 3px 6px; font-size: 0.7rem;" title="Cetak ulang resi label">
+              <button type="button" class="btn-print-mini" onclick="openPrintAwbFromGudang('${r.waybill}')" title="Cetak ulang label thermal">
                 🖨️ Cetak
               </button>
               ${!hasGoods ? `
-                <button type="button" class="btn btn-secondary btn-sm" onclick="enrichSingleGudangWaybill('${r.waybill}', this)" style="padding: 3px 6px; font-size: 0.7rem; color: #38bdf8;" title="Ambil live nama barang & customer dari JFS">
+                <button type="button" class="btn-enrich-mini" onclick="enrichSingleGudangWaybill('${r.waybill}', this)" title="Ambil live nama barang & customer">
                   ⚡ Enrich
-                </button>
-              ` : ''}
+                </button>` : ''}
             </div>
           </div>
         </td>
@@ -454,6 +505,94 @@ function renderGudangTable(rows = []) {
   tbody.innerHTML = html;
 }
 
+// 6. CLIPBOARD COPY FUNCTIONS WITH VISUAL FEEDBACK & TOAST
+function copyAwbToClipboard(awb, btnElement, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  if (!awb) return;
+
+  const rawAwb = String(awb).trim();
+
+  const doCopy = () => {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(rawAwb);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = rawAwb;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (ok) return Promise.resolve();
+        return Promise.reject(new Error('execCommand failed'));
+      } catch (err) {
+        document.body.removeChild(textarea);
+        return Promise.reject(err);
+      }
+    }
+  };
+
+  doCopy()
+    .then(() => {
+      if (btnElement) {
+        const origContent = btnElement.innerHTML;
+        btnElement.classList.add('copied');
+        btnElement.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span style="font-size:0.68rem;font-weight:700;margin-left:3px;">Disalin!</span>
+        `;
+        setTimeout(() => {
+          btnElement.classList.remove('copied');
+          btnElement.innerHTML = origContent;
+        }, 1800);
+      }
+      showGudangToast(`✔ No. AWB <b>${rawAwb}</b> berhasil disalin ke clipboard!`);
+      if (typeof window.showAppAlert === 'function') {
+        window.showAppAlert(`✔ No. AWB ${rawAwb} disalin ke clipboard!`);
+      }
+    })
+    .catch((err) => {
+      console.warn('Clipboard copy error, fallback:', err);
+      prompt('Salin nomor AWB (Ctrl + C):', rawAwb);
+    });
+}
+
+function copyModalAwbToClipboard(btnElement) {
+  const awb = gudangState.activeTraceWaybill || document.getElementById('modalPodWaybillTitle')?.textContent?.trim();
+  if (awb && awb !== '-') {
+    copyAwbToClipboard(awb, btnElement);
+  }
+}
+
+function showGudangToast(msg) {
+  const existing = document.getElementById('gudangToastNotification');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'gudangToastNotification';
+  toast.className = 'gudang-toast';
+  toast.innerHTML = `
+    <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center; color: #4ade80; flex-shrink: 0;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+    <span>${msg}</span>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// 7. PAGINATION CONTROLS
 function updateGudangPagination(p = {}) {
   gudangState.totalRows = p.totalRows || 0;
   gudangState.totalPages = p.totalPages || 1;
@@ -509,53 +648,46 @@ function resetGudangFilter() {
   gudangState.tipeJalur = 'ALL';
   gudangState.aging = 'ALL';
   gudangState.enrichStatus = 'all';
-  gudangState.page = 1;
-  fetchGudangInventory();
+  clearAllColumnFilters();
 }
 
-// 5. Open POD Trace Modal (100% PERSIS SCREENSHOT USER!)
+// 8. OPEN POD TRACE MODAL (100% PERSIS SCREENSHOT USER!)
 async function openPodTraceModal(waybillNo) {
   gudangState.activeTraceWaybill = waybillNo;
   const modal = document.getElementById('modalPodTraceGudang');
   const title = document.getElementById('modalPodWaybillTitle');
-  const tbody = document.getElementById('tbodyPodScans');
   const dynText = document.getElementById('podDynamicRouteText');
   const planText = document.getElementById('podPlannedRouteText');
   const actText = document.getElementById('podActualRouteText');
   const retText = document.getElementById('podReturnRouteText');
+  const tbody = document.getElementById('tbodyPodScans');
   const abnCont = document.getElementById('podAbnormalContainer');
 
-  if (title) title.textContent = waybillNo;
   if (modal) modal.style.display = 'flex';
+  if (title) title.textContent = waybillNo;
 
-  if (dynText) dynText.textContent = 'Memuat routing...';
-  if (planText) planText.textContent = 'Memuat rute rencana...';
-  if (actText) actText.textContent = 'Memuat rute aktual...';
-  if (retText) retText.textContent = 'Memuat rute pengembalian...';
-  if (abnCont) abnCont.innerHTML = '<span style="color: #94a3b8;">Memeriksa riwayat abnormal...</span>';
-
+  if (dynText) dynText.textContent = 'Memuat rute...';
+  if (planText) planText.textContent = 'Memuat rute...';
+  if (actText) actText.textContent = 'Memuat rute...';
+  if (retText) retText.textContent = 'Memuat rute...';
   if (tbody) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
-            <span>Mengambil riwayat scan POD live dari JFS Operating Platform...</span>
+        <td colspan="8" style="text-align: center; padding: 35px; color: #94a3b8;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <div class="spinner-small" style="width: 20px; height: 20px; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <span>Menghubungkan ke API J&amp;T Cargo Operating Platform...</span>
           </div>
         </td>
       </tr>
     `;
   }
+  if (abnCont) abnCont.innerHTML = '<span style="color: #94a3b8;">Memeriksa catatan...</span>';
 
   try {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/gudang-rute/trace', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ waybillNo })
+    const res = await fetch(`/api/gudang-rute/pod-trace/${encodeURIComponent(waybillNo)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
     });
 
     const json = await res.json();
@@ -563,96 +695,71 @@ async function openPodTraceModal(waybillNo) {
       throw new Error(json.error || 'Gagal memuat jejak POD');
     }
 
-    gudangState.activeTraceData = json;
-
-    // 1. Render Route Strings
-    if (dynText) dynText.textContent = json.routes?.dynamicRoute || '-';
-    if (planText) planText.textContent = json.routes?.plannedRoute || '-';
-    if (actText) actText.textContent = json.routes?.actualRoute || '-';
-    if (retText) retText.textContent = json.routes?.returnRoute || '-';
-
-    // 2. Render Scan Table
-    const scans = json.scans || [];
-    if (scans.length === 0) {
-      if (tbody) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">
-              Belum ada riwayat scan untuk waybill ${waybillNo} di sistem JFS.
-            </td>
-          </tr>
-        `;
-      }
-    } else {
-      let scanHtml = '';
-      scans.forEach((s) => {
-        const isRed = s.isProblem;
-        const rowBg = isRed ? 'rgba(239, 68, 68, 0.08)' : 'transparent';
-        const typeColor = isRed ? '#ef4444' : '#e2e8f0';
-
-        // Format description with highlighted brackets matching screenshot!
-        let formattedDesc = escapeHtml(s.scanDesc || '-');
-        formattedDesc = formattedDesc.replace(/(\[|【)\s*([^\]】]+?)\s*(\]|】)/g, (match, open, p1, close) => {
-          let color = '#38bdf8'; // cyan for site codes
-          if (p1.startsWith('DKGX') || p1.startsWith('ZXZB') || p1.startsWith('B952') || p1.startsWith('H117')) {
-            color = '#38bdf8'; // blue task code
-          } else if (p1.toLowerCase().includes('retur') || p1.toLowerCase().includes('masalah')) {
-            color = '#f87171'; // red problem
-          } else if (p1.includes('2026-')) {
-            color = '#38bdf8'; // timestamp
-          } else {
-            color = '#a78bfa'; // person name
-          }
-          return `<strong style="color: ${color}; font-weight: 700;">[ ${escapeHtml(p1)} ]</strong>`;
-        });
-
-        // Highlight "alasan paket bermasalah"
-        formattedDesc = formattedDesc.replace(/alasan paket bermasalah/gi, '<span style="color: #f87171; font-weight: 700;">alasan paket bermasalah</span>');
-        formattedDesc = formattedDesc.replace(/alasan retur/gi, '<span style="color: #f87171; font-weight: 700;">alasan retur</span>');
-
-        scanHtml += `
-          <tr style="border-bottom: 1px solid var(--border-color, #334155); background: ${rowBg};">
-            <td style="padding: 9px 8px; text-align: center; color: #94a3b8;">${s.no}</td>
-            <td style="padding: 9px 10px; font-family: monospace; font-size: 0.78rem; color: #cbd5e1;">${s.scanTime}</td>
-            <td style="padding: 9px 10px; font-family: monospace; font-size: 0.78rem; color: #94a3b8;">${s.uploadTime}</td>
-            <td style="padding: 9px 12px; font-weight: 600; color: ${typeColor};">${escapeHtml(s.scanType)}</td>
-            <td style="padding: 9px 8px; color: #94a3b8; font-size: 0.76rem;">${escapeHtml(s.scanDeviceType)}</td>
-            <td style="padding: 9px 14px; line-height: 1.45; font-size: 0.79rem; color: #f1f5f9;">${formattedDesc}</td>
-            <td style="padding: 9px 8px; text-align: right; color: #e2e8f0; font-family: monospace;">${s.weight}</td>
-            <td style="padding: 9px 8px; text-align: right; color: #e2e8f0; font-family: monospace;">${s.volumeWeight}</td>
-          </tr>
-        `;
-      });
-      if (tbody) tbody.innerHTML = scanHtml;
-    }
-
-    // 3. Render Abnormal Issues List
-    const abnList = json.abnormalList || [];
-    if (abnList.length === 0) {
-      if (abnCont) abnCont.innerHTML = '<span style="color: #94a3b8;">Tidak ada catatan pendaftaran masalah di sistem.</span>';
-    } else {
-      let abnHtml = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-      abnList.forEach((a, i) => {
-        abnHtml += `
-          <div style="padding: 8px 12px; border-radius: 6px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25);">
-            <div style="font-weight: 700; color: #f87171;">Kasus #${i + 1}: ${escapeHtml(a.abnormalTypeName || 'Paket Bermasalah')}</div>
-            <div style="font-size: 0.76rem; color: #cbd5e1; margin-top: 2px;">${escapeHtml(a.reason || a.remark || a.description || 'Tidak ada deskripsi')}</div>
-            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Didaftarkan oleh: ${escapeHtml(a.createUserName || a.operatorName || '-')} pada ${escapeHtml(a.createTime || '-')}</div>
-          </div>
-        `;
-      });
-      abnHtml += '</div>';
-      if (abnCont) abnCont.innerHTML = abnHtml;
-    }
+    gudangState.activeTraceData = json.data;
+    renderPodTraceModal(json.data);
   } catch (err) {
+    console.error('openPodTraceModal error:', err);
     if (tbody) {
       tbody.innerHTML = `
         <tr>
           <td colspan="8" style="text-align: center; padding: 30px; color: #f87171;">
-            Gagal mengambil alur scan: ${err.message}
+            Gagal memuat jejak POD: ${err.message}
           </td>
         </tr>
       `;
+    }
+  }
+}
+
+function renderPodTraceModal(d = {}) {
+  const dynText = document.getElementById('podDynamicRouteText');
+  const planText = document.getElementById('podPlannedRouteText');
+  const actText = document.getElementById('podActualRouteText');
+  const retText = document.getElementById('podReturnRouteText');
+  const tbody = document.getElementById('tbodyPodScans');
+  const abnCont = document.getElementById('podAbnormalContainer');
+
+  if (dynText) dynText.textContent = d.routes?.dynamicRoute || '-';
+  if (planText) planText.textContent = d.routes?.plannedRoute || '-';
+  if (actText) actText.textContent = d.routes?.actualRoute || '-';
+  if (retText) retText.textContent = d.routes?.returnRoute || '-';
+
+  if (tbody) {
+    if (!d.scans || d.scans.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">
+            Tidak ada riwayat scan tercatat di sistem JFS untuk nomor resi ini.
+          </td>
+        </tr>
+      `;
+    } else {
+      tbody.innerHTML = d.scans.map(s => `
+        <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.12); transition: background 0.15s ease;" onmouseover="this.style.background='rgba(56, 189, 248, 0.05)'" onmouseout="this.style.background='transparent'">
+          <td style="padding: 10px 8px; text-align: center; color: #94a3b8; font-weight: 600;">${s.no}</td>
+          <td style="padding: 10px 10px; font-family: monospace; color: #f8fafc; font-size: 0.78rem;">${escapeHtml(s.scanTime || '-')}</td>
+          <td style="padding: 10px 10px; font-family: monospace; color: #94a3b8; font-size: 0.78rem;">${escapeHtml(s.uploadTime || '-')}</td>
+          <td style="padding: 10px 12px; font-weight: 700; color: #38bdf8;">${escapeHtml(s.scanType || '-')}</td>
+          <td style="padding: 10px 8px; color: #cbd5e1;">${escapeHtml(s.scanCategory || '-')}</td>
+          <td style="padding: 10px 14px; color: #f1f5f9; line-height: 1.45; word-break: break-word;">${escapeHtml(s.scanDesc || '-')}</td>
+          <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #cbd5e1;">${s.weight ? Number(s.weight).toFixed(2) : '-'}</td>
+          <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #cbd5e1;">${s.volumeWeight ? Number(s.volumeWeight).toFixed(3) : '-'}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  if (abnCont) {
+    if (!d.abnormalScans || d.abnormalScans.length === 0) {
+      abnCont.innerHTML = '<span style="color: #94a3b8;">Tidak ada catatan paket bermasalah aktif.</span>';
+    } else {
+      abnCont.innerHTML = d.abnormalScans.map(a => `
+        <div style="padding: 8px 10px; margin-bottom: 6px; background: rgba(248, 113, 113, 0.1); border-left: 3px solid #f87171; border-radius: 4px;">
+          <div style="font-weight: 700; color: #f87171;">${escapeHtml(a.abnormalType || 'Bermasalah')} &mdash; ${escapeHtml(a.regTime || '')}</div>
+          <div style="color: #cbd5e1; margin-top: 3px;">${escapeHtml(a.abnormalReason || a.remark || '-')}</div>
+          ${a.regDept ? `<div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">Daftar di: ${escapeHtml(a.regDept)} oleh ${escapeHtml(a.regUser || '-')}</div>` : ''}
+        </div>
+      `).join('');
     }
   }
 }
@@ -664,11 +771,11 @@ function closePodModal() {
   gudangState.activeTraceData = null;
 }
 
-// 6. Copy POD Trace Text for Feishu / WA
+// 9. COPY POD TRACE TEXT FOR FEISHU / WA
 function copyPodTraceText() {
   if (!gudangState.activeTraceData) return;
   const d = gudangState.activeTraceData;
-  let text = `📦 LACAK ALUR SCAN POD: ${d.waybillNo}\n`;
+  let text = `LACAK ALUR SCAN POD: ${d.waybillNo}\n`;
   text += `--------------------------------------\n`;
   text += `Routing Dinamis: ${d.routes?.dynamicRoute || '-'}\n`;
   text += `Rute Rencana: ${d.routes?.plannedRoute || '-'}\n`;
@@ -680,15 +787,52 @@ function copyPodTraceText() {
   });
 
   navigator.clipboard.writeText(text).then(() => {
-    alert('✅ Riwayat scan POD berhasil disalin ke clipboard!');
+    showGudangToast('✔ Riwayat scan POD berhasil disalin ke clipboard!');
   }).catch(() => {
     alert('Gagal menyalin teks ke clipboard.');
   });
 }
 
-// 7. Single Waybill Enrich from JFS
+// 10. ENRICH ACTIONS (SINGLE & BATCH)
+async function enrichSingleGudangWaybill(waybillNo, btnEl) {
+  if (!waybillNo) return;
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳';
+  }
 
-// 7B. Enrich All Waybills On Current Page (Batch)
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/enrich', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ waybill: waybillNo })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      alert(json.error || 'Gagal mengambil data dari JFS.');
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.textContent = '⚡ Enrich';
+      }
+      return;
+    }
+
+    showGudangToast(`✔ Resi ${waybillNo} berhasil diperkaya!`);
+    fetchGudangInventory();
+  } catch (err) {
+    alert('Error enrich: ' + err.message);
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = '⚡ Enrich';
+    }
+  }
+}
+
 async function enrichCurrentPage() {
   const unenrichedBtns = document.querySelectorAll('button[onclick*="enrichSingleGudangWaybill"]');
   if (unenrichedBtns.length === 0) {
@@ -750,59 +894,9 @@ async function enrichCurrentPage() {
   }
 }
 
-// 7C. Bulk Enrich Modal / Prompt (100 - 500 Waybill Sekaligus)
-async function promptBulkEnrich() {
-  const countStr = prompt('Masukkan jumlah waybill yang ingin di-enrich otomatis dari JFS:\n(Contoh: 100, 300, atau 500)', '100');
-  if (!countStr) return;
-  const count = parseInt(countStr, 10);
-  if (isNaN(count) || count <= 0) {
-    alert('Harap masukkan angka yang valid.');
-    return;
-  }
-
-  const btn = document.getElementById('btnBulkEnrichJfs');
-  const btnText = document.getElementById('btnBulkEnrichText');
-  if (btn) btn.disabled = true;
-  if (btnText) btnText.textContent = '⏳ Memulai...';
-
-  showGudangProgress(true);
-  const pTitle = document.getElementById('gudangProgressTitle');
-  const pMsg = document.getElementById('gudangProgressMessage');
-  if (pTitle) pTitle.textContent = `Auto-Enrich ${count} Waybill Massal...`;
-  if (pMsg) pMsg.textContent = 'Menyiapkan antrian worker JFS...';
-
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/gudang-rute/bulk-enrich', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ limit: count })
-    });
-
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      alert(json.message || 'Gagal memulai bulk enrich');
-      showGudangProgress(false);
-      return;
-    }
-
-    startBulkEnrichPolling();
-  } catch (err) {
-    alert('Error: ' + err.message);
-    showGudangProgress(false);
-  } finally {
-    if (btn) btn.disabled = false;
-    if (btnText) btnText.textContent = '⚡ Auto-Enrich Massal (100 - 500)';
-  }
-}
-
-let bulkEnrichTimer = null;
 function startBulkEnrichPolling() {
-  if (bulkEnrichTimer) clearInterval(bulkEnrichTimer);
-  bulkEnrichTimer = setInterval(checkBulkEnrichStatus, 1500);
+  if (gudangState.bulkTimer) clearInterval(gudangState.bulkTimer);
+  gudangState.bulkTimer = setInterval(checkBulkEnrichStatus, 1500);
 }
 
 async function checkBulkEnrichStatus() {
@@ -814,28 +908,22 @@ async function checkBulkEnrichStatus() {
     if (!res.ok) return;
     const json = await res.json();
 
+    const pBar = document.getElementById('gudangImportProgressBar');
     const pTitle = document.getElementById('gudangProgressTitle');
     const pCount = document.getElementById('gudangProgressCount');
     const pMsg = document.getElementById('gudangProgressMessage');
 
-    if (json.isBulkEnriching) {
+    if (json.isRunning) {
       showGudangProgress(true);
-      const cur = json.progress?.current || 0;
-      const tot = json.progress?.total || 1;
-      const succ = json.progress?.successCount || 0;
-      const pct = Math.round((cur / tot) * 100);
-
-      if (pTitle) pTitle.textContent = `Auto-Enrich JFS Sedang Berjalan (${pct}%)...`;
-      if (pCount) pCount.textContent = `${cur} / ${tot} waybill (${succ} sukses)`;
-      if (pMsg) pMsg.textContent = json.progress?.message || 'Memproses data order...';
+      if (pTitle) pTitle.textContent = `⚡ Auto-Enrich JFS Massal: ${json.progress?.processed || 0} / ${json.progress?.total || 0}`;
+      if (pCount) pCount.textContent = `${json.progress?.successCount || 0} berhasil`;
+      if (pMsg) pMsg.textContent = json.progress?.message || 'Memperkaya data produk & pelanggan...';
     } else {
-      if (bulkEnrichTimer) {
-        clearInterval(bulkEnrichTimer);
-        bulkEnrichTimer = null;
+      if (gudangState.bulkTimer) {
+        clearInterval(gudangState.bulkTimer);
+        gudangState.bulkTimer = null;
       }
-
       showGudangProgress(false);
-      fetchGudangFileInfo();
       fetchGudangInventory();
     }
   } catch (err) {
@@ -843,11 +931,62 @@ async function checkBulkEnrichStatus() {
   }
 }
 
-// 7D. Instant DB Enrich (PTO + Monitoring Stuck)
-async function runInstantDbEnrich() {
+async function promptBulkEnrich() {
+  const countStr = prompt('Masukkan jumlah waybill yang ingin di-enrich otomatis dari JFS:\n(Contoh: 100, 200, atau 500)', '100');
+  if (!countStr) return;
+  const count = parseInt(countStr, 10);
+  if (isNaN(count) || count <= 0) {
+    alert('Jumlah tidak valid.');
+    return;
+  }
+  const maxLimit = Math.min(count, 1000);
+
+  const btn = document.getElementById('btnBulkEnrichJfs');
+  const btnText = document.getElementById('btnBulkEnrichText');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Memulai...';
+
   try {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/gudang-rute/instant-db-enrich', {
+    const res = await fetch('/api/gudang-rute/bulk-enrich', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ limit: maxLimit })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      alert(json.message || 'Gagal memulai bulk enrich');
+      return;
+    }
+
+    showGudangProgress(true);
+    startBulkEnrichPolling();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = '⚡ Auto-Enrich Massal (100 - 500)';
+  }
+}
+
+async function runInstantDbEnrich() {
+  if (!confirm('Tarik nama barang & customer yang sudah tersimpan di database lokal PTO & Stuck secara instan?')) {
+    return;
+  }
+
+  showGudangProgress(true);
+  const pTitle = document.getElementById('gudangProgressTitle');
+  const pMsg = document.getElementById('gudangProgressMessage');
+  if (pTitle) pTitle.textContent = 'Sinkronisasi Basis Data Lokal...';
+  if (pMsg) pMsg.textContent = 'Mencocokkan nomor resi dengan pesanan PTO & laporan stuck...';
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/sync-local-db', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -856,52 +995,22 @@ async function runInstantDbEnrich() {
     });
 
     const json = await res.json();
+    showGudangProgress(false);
+
     if (!res.ok || !json.success) {
-      alert(json.error || 'Gagal sinkronisasi');
+      alert(json.message || 'Gagal sinkronisasi data lokal.');
       return;
     }
 
-    alert(`✅ ${json.message}\nTotal waybill ter-enrich sekarang: ${json.totalEnriched.toLocaleString('id-ID')}`);
-    fetchGudangFileInfo();
+    showGudangToast(`✔ Berhasil mencocokkan ${json.totalEnriched?.toLocaleString('id-ID') || 0} resi dari database lokal!`);
     fetchGudangInventory();
   } catch (err) {
-    alert('Error: ' + err.message);
+    showGudangProgress(false);
+    alert('Error sync DB lokal: ' + err.message);
   }
 }
 
-async function enrichSingleGudangWaybill(waybillNo, btnEl) {
-  if (btnEl) {
-    btnEl.disabled = true;
-    btnEl.textContent = '...';
-  }
-
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/gudang-rute/enrich', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ waybillNo })
-    });
-
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      alert(json.message || 'Gagal enrich dari JFS');
-      return;
-    }
-
-    // Refresh row or table
-    fetchGudangInventory();
-  } catch (err) {
-    alert('Error: ' + err.message);
-  } finally {
-    if (btnEl) btnEl.disabled = false;
-  }
-}
-
-// 8. Open Print AWB from Gudang row
+// 11. OPEN PRINT AWB FROM GUDANG ROW
 function openPrintAwbFromGudang(waybillNo) {
   if (typeof switchAdvanceTab === 'function') {
     switchAdvanceTab('print-awb', true);
@@ -917,7 +1026,7 @@ function openPrintAwbFromGudang(waybillNo) {
   }
 }
 
-// 9. Export Enriched Inventory to Excel
+// 12. EXPORT ENRICHED INVENTORY TO EXCEL (LENGKAP DENGAN ASAL & TUJUAN)
 async function exportGudangRuteExcel() {
   try {
     const token = localStorage.getItem('token');
@@ -929,13 +1038,25 @@ async function exportGudangRuteExcel() {
       },
       body: JSON.stringify({
         search: gudangState.search,
+        col_waybill: gudangState.col_waybill,
+        col_nama_barang: gudangState.col_nama_barang,
+        col_pengirim: gudangState.col_pengirim,
+        col_asal: gudangState.col_asal,
+        col_penerima: gudangState.col_penerima,
+        col_tujuan: gudangState.col_tujuan,
+        col_alamat: gudangState.col_alamat,
+        col_holding_gw: gudangState.col_holding_gw,
+        col_rute: gudangState.col_rute,
+        col_durasi_min: gudangState.col_durasi_min,
+        col_durasi_max: gudangState.col_durasi_max,
+        col_status: gudangState.col_status,
         holding_gw: gudangState.holdingGw,
         gw_tujuan: gudangState.destGw,
         tipe_jalur: gudangState.tipeJalur,
         durasi_kategori: gudangState.aging,
         enrich_status: gudangState.enrichStatus,
         page: 1,
-        limit: 5000 // Max 5000 for direct excel export
+        limit: 10000
       })
     });
 
@@ -957,9 +1078,14 @@ async function exportGudangRuteExcel() {
       'Pengirim': r.pengirim || '',
       'Perusahaan Pengirim': r.perusahaan_pengirim || '',
       'No HP Pengirim': r.no_hp_pengirim || '',
+      'Gateway Asal (Pengirim)': r.gw_asal || '',
+      'Outlet Asal (Pengirim)': r.outlet_asal || '',
       'Penerima': r.penerima || '',
       'Perusahaan Penerima': r.perusahaan_penerima || '',
       'No HP Penerima': r.no_hp_penerima || '',
+      'Gateway Tujuan (Penerima)': r.gw_tujuan || '',
+      'Outlet Tujuan (Penerima)': r.outlet_tujuan || '',
+      'Outlet Akhir': r.outlet_akhir || '',
       'Alamat Lengkap Penerima': r.alamat_penerima || '',
       'Gudang Simpan (Holding GW)': r.holding_gw || '',
       'Status Simpan': r.status_simpan || '',
@@ -967,10 +1093,6 @@ async function exportGudangRuteExcel() {
       'Kategori Durasi': r.durasi_kategori || '',
       'Berat (kg)': r.berat || 0,
       'Volume (m3)': r.volume || 0,
-      'Outlet Asal': r.outlet_asal || '',
-      'Gateway Asal': r.gw_asal || '',
-      'Gateway Tujuan': r.gw_tujuan || '',
-      'Outlet Tujuan': r.outlet_tujuan || '',
       'Alur Rute': r.rute || '',
       'Tipe Jalur': r.tipe_jalur || '',
       'Bermasalah': r.is_problem || '',
@@ -989,31 +1111,7 @@ async function exportGudangRuteExcel() {
   }
 }
 
-// Utility HTML escape
-function escapeHtml(text) {
-  if (text === null || text === undefined) return '';
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-window.loadGudangRuteDashboard = loadGudangRuteDashboard;
-window.importLatestGudangRuteFile = importLatestGudangRuteFile;
-window.fetchGudangInventory = fetchGudangInventory;
-window.handleGudangFilterSubmit = handleGudangFilterSubmit;
-window.resetGudangFilter = resetGudangFilter;
-window.navigateGudangPage = navigateGudangPage;
-window.changeGudangPageSize = changeGudangPageSize;
-window.openPodTraceModal = openPodTraceModal;
-window.closePodModal = closePodModal;
-window.copyPodTraceText = copyPodTraceText;
-window.enrichSingleGudangWaybill = enrichSingleGudangWaybill;
-window.openPrintAwbFromGudang = openPrintAwbFromGudang;
-
-// Per-Column Filter Handlers
+// 13. PER-COLUMN FILTER HANDLERS
 function handleColumnSearch(event) {
   if (event.key === 'Enter' || event.type === 'change') {
     applyColumnFilters();
@@ -1024,23 +1122,18 @@ function applyColumnFilters() {
   gudangState.col_waybill = document.getElementById('colSearchWaybill')?.value.trim() || '';
   gudangState.col_nama_barang = document.getElementById('colSearchNamaBarang')?.value.trim() || '';
   gudangState.col_pengirim = document.getElementById('colSearchPengirim')?.value.trim() || '';
+  gudangState.col_asal = document.getElementById('colSearchAsal')?.value.trim() || '';
   gudangState.col_penerima = document.getElementById('colSearchPenerima')?.value.trim() || '';
+  gudangState.col_tujuan = document.getElementById('colSearchTujuan')?.value.trim() || '';
   gudangState.col_alamat = document.getElementById('colSearchAlamat')?.value.trim() || '';
-  gudangState.col_rute = document.getElementById('colSearchRute')?.value.trim() || '';
+  gudangState.col_holding_gw = document.getElementById('colSearchHoldingGw')?.value.trim() || '';
   gudangState.col_durasi_min = document.getElementById('colSearchDurasiMin')?.value.trim() || '';
   gudangState.col_durasi_max = document.getElementById('colSearchDurasiMax')?.value.trim() || '';
-  
-  const statusVal = document.getElementById('colSearchStatus')?.value;
-  if (statusVal && statusVal !== 'ALL') {
-    gudangState.is_problem = statusVal;
-  } else {
-    gudangState.is_problem = '';
-  }
+  gudangState.col_rute = document.getElementById('colSearchRute')?.value.trim() || '';
 
-  const holdingVal = document.getElementById('colSearchHoldingGw')?.value.trim();
-  if (holdingVal) {
-    gudangState.holdingGw = holdingVal;
-  }
+  const statusVal = document.getElementById('colSearchStatus')?.value;
+  gudangState.col_status = (statusVal && statusVal !== 'ALL') ? statusVal : 'ALL';
+  gudangState.is_problem = (statusVal && statusVal !== 'ALL') ? statusVal : '';
 
   gudangState.page = 1;
   fetchGudangInventory();
@@ -1049,8 +1142,9 @@ function applyColumnFilters() {
 function clearAllColumnFilters() {
   const ids = [
     'colSearchWaybill', 'colSearchNamaBarang', 'colSearchPengirim',
-    'colSearchPenerima', 'colSearchAlamat', 'colSearchHoldingGw',
-    'colSearchDurasiMin', 'colSearchDurasiMax', 'colSearchRute'
+    'colSearchAsal', 'colSearchPenerima', 'colSearchTujuan',
+    'colSearchAlamat', 'colSearchHoldingGw', 'colSearchDurasiMin',
+    'colSearchDurasiMax', 'colSearchRute'
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -1062,16 +1156,47 @@ function clearAllColumnFilters() {
   gudangState.col_waybill = '';
   gudangState.col_nama_barang = '';
   gudangState.col_pengirim = '';
+  gudangState.col_asal = '';
   gudangState.col_penerima = '';
+  gudangState.col_tujuan = '';
   gudangState.col_alamat = '';
+  gudangState.col_holding_gw = '';
   gudangState.col_rute = '';
   gudangState.col_durasi_min = '';
   gudangState.col_durasi_max = '';
+  gudangState.col_status = 'ALL';
   gudangState.is_problem = '';
   gudangState.page = 1;
   fetchGudangInventory();
 }
 
+// Utility HTML escape
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Global window exposure
+window.loadGudangRuteDashboard = loadGudangRuteDashboard;
+window.importLatestGudangRuteFile = importLatestGudangRuteFile;
+window.fetchGudangInventory = fetchGudangInventory;
+window.handleGudangFilterSubmit = handleGudangFilterSubmit;
+window.resetGudangFilter = resetGudangFilter;
+window.navigateGudangPage = navigateGudangPage;
+window.changeGudangPageSize = changeGudangPageSize;
+window.copyAwbToClipboard = copyAwbToClipboard;
+window.copyModalAwbToClipboard = copyModalAwbToClipboard;
+window.showGudangToast = showGudangToast;
+window.openPodTraceModal = openPodTraceModal;
+window.closePodModal = closePodModal;
+window.copyPodTraceText = copyPodTraceText;
+window.enrichSingleGudangWaybill = enrichSingleGudangWaybill;
+window.openPrintAwbFromGudang = openPrintAwbFromGudang;
 window.exportGudangRuteExcel = exportGudangRuteExcel;
 window.enrichCurrentPage = enrichCurrentPage;
 window.promptBulkEnrich = promptBulkEnrich;
