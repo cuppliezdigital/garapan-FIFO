@@ -15,7 +15,7 @@ let gudangState = {
   col_rute: '',
   col_durasi_min: '',
   col_durasi_max: '',
-  holdingGw: 'GW-Jakarta',
+  holdingGw: 'ALL',
   destGw: 'ALL',
   tipeJalur: 'ALL',
   aging: 'ALL',
@@ -80,7 +80,7 @@ async function importLatestGudangRuteFile() {
 
   try {
     const token = localStorage.getItem('token');
-    const holdingGwFilter = document.getElementById('gudangFilterHoldingGw')?.value || 'ALL';
+    const holdingGwFilter = 'ALL'; // Import seluruh waybill se-Indonesia
 
     const res = await fetch('/api/gudang-rute/import', {
       method: 'POST',
@@ -504,7 +504,7 @@ function resetGudangFilter() {
   const form = document.getElementById('gudangFilterForm');
   if (form) form.reset();
   gudangState.search = '';
-  gudangState.holdingGw = 'GW-Jakarta';
+  gudangState.holdingGw = 'ALL';
   gudangState.destGw = 'ALL';
   gudangState.tipeJalur = 'ALL';
   gudangState.aging = 'ALL';

@@ -206,65 +206,75 @@ async function importExcelData(req, res) {
     const rl = readline.createInterface({ input: py.stdout, terminal: false });
 
     let buffer = [];
-    const BATCH_SIZE = 1000;
+    const BATCH_SIZE = 2500;
     let totalInserted = 0;
+    let isFlushing = false;
 
     async function flushBuffer() {
-      if (buffer.length === 0) return;
-      const recordsToInsert = buffer.map(r => [
-        r.waybill, r.tanggal_simpan, r.holding_gw, r.status_simpan, r.berat, r.volume, r.is_dfod,
-        r.tgl_buka, r.outlet_asal, r.tgl_tiba, r.next_stop, r.gw_asal, r.gw_tujuan, r.outlet_tujuan,
-        r.frekuensi_kirim, r.durasi_jam, r.durasi_kategori, r.is_problem, r.status_penangguhan,
-        r.rute, r.gw_tujuan_2, r.next_gw, r.outlet_akhir, r.tipe_jalur, r.batch_time
-      ]);
+      if (buffer.length === 0 || isFlushing) return;
+      isFlushing = true;
+      const recordsToInsert = buffer;
       buffer = [];
 
-      const sql = `
-        INSERT INTO gudang_rute_inventory (
-          waybill, tanggal_simpan, holding_gw, status_simpan, berat, volume, is_dfod,
-          tgl_buka, outlet_asal, tgl_tiba, next_stop, gw_asal, gw_tujuan, outlet_tujuan,
-          frekuensi_kirim, durasi_jam, durasi_kategori, is_problem, status_penangguhan,
-          rute, gw_tujuan_2, next_gw, outlet_akhir, tipe_jalur, batch_time
-        ) VALUES ?
-        ON DUPLICATE KEY UPDATE
-          tanggal_simpan = VALUES(tanggal_simpan),
-          holding_gw = VALUES(holding_gw),
-          status_simpan = VALUES(status_simpan),
-          berat = VALUES(berat),
-          volume = VALUES(volume),
-          is_dfod = VALUES(is_dfod),
-          tgl_buka = VALUES(tgl_buka),
-          outlet_asal = VALUES(outlet_asal),
-          tgl_tiba = VALUES(tgl_tiba),
-          next_stop = VALUES(next_stop),
-          gw_asal = VALUES(gw_asal),
-          gw_tujuan = VALUES(gw_tujuan),
-          outlet_tujuan = VALUES(outlet_tujuan),
-          frekuensi_kirim = VALUES(frekuensi_kirim),
-          durasi_jam = VALUES(durasi_jam),
-          durasi_kategori = VALUES(durasi_kategori),
-          is_problem = VALUES(is_problem),
-          status_penangguhan = VALUES(status_penangguhan),
-          rute = VALUES(rute),
-          gw_tujuan_2 = VALUES(gw_tujuan_2),
-          next_gw = VALUES(next_gw),
-          outlet_akhir = VALUES(outlet_akhir),
-          tipe_jalur = VALUES(tipe_jalur),
-          batch_time = VALUES(batch_time),
-          updated_at = NOW()
-      `;
+      try {
+        const sql = `
+          INSERT INTO gudang_rute_inventory (
+            waybill, tanggal_simpan, holding_gw, status_simpan, berat, volume, is_dfod,
+            tgl_buka, outlet_asal, tgl_tiba, next_stop, gw_asal, gw_tujuan, outlet_tujuan,
+            frekuensi_kirim, durasi_jam, durasi_kategori, is_problem, status_penangguhan,
+            rute, gw_tujuan_2, next_gw, outlet_akhir, tipe_jalur, batch_time
+          ) VALUES ?
+          ON DUPLICATE KEY UPDATE
+            tanggal_simpan = VALUES(tanggal_simpan),
+            holding_gw = VALUES(holding_gw),
+            status_simpan = VALUES(status_simpan),
+            berat = VALUES(berat),
+            volume = VALUES(volume),
+            is_dfod = VALUES(is_dfod),
+            tgl_buka = VALUES(tgl_buka),
+            outlet_asal = VALUES(outlet_asal),
+            tgl_tiba = VALUES(tgl_tiba),
+            next_stop = VALUES(next_stop),
+            gw_asal = VALUES(gw_asal),
+            gw_tujuan = VALUES(gw_tujuan),
+            outlet_tujuan = VALUES(outlet_tujuan),
+            frekuensi_kirim = VALUES(frekuensi_kirim),
+            durasi_jam = VALUES(durasi_jam),
+            durasi_kategori = VALUES(durasi_kategori),
+            is_problem = VALUES(is_problem),
+            status_penangguhan = VALUES(status_penangguhan),
+            rute = VALUES(rute),
+            gw_tujuan_2 = VALUES(gw_tujuan_2),
+            next_gw = VALUES(next_gw),
+            outlet_akhir = VALUES(outlet_akhir),
+            tipe_jalur = VALUES(tipe_jalur),
+            batch_time = VALUES(batch_time),
+            updated_at = NOW()
+        `;
 
-      await db.query(sql, [recordsToInsert]);
-      totalInserted += recordsToInsert.length;
-      importProgress.totalProcessed = totalInserted;
-      importProgress.message = `Mengimpor data... (${totalInserted.toLocaleString('id-ID')} waybill diproses)`;
+        await db.query(sql, [recordsToInsert]);
+        totalInserted += recordsToInsert.length;
+        importProgress.totalProcessed = totalInserted;
+        const elapsedSec = Math.round((Date.now() - startTime) / 1000) || 1;
+        const speed = Math.round(totalInserted / elapsedSec);
+        importProgress.message = `Mengimpor waybill seluruh Indonesia: ${totalInserted.toLocaleString('id-ID')} waybill (${speed.toLocaleString('id-ID')} baris/dtk, ${elapsedSec}s)...`;
+      } catch (insertErr) {
+        console.error('Error inserting batch into gudang_rute_inventory:', insertErr.message);
+      } finally {
+        isFlushing = false;
+      }
     }
 
     rl.on('line', async (line) => {
       if (!line.trim()) return;
       try {
         const item = JSON.parse(line);
-        buffer.push(item);
+        buffer.push([
+          item.waybill, item.tanggal_simpan, item.holding_gw, item.status_simpan, item.berat, item.volume, item.is_dfod,
+          item.tgl_buka, item.outlet_asal, item.tgl_tiba, item.next_stop, item.gw_asal, item.gw_tujuan, item.outlet_tujuan,
+          item.frekuensi_kirim, item.durasi_jam, item.durasi_kategori, item.is_problem, item.status_penangguhan,
+          item.rute, item.gw_tujuan_2, item.next_gw, item.outlet_akhir, item.tipe_jalur, item.batch_time
+        ]);
         if (buffer.length >= BATCH_SIZE) {
           rl.pause();
           await flushBuffer();
