@@ -9,5 +9,8 @@ router.post('/import', authMiddleware, gudangRuteController.importExcelData);
 router.post('/query', authMiddleware, gudangRuteController.queryInventory);
 router.post('/trace', authMiddleware, gudangRuteController.getPodTrace);
 router.post('/enrich', authMiddleware, gudangRuteController.enrichWaybill);
+router.post('/bulk-enrich', authMiddleware, gudangRuteController.bulkEnrichWaybills);
+router.get('/bulk-enrich-status', authMiddleware, gudangRuteController.getBulkEnrichStatus);
+router.post('/instant-db-enrich', authMiddleware, gudangRuteController.instantDbEnrich);
 
 module.exports = router;

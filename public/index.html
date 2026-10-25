@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="style.css?v=2.9.5" />
     <link rel="stylesheet" href="themes-retro.css?v=2.9.5" />
     <script src="vendor/xlsx.full.min.js"></script>
-    <script src="script.js?v=2.9.5" defer></script>
+    <script src="script.js?v=2.9.6" defer></script>
     <script src="monitoring-view.js?v=2.9.0" defer></script>
     <script src="branding.js?v=2.7.2" defer></script>
     <script src="scanner.js?v=2.7.2" defer></script>
@@ -29,7 +29,7 @@
     <script src="vendor/html2canvas.min.js"></script>
     <script src="fifo-report.js?v=2.9.6" defer></script>
 
-    <script src="gudang-rute.js?v=2.9.5" defer></script>
+    <script src="gudang-rute.js?v=2.9.6" defer></script>
   </head>
   <body>
     <div id="loginView" class="auth-page">
@@ -3704,6 +3704,21 @@
         <button type="button" class="btn btn-primary" id="btnImportLatestGudang" onclick="importLatestGudangRuteFile()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 16px; border-radius: 8px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none; color: #fff; cursor: pointer;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           <span id="btnImportLatestText">⚡ Baca File Terbaru (Downloads)</span>
+        </button>
+
+        <button type="button" class="btn btn-primary" id="btnEnrichCurrentPage" onclick="enrichCurrentPage()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; cursor: pointer;" title="Otomatis enrich 50 waybill yang sedang tampil di halaman ini tanpa harus klik 1 per 1">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span id="btnEnrichPageText">⚡ Enrich Halaman Ini (50 Resi)</span>
+        </button>
+
+        <button type="button" class="btn btn-primary" id="btnBulkEnrichJfs" onclick="promptBulkEnrich()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; color: #fff; cursor: pointer;" title="Auto-enrich 100 s/d 1.000 waybill sekaligus di latar belakang dari JFS">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span id="btnBulkEnrichText">⚡ Auto-Enrich Massal (100 - 500)</span>
+        </button>
+
+        <button type="button" class="btn btn-secondary" onclick="runInstantDbEnrich()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; cursor: pointer;" title="Tarik langsung nama barang dari database PTO &amp; Stuck lokal (Instan)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Sync DB Lokal</span>
         </button>
 
         <button type="button" class="btn btn-secondary" id="btnExportGudangExcel" onclick="exportGudangRuteExcel()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; cursor: pointer;">

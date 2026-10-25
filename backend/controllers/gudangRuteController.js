@@ -287,7 +287,7 @@ async function importExcelData(req, res) {
 
         importProgress.message = 'Menjalankan auto-enrichment nama barang & customer dari PTO...';
 
-        // Instant auto-enrichment via UPDATE JOIN with pto_orders
+        // Instant auto-enrichment via UPDATE JOIN with pto_orders & monitoring_stuck
         const [enrichRes] = await db.query(`
           UPDATE gudang_rute_inventory g
           JOIN pto_orders p ON g.waybill = p.waybill
@@ -303,7 +303,17 @@ async function importExcelData(req, res) {
           WHERE (g.nama_barang IS NULL OR g.nama_barang = '')
         `);
 
-        const enrichedCount = enrichRes?.affectedRows || 0;
+        const [enrichStuckRes] = await db.query(`
+          UPDATE gudang_rute_inventory g
+          JOIN monitoring_stuck m ON g.waybill = m.waybill COLLATE utf8mb4_unicode_ci
+          SET 
+            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
+            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
+          WHERE (g.nama_barang IS NULL OR g.nama_barang = '') 
+            AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
+        `);
+
+        const enrichedCount = (enrichRes?.affectedRows || 0) + (enrichStuckRes?.affectedRows || 0);
         const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
 
         // Record sync log
@@ -739,11 +749,178 @@ async function enrichWaybill(req, res) {
   }
 }
 
+
+// 6. Bulk Enrich Worker via JFS API (Processes 50, 100, 500 at once in background!)
+let isBulkEnriching = false;
+let bulkEnrichProgress = { current: 0, total: 0, successCount: 0, status: 'idle', message: '' };
+
+async function getBulkEnrichStatus(req, res) {
+  res.json({
+    success: true,
+    isBulkEnriching,
+    progress: bulkEnrichProgress
+  });
+}
+
+async function bulkEnrichWaybills(req, res) {
+  if (isBulkEnriching) {
+    return res.status(409).json({ success: false, message: 'Proses bulk enrich sedang berjalan.' });
+  }
+
+  const { waybills = [], limit = 100 } = req.body || {};
+  let targetWaybills = [];
+
+  if (Array.isArray(waybills) && waybills.length > 0) {
+    targetWaybills = waybills;
+  } else {
+    const maxLimit = Math.min(1000, Math.max(10, parseInt(limit, 10) || 100));
+    const [rows] = await db.query(`
+      SELECT waybill 
+      FROM gudang_rute_inventory 
+      WHERE nama_barang IS NULL OR nama_barang = ''
+      ORDER BY id ASC
+      LIMIT ?
+    `, [maxLimit]);
+    targetWaybills = rows.map(r => r.waybill);
+  }
+
+  if (targetWaybills.length === 0) {
+    return res.json({ success: true, message: 'Semua waybill sudah memiliki rincian barang.', enrichedCount: 0 });
+  }
+
+  isBulkEnriching = true;
+  bulkEnrichProgress = {
+    current: 0,
+    total: targetWaybills.length,
+    successCount: 0,
+    status: 'running',
+    message: `Memulai auto-enrich untuk ${targetWaybills.length} waybill...`
+  };
+
+  res.json({
+    success: true,
+    message: `Memulai auto-enrich massal untuk ${targetWaybills.length} waybill di latar belakang...`,
+    total: targetWaybills.length
+  });
+
+  (async () => {
+    try {
+      const jfsConfig = await jfsService.getConfig();
+      const token = jfsConfig.authtoken;
+      const CONCURRENCY = 5;
+      let enrichedCount = 0;
+
+      for (let i = 0; i < targetWaybills.length; i += CONCURRENCY) {
+        if (!isBulkEnriching) break;
+        const chunk = targetWaybills.slice(i, i + CONCURRENCY);
+        await Promise.all(chunk.map(async (wb) => {
+          try {
+            const resp = await jfsApiRequest('https://jfsgw.jtcargo.co.id/operatingplatform/order/getOrderDetail', 'POST', {
+              waybillNo: wb,
+              countryId: '1'
+            }, token);
+
+            if (resp && resp.data && resp.data.goodsName) {
+              const d = resp.data;
+              await db.query(`
+                UPDATE gudang_rute_inventory
+                SET 
+                  nama_barang = COALESCE(?, nama_barang),
+                  pengirim = COALESCE(?, pengirim),
+                  perusahaan_pengirim = COALESCE(?, perusahaan_pengirim),
+                  no_hp_pengirim = COALESCE(?, no_hp_pengirim),
+                  penerima = COALESCE(?, penerima),
+                  perusahaan_penerima = COALESCE(?, perusahaan_penerima),
+                  no_hp_penerima = COALESCE(?, no_hp_penerima),
+                  alamat_penerima = COALESCE(?, alamat_penerima)
+                WHERE waybill = ?
+              `, [
+                d.goodsName || null,
+                d.senderName || null,
+                d.senderCompany || d.customerName || null,
+                d.senderMobilePhone || d.senderTelphone || null,
+                d.receiverName || null,
+                d.receiverCompany || null,
+                d.receiverMobilePhone || d.receiverTelphone || null,
+                d.receiverDetailedAddress || null,
+                wb
+              ]);
+              enrichedCount++;
+            }
+          } catch (_) {}
+          bulkEnrichProgress.current++;
+          bulkEnrichProgress.successCount = enrichedCount;
+          bulkEnrichProgress.message = `Meng-enrich waybill: ${bulkEnrichProgress.current} / ${bulkEnrichProgress.total} (${enrichedCount} berhasil)`;
+        }));
+      }
+
+      bulkEnrichProgress.status = 'success';
+      bulkEnrichProgress.message = `Selesai! Berhasil meng-enrich ${enrichedCount} waybill dari JFS.`;
+    } catch (err) {
+      console.error('bulkEnrichWorker error:', err);
+      bulkEnrichProgress.status = 'error';
+      bulkEnrichProgress.message = 'Terjadi kesalahan: ' + err.message;
+    } finally {
+      isBulkEnriching = false;
+    }
+  })();
+}
+
+// 7. Instant Local DB Enrich (PTO + Monitoring Stuck)
+async function instantDbEnrich(req, res) {
+  try {
+    const [resPto] = await db.query(`
+      UPDATE gudang_rute_inventory g
+      JOIN pto_orders p ON g.waybill = p.waybill
+      SET 
+        g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang),
+        g.pengirim = COALESCE(NULLIF(g.pengirim, ''), p.pengirim),
+        g.perusahaan_pengirim = COALESCE(NULLIF(g.perusahaan_pengirim, ''), p.perusahaan_pengirim),
+        g.no_hp_pengirim = COALESCE(NULLIF(g.no_hp_pengirim, ''), p.nomor_ponsel_pengirim),
+        g.penerima = COALESCE(NULLIF(g.penerima, ''), p.penerima),
+        g.perusahaan_penerima = COALESCE(NULLIF(g.perusahaan_penerima, ''), p.perusahaan_penerima_paket),
+        g.no_hp_penerima = COALESCE(NULLIF(g.no_hp_penerima, ''), p.nomor_handphone_penerima),
+        g.alamat_penerima = COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima)
+      WHERE (g.nama_barang IS NULL OR g.nama_barang = '')
+    `);
+
+    const [resStuck] = await db.query(`
+      UPDATE gudang_rute_inventory g
+      JOIN monitoring_stuck m ON g.waybill = m.waybill COLLATE utf8mb4_unicode_ci
+      SET 
+        g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
+        g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
+      WHERE (g.nama_barang IS NULL OR g.nama_barang = '') 
+        AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
+    `);
+
+    const totalEnriched = (resPto?.affectedRows || 0) + (resStuck?.affectedRows || 0);
+    const [totalRes] = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM gudang_rute_inventory 
+      WHERE nama_barang IS NOT NULL AND nama_barang != ''
+    `);
+
+    res.json({
+      success: true,
+      message: `Sinkronisasi database sukses! ${totalEnriched.toLocaleString('id-ID')} waybill diperbarui.`,
+      newlyEnriched: totalEnriched,
+      totalEnriched: totalRes[0]?.count || 0
+    });
+  } catch (err) {
+    console.error('instantDbEnrich error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 module.exports = {
   getLatestFileInfo,
   getImportStatus,
   importExcelData,
   queryInventory,
   getPodTrace,
-  enrichWaybill
+  enrichWaybill,
+  bulkEnrichWaybills,
+  getBulkEnrichStatus,
+  instantDbEnrich
 };

@@ -670,6 +670,188 @@ function copyPodTraceText() {
 }
 
 // 7. Single Waybill Enrich from JFS
+
+// 7B. Enrich All Waybills On Current Page (Batch)
+async function enrichCurrentPage() {
+  const unenrichedBtns = document.querySelectorAll('button[onclick*="enrichSingleGudangWaybill"]');
+  if (unenrichedBtns.length === 0) {
+    alert('Semua waybill di halaman ini sudah terisi nama barang!');
+    return;
+  }
+
+  const waybills = [];
+  unenrichedBtns.forEach(btn => {
+    const m = btn.getAttribute('onclick').match(/enrichSingleGudangWaybill\('([^']+)'/);
+    if (m && m[1]) waybills.push(m[1]);
+  });
+
+  if (waybills.length === 0) {
+    alert('Tidak ada waybill yang perlu di-enrich di halaman ini.');
+    return;
+  }
+
+  if (!confirm(`Otomatis ambil data barang & customer untuk ${waybills.length} waybill di halaman ini dari JFS?`)) {
+    return;
+  }
+
+  const btn = document.getElementById('btnEnrichCurrentPage');
+  const btnText = document.getElementById('btnEnrichPageText');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Meng-enrich...';
+
+  showGudangProgress(true);
+  const pTitle = document.getElementById('gudangProgressTitle');
+  const pMsg = document.getElementById('gudangProgressMessage');
+  if (pTitle) pTitle.textContent = `Meng-enrich ${waybills.length} Waybill di Halaman Ini...`;
+  if (pMsg) pMsg.textContent = 'Menghubungkan ke API JFS Operating Platform...';
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/bulk-enrich', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ waybills })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      alert(json.message || 'Gagal memulai enrich');
+      showGudangProgress(false);
+      return;
+    }
+
+    startBulkEnrichPolling();
+  } catch (err) {
+    alert('Error: ' + err.message);
+    showGudangProgress(false);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = '⚡ Enrich Halaman Ini (50 Resi)';
+  }
+}
+
+// 7C. Bulk Enrich Modal / Prompt (100 - 500 Waybill Sekaligus)
+async function promptBulkEnrich() {
+  const countStr = prompt('Masukkan jumlah waybill yang ingin di-enrich otomatis dari JFS:\n(Contoh: 100, 300, atau 500)', '100');
+  if (!countStr) return;
+  const count = parseInt(countStr, 10);
+  if (isNaN(count) || count <= 0) {
+    alert('Harap masukkan angka yang valid.');
+    return;
+  }
+
+  const btn = document.getElementById('btnBulkEnrichJfs');
+  const btnText = document.getElementById('btnBulkEnrichText');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Memulai...';
+
+  showGudangProgress(true);
+  const pTitle = document.getElementById('gudangProgressTitle');
+  const pMsg = document.getElementById('gudangProgressMessage');
+  if (pTitle) pTitle.textContent = `Auto-Enrich ${count} Waybill Massal...`;
+  if (pMsg) pMsg.textContent = 'Menyiapkan antrian worker JFS...';
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/bulk-enrich', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ limit: count })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      alert(json.message || 'Gagal memulai bulk enrich');
+      showGudangProgress(false);
+      return;
+    }
+
+    startBulkEnrichPolling();
+  } catch (err) {
+    alert('Error: ' + err.message);
+    showGudangProgress(false);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = '⚡ Auto-Enrich Massal (100 - 500)';
+  }
+}
+
+let bulkEnrichTimer = null;
+function startBulkEnrichPolling() {
+  if (bulkEnrichTimer) clearInterval(bulkEnrichTimer);
+  bulkEnrichTimer = setInterval(checkBulkEnrichStatus, 1500);
+}
+
+async function checkBulkEnrichStatus() {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/bulk-enrich-status', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+
+    const pTitle = document.getElementById('gudangProgressTitle');
+    const pCount = document.getElementById('gudangProgressCount');
+    const pMsg = document.getElementById('gudangProgressMessage');
+
+    if (json.isBulkEnriching) {
+      showGudangProgress(true);
+      const cur = json.progress?.current || 0;
+      const tot = json.progress?.total || 1;
+      const succ = json.progress?.successCount || 0;
+      const pct = Math.round((cur / tot) * 100);
+
+      if (pTitle) pTitle.textContent = `Auto-Enrich JFS Sedang Berjalan (${pct}%)...`;
+      if (pCount) pCount.textContent = `${cur} / ${tot} waybill (${succ} sukses)`;
+      if (pMsg) pMsg.textContent = json.progress?.message || 'Memproses data order...';
+    } else {
+      if (bulkEnrichTimer) {
+        clearInterval(bulkEnrichTimer);
+        bulkEnrichTimer = null;
+      }
+
+      showGudangProgress(false);
+      fetchGudangFileInfo();
+      fetchGudangInventory();
+    }
+  } catch (err) {
+    console.warn('checkBulkEnrichStatus error:', err);
+  }
+}
+
+// 7D. Instant DB Enrich (PTO + Monitoring Stuck)
+async function runInstantDbEnrich() {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/instant-db-enrich', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      alert(json.error || 'Gagal sinkronisasi');
+      return;
+    }
+
+    alert(`✅ ${json.message}\nTotal waybill ter-enrich sekarang: ${json.totalEnriched.toLocaleString('id-ID')}`);
+    fetchGudangFileInfo();
+    fetchGudangInventory();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
 async function enrichSingleGudangWaybill(waybillNo, btnEl) {
   if (btnEl) {
     btnEl.disabled = true;
@@ -814,3 +996,6 @@ window.copyPodTraceText = copyPodTraceText;
 window.enrichSingleGudangWaybill = enrichSingleGudangWaybill;
 window.openPrintAwbFromGudang = openPrintAwbFromGudang;
 window.exportGudangRuteExcel = exportGudangRuteExcel;
+window.enrichCurrentPage = enrichCurrentPage;
+window.promptBulkEnrich = promptBulkEnrich;
+window.runInstantDbEnrich = runInstantDbEnrich;
