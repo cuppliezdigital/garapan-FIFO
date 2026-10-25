@@ -32,11 +32,11 @@ const DEFAULT_SPOTS = [
   { code: 'KDR99A', name: 'GW-Kediri', patterns: 'gw-kediri,gw-madiun,kdr99a,kdr' },
   { code: 'MLG99A', name: 'GW-Malang', patterns: 'gw-malang,mlg99a,mlg' },
   { code: 'PRO99A', name: 'GW-Probolinggo', patterns: 'gw-probolinggo,pro99a,pro' },
-  { code: 'SEA99A', name: 'GW-SurabayaSEA', patterns: 'gw-surabayasea,gw-ambon,gw-ternate,gw-gorontalo,gw-sofifi,gw-morowali,gw-manado,gw-kendari,gw-palu,gw-makassar,gw-kupang,sea99a,sea' },
+  { code: 'SEA99A', name: 'GW-SurabayaSEA', patterns: 'gw-surabayasea,gw-ambon,gw-ternate,gw-gorontalo,gw-sofifi,gw-morowali,gw-manado,gw-kendari,gw-palu,gw-makassar,gw-kupang,gw-polewali,sea99a,sea' },
   { code: 'SUB99A', name: 'GW-Surabaya', patterns: 'gw-surabaya,gw-lamongan,bws,gsk,sub99a,sub' },
   { code: 'DJB99A', name: 'GW-Jambi', patterns: 'gw-jambi,gw-bangko,djb99a,djb' },
   { code: 'BKO99V', name: 'GW-Bengkulu', patterns: 'gw-bengkulu,bko99v,bko' },
-  { code: 'MES99A', name: 'GW-Medan', patterns: 'gw-medan,gw-aceh,gw-kuala simpang,gw-lhokseumawe,gw-takengon,gw-aek,gw-rantau,gw-ujung tanjung,mes99a,mes' },
+  { code: 'MES99A', name: 'GW-Medan', patterns: 'gw-medan,gw-aceh,gw-kuala simpang,gw-lhokseumawe,gw-takengon,gw-aek,gw-rantau,gw-ujung tanjung,lsw,lsw99a,mes99a,mes' },
   { code: 'PDG99A', name: 'GW-Padang', patterns: 'gw-padang,gw-bukittinggi,gw-virtual padang,gw-padang sidempuan,pdg99a,pdg' },
   { code: 'PKU99A', name: 'GW-Pekanbaru', patterns: 'gw-pekanbaru,gw-rengat,gw-rengatmitra,gw-batam,gw-batam barat,gw-batam selatan,gw-karimun,gw-tanjung pinang,pku99a,pku' },
   { code: 'PLM99A', name: 'GW-Palembang', patterns: 'gw-palembang,gw-prabumulih,gw-lubuk linggau,gw-bangka belitung,plm99a,plm' },
@@ -110,25 +110,29 @@ function getLiveFormattedTimestamp() {
   };
 }
 
-// Ekstrak jam numerik & tentukan bucket
+// Ekstrak jam numerik & tentukan bucket sesuai template Excel FIFO
 function getAgingLevel(stuckValue) {
   if (!stuckValue) return null;
   const raw = String(stuckValue).trim();
   const lower = raw.toLowerCase();
 
+  // 1. Cek string category
   if (lower.includes('(24-36)') || lower.includes('24 jam - 36 jam')) return '24_36';
-  if (lower.includes('(48-60)') || lower.includes('48 jam - 60 jam')) return '48_60';
-  if (lower.includes('(60-72)') || lower.includes('(48-72)') || lower.includes('48 jam - 72 jam') || lower.includes('60 jam - 72 jam')) return '48_72';
+  // Baris 4 di Excel: kategori 36-48 Jam (di header tertulis 4. 48 Jam - 60 Jam)
+  if (lower.includes('(36-48)') || lower.includes('36 jam - 48 jam')) return '48_60';
+  // Baris 5 di Excel: kategori 48-72 Jam (mencakup 48-60 Jam dan 60-72 Jam)
+  if (lower.includes('(48-60)') || lower.includes('(60-72)') || lower.includes('(48-72)') || lower.includes('48 jam - 72 jam') || lower.includes('48 jam - 60 jam') || lower.includes('60 jam - 72 jam')) return '48_72';
   if (lower.includes('(72 up)') || lower.includes('(72-up)') || lower.includes('72 up') || lower.includes('72+')) return '72_up';
 
+  // 2. Fallback jam numerik
   const m = raw.match(/(\d+)\s*Jam/i) || raw.match(/^(\d+)/);
   if (!m) return null;
   const h = parseInt(m[1], 10);
 
   if (h >= 24 && h < 36) return '24_36';
-  if (h >= 48 && h < 60) return '48_60';
-  if (h >= 60 && h < 72) return '48_72';
-  if (h >= 72) return '72_up';
+  if (h >= 36 && h < 48) return '48_60'; // Baris 4 Excel: 36-48 Jam (53 paket)
+  if (h >= 48 && h < 72) return '48_72'; // Baris 5 Excel: 48-72 Jam (gabungan 48-60h dan 60-72h = 256 paket)
+  if (h >= 72) return '72_up';          // Baris 6 Excel: 72h UP (244 paket)
 
   return null;
 }
