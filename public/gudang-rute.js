@@ -35,6 +35,8 @@ let gudangState = {
   bulkTimer: null
 };
 
+let gudangSearchDebounceTimer = null;
+
 // 1. Initial Dashboard Load
 async function loadGudangRuteDashboard() {
   await fetchGudangFileInfo();
@@ -64,7 +66,6 @@ async function fetchGudangFileInfo() {
       }
     }
 
-    // Check if import is in progress
     checkGudangImportStatus();
   } catch (err) {
     console.warn('fetchGudangFileInfo error:', err);
@@ -85,7 +86,7 @@ async function importLatestGudangRuteFile() {
 
   try {
     const token = localStorage.getItem('token');
-    const holdingGwFilter = 'ALL'; // Import seluruh waybill se-Indonesia
+    const holdingGwFilter = 'ALL';
 
     const res = await fetch('/api/gudang-rute/import', {
       method: 'POST',
@@ -104,7 +105,6 @@ async function importLatestGudangRuteFile() {
       return;
     }
 
-    // Show progress bar & start polling
     showGudangProgress(true);
     startGudangPolling();
   } catch (err) {
@@ -171,7 +171,7 @@ async function checkGudangImportStatus() {
   }
 }
 
-// 4. Fetch Inventory from Server with Column Search & Pagination
+// 4. Fetch Inventory from Server with Live Column Filters & Pagination
 async function fetchGudangInventory() {
   if (gudangState.isLoading) return;
   gudangState.isLoading = true;
@@ -183,7 +183,7 @@ async function fetchGudangInventory() {
         <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
             <div class="spinner-small" style="width: 24px; height: 24px; border: 3px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-            <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data inventaris...</span>
+            <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data...</span>
           </div>
         </td>
       </tr>
@@ -311,7 +311,7 @@ function renderGudangTable(rows = []) {
         <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
             <p style="margin: 0; font-size: 0.92rem; font-weight: 600; color: #cbd5e1;">Tidak ada data waybill yang cocok</p>
-            <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Coba sesuaikan filter atau bersihkan pencarian di setiap kolom.</p>
+            <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Ketikkan kata kunci lain atau bersihkan filter kolom.</p>
           </div>
         </td>
       </tr>
@@ -482,10 +482,10 @@ function renderGudangTable(rows = []) {
 
         <!-- 13. AKSI -->
         <td style="padding: 10px 10px; text-align: center;">
-          <div style="display: flex; flex-direction: column; gap: 5px; align-items: center; min-width: 110px;">
+          <div style="display: flex; flex-direction: column; gap: 5px; align-items: center; min-width: 90px;">
             <button type="button" class="btn-track-pod" onclick="openPodTraceModal('${r.waybill}')" title="Lacak riwayat 18 scan POD real-time">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Lacak POD
+              Lacak
             </button>
             <div style="display: flex; gap: 4px; width: 100%;">
               <button type="button" class="btn-print-mini" onclick="openPrintAwbFromGudang('${r.waybill}')" title="Cetak ulang label thermal">
@@ -627,14 +627,87 @@ function changeGudangPageSize(size) {
   fetchGudangInventory();
 }
 
-function handleGudangFilterSubmit(e) {
-  if (e) e.preventDefault();
+// 8. LIVE AUTO-SEARCH & FILTER (INSTANT SEARCH TANPA PERLU TEKAN TOMBOL CARI)
+function onGudangSearchInput(instant = false) {
+  clearTimeout(gudangSearchDebounceTimer);
+  if (instant) {
+    applyGudangAutoSearch();
+  } else {
+    gudangSearchDebounceTimer = setTimeout(() => {
+      applyGudangAutoSearch();
+    }, 280);
+  }
+}
+
+function applyGudangAutoSearch() {
   gudangState.search = document.getElementById('gudangSearchInput')?.value.trim() || '';
   gudangState.holdingGw = document.getElementById('gudangFilterHoldingGw')?.value || 'ALL';
   gudangState.destGw = document.getElementById('gudangFilterDestGw')?.value || 'ALL';
   gudangState.tipeJalur = document.getElementById('gudangFilterTipeJalur')?.value || 'ALL';
   gudangState.aging = document.getElementById('gudangFilterAging')?.value || 'ALL';
   gudangState.enrichStatus = document.getElementById('gudangFilterEnrich')?.value || 'all';
+
+  gudangState.col_waybill = document.getElementById('colSearchWaybill')?.value.trim() || '';
+  gudangState.col_nama_barang = document.getElementById('colSearchNamaBarang')?.value.trim() || '';
+  gudangState.col_pengirim = document.getElementById('colSearchPengirim')?.value.trim() || '';
+  gudangState.col_asal = document.getElementById('colSearchAsal')?.value.trim() || '';
+  gudangState.col_penerima = document.getElementById('colSearchPenerima')?.value.trim() || '';
+  gudangState.col_tujuan = document.getElementById('colSearchTujuan')?.value.trim() || '';
+  gudangState.col_alamat = document.getElementById('colSearchAlamat')?.value.trim() || '';
+  gudangState.col_holding_gw = document.getElementById('colSearchHoldingGw')?.value.trim() || '';
+  gudangState.col_durasi_min = document.getElementById('colSearchDurasiMin')?.value.trim() || '';
+  gudangState.col_durasi_max = document.getElementById('colSearchDurasiMax')?.value.trim() || '';
+  gudangState.col_rute = document.getElementById('colSearchRute')?.value.trim() || '';
+
+  const statusVal = document.getElementById('colSearchStatus')?.value;
+  gudangState.col_status = (statusVal && statusVal !== 'ALL') ? statusVal : 'ALL';
+  gudangState.is_problem = (statusVal && statusVal !== 'ALL') ? statusVal : '';
+
+  gudangState.page = 1;
+  fetchGudangInventory();
+}
+
+function applyColumnFilters() {
+  applyGudangAutoSearch();
+}
+
+function handleColumnSearch(event) {
+  onGudangSearchInput(event?.key === 'Enter');
+}
+
+function handleGudangFilterSubmit(e) {
+  if (e) e.preventDefault();
+  applyGudangAutoSearch();
+}
+
+function clearAllColumnFilters() {
+  const ids = [
+    'colSearchWaybill', 'colSearchNamaBarang', 'colSearchPengirim',
+    'colSearchAsal', 'colSearchPenerima', 'colSearchTujuan',
+    'colSearchAlamat', 'colSearchHoldingGw', 'colSearchDurasiMin',
+    'colSearchDurasiMax', 'colSearchRute'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const st = document.getElementById('colSearchStatus');
+  if (st) st.value = 'ALL';
+
+  gudangState.col_waybill = '';
+  gudangState.col_nama_barang = '';
+  gudangState.col_pengirim = '';
+  gudangState.col_asal = '';
+  gudangState.col_penerima = '';
+  gudangState.col_tujuan = '';
+  gudangState.col_alamat = '';
+  gudangState.col_holding_gw = '';
+  gudangState.col_rute = '';
+  gudangState.col_durasi_min = '';
+  gudangState.col_durasi_max = '';
+  gudangState.col_status = 'ALL';
+  gudangState.is_problem = '';
+
   gudangState.page = 1;
   fetchGudangInventory();
 }
@@ -642,16 +715,20 @@ function handleGudangFilterSubmit(e) {
 function resetGudangFilter() {
   const form = document.getElementById('gudangFilterForm');
   if (form) form.reset();
+  const searchInput = document.getElementById('gudangSearchInput');
+  if (searchInput) searchInput.value = '';
+
   gudangState.search = '';
   gudangState.holdingGw = 'ALL';
   gudangState.destGw = 'ALL';
   gudangState.tipeJalur = 'ALL';
   gudangState.aging = 'ALL';
   gudangState.enrichStatus = 'all';
+
   clearAllColumnFilters();
 }
 
-// 8. OPEN POD TRACE MODAL (100% PERSIS SCREENSHOT USER!)
+// 9. OPEN POD TRACE MODAL (100% PERSIS SCREENSHOT USER!)
 async function openPodTraceModal(waybillNo) {
   gudangState.activeTraceWaybill = waybillNo;
   const modal = document.getElementById('modalPodTraceGudang');
@@ -771,7 +848,7 @@ function closePodModal() {
   gudangState.activeTraceData = null;
 }
 
-// 9. COPY POD TRACE TEXT FOR FEISHU / WA
+// 10. COPY POD TRACE TEXT FOR FEISHU / WA
 function copyPodTraceText() {
   if (!gudangState.activeTraceData) return;
   const d = gudangState.activeTraceData;
@@ -793,7 +870,7 @@ function copyPodTraceText() {
   });
 }
 
-// 10. ENRICH ACTIONS (SINGLE & BATCH)
+// 11. ENRICH ACTIONS (SINGLE & BATCH)
 async function enrichSingleGudangWaybill(waybillNo, btnEl) {
   if (!waybillNo) return;
   if (btnEl) {
@@ -1010,7 +1087,7 @@ async function runInstantDbEnrich() {
   }
 }
 
-// 11. OPEN PRINT AWB FROM GUDANG ROW
+// 12. OPEN PRINT AWB FROM GUDANG ROW
 function openPrintAwbFromGudang(waybillNo) {
   if (typeof switchAdvanceTab === 'function') {
     switchAdvanceTab('print-awb', true);
@@ -1026,7 +1103,7 @@ function openPrintAwbFromGudang(waybillNo) {
   }
 }
 
-// 12. EXPORT ENRICHED INVENTORY TO EXCEL (LENGKAP DENGAN ASAL & TUJUAN)
+// 13. EXPORT ENRICHED INVENTORY TO EXCEL (LENGKAP DENGAN ASAL & TUJUAN)
 async function exportGudangRuteExcel() {
   try {
     const token = localStorage.getItem('token');
@@ -1111,65 +1188,6 @@ async function exportGudangRuteExcel() {
   }
 }
 
-// 13. PER-COLUMN FILTER HANDLERS
-function handleColumnSearch(event) {
-  if (event.key === 'Enter' || event.type === 'change') {
-    applyColumnFilters();
-  }
-}
-
-function applyColumnFilters() {
-  gudangState.col_waybill = document.getElementById('colSearchWaybill')?.value.trim() || '';
-  gudangState.col_nama_barang = document.getElementById('colSearchNamaBarang')?.value.trim() || '';
-  gudangState.col_pengirim = document.getElementById('colSearchPengirim')?.value.trim() || '';
-  gudangState.col_asal = document.getElementById('colSearchAsal')?.value.trim() || '';
-  gudangState.col_penerima = document.getElementById('colSearchPenerima')?.value.trim() || '';
-  gudangState.col_tujuan = document.getElementById('colSearchTujuan')?.value.trim() || '';
-  gudangState.col_alamat = document.getElementById('colSearchAlamat')?.value.trim() || '';
-  gudangState.col_holding_gw = document.getElementById('colSearchHoldingGw')?.value.trim() || '';
-  gudangState.col_durasi_min = document.getElementById('colSearchDurasiMin')?.value.trim() || '';
-  gudangState.col_durasi_max = document.getElementById('colSearchDurasiMax')?.value.trim() || '';
-  gudangState.col_rute = document.getElementById('colSearchRute')?.value.trim() || '';
-
-  const statusVal = document.getElementById('colSearchStatus')?.value;
-  gudangState.col_status = (statusVal && statusVal !== 'ALL') ? statusVal : 'ALL';
-  gudangState.is_problem = (statusVal && statusVal !== 'ALL') ? statusVal : '';
-
-  gudangState.page = 1;
-  fetchGudangInventory();
-}
-
-function clearAllColumnFilters() {
-  const ids = [
-    'colSearchWaybill', 'colSearchNamaBarang', 'colSearchPengirim',
-    'colSearchAsal', 'colSearchPenerima', 'colSearchTujuan',
-    'colSearchAlamat', 'colSearchHoldingGw', 'colSearchDurasiMin',
-    'colSearchDurasiMax', 'colSearchRute'
-  ];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const st = document.getElementById('colSearchStatus');
-  if (st) st.value = 'ALL';
-
-  gudangState.col_waybill = '';
-  gudangState.col_nama_barang = '';
-  gudangState.col_pengirim = '';
-  gudangState.col_asal = '';
-  gudangState.col_penerima = '';
-  gudangState.col_tujuan = '';
-  gudangState.col_alamat = '';
-  gudangState.col_holding_gw = '';
-  gudangState.col_rute = '';
-  gudangState.col_durasi_min = '';
-  gudangState.col_durasi_max = '';
-  gudangState.col_status = 'ALL';
-  gudangState.is_problem = '';
-  gudangState.page = 1;
-  fetchGudangInventory();
-}
-
 // Utility HTML escape
 function escapeHtml(text) {
   if (text === null || text === undefined) return '';
@@ -1201,6 +1219,8 @@ window.exportGudangRuteExcel = exportGudangRuteExcel;
 window.enrichCurrentPage = enrichCurrentPage;
 window.promptBulkEnrich = promptBulkEnrich;
 window.runInstantDbEnrich = runInstantDbEnrich;
+window.onGudangSearchInput = onGudangSearchInput;
+window.applyGudangAutoSearch = applyGudangAutoSearch;
 window.handleColumnSearch = handleColumnSearch;
 window.applyColumnFilters = applyColumnFilters;
 window.clearAllColumnFilters = clearAllColumnFilters;
