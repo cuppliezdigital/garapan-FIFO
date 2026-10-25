@@ -19,6 +19,7 @@ router.post('/trace', authMiddleware, gudangRuteController.getPodTrace);
 router.post('/enrich', authMiddleware, gudangRuteController.enrichWaybill);
 router.post('/bulk-enrich', authMiddleware, gudangRuteController.bulkEnrichWaybills);
 router.get('/bulk-enrich-status', authMiddleware, gudangRuteController.getBulkEnrichStatus);
+router.post('/bulk-enrich-stop', authMiddleware, gudangRuteController.cancelBulkEnrich);
 router.post('/sync-local-db', authMiddleware, gudangRuteController.instantDbEnrich);
 router.post('/instant-db-enrich', authMiddleware, gudangRuteController.instantDbEnrich);
 

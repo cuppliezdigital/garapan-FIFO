@@ -1407,3 +1407,7 @@ exports.syncPtoOrdersAutomatically = syncPtoOrdersAutomatically;
 exports.initPtoScheduler = initPtoScheduler;
 
 
+
+exports.makeJfsPtoRequest = makeJfsPtoRequest;
+exports.getPtoToken = getPtoToken;
+exports.getScanSiteCode = getScanSiteCode;

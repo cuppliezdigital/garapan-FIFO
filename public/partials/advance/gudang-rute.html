@@ -31,14 +31,16 @@
           <span id="btnImportLatestText">⚡ Baca File Terbaru (Downloads)</span>
         </button>
 
-        <button type="button" class="btn btn-primary" id="btnEnrichCurrentPage" onclick="enrichCurrentPage()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);" title="Otomatis enrich 50 waybill yang sedang tampil di halaman ini tanpa harus klik 1 per 1">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span id="btnEnrichPageText">⚡ Enrich Halaman Ini (50 Resi)</span>
+        <!-- BUTTON ENRICH MASSAL / SEMUA -->
+        <button type="button" class="btn btn-primary" id="btnOpenEnrichModal" onclick="openEnrichOptionsModal()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 15px; border-radius: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);" title="Pilih mode enrich: Halaman Ini, 500 Resi, atau Semua Data Sekaligus">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span id="btnOpenEnrichModalText">⚡ Auto-Enrich Massal / Semua</span>
         </button>
 
-        <button type="button" class="btn btn-primary" id="btnBulkEnrichJfs" onclick="promptBulkEnrich()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);" title="Auto-enrich 100 s/d 1.000 waybill sekaligus di latar belakang dari JFS">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          <span id="btnBulkEnrichText">⚡ Auto-Enrich Massal (100 - 500)</span>
+        <!-- BUTTON STOP AUTO-ENRICH (MUNCUL OTOMATIS SAAT PROSES BERJALAN) -->
+        <button type="button" class="btn btn-primary" id="btnStopAutoEnrich" onclick="stopBulkEnrich()" style="display: none; align-items: center; gap: 6px; font-weight: 700; padding: 8px 14px; border-radius: 8px; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); animation: pulse 1.5s infinite;" title="Hentikan proses auto-enrich latar belakang">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+          <span>⏹️ Hentikan Enrich</span>
         </button>
 
         <button type="button" class="btn btn-secondary" onclick="runInstantDbEnrich()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; cursor: pointer;" title="Tarik langsung nama barang dari database PTO &amp; Stuck lokal (Instan)">
@@ -415,6 +417,96 @@
         </button>
       </div>
       <button type="button" class="btn btn-secondary btn-sm" onclick="closePodModal()" style="padding: 6px 16px;">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PILIHAN AUTO-ENRICH MASSAL (LENGKAP DENGAN ENRICH SEMUA DATA) -->
+<div id="modalEnrichOptions" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(5px); align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: #0f172a; border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 16px; max-width: 580px; width: 100%; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75); overflow: hidden; animation: fadeIn 0.2s ease;">
+    <!-- HEADER -->
+    <div style="padding: 18px 24px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border-bottom: 1px solid rgba(148, 163, 184, 0.2); display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); display: flex; align-items: center; justify-content: center; color: #c084fc;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </div>
+        <div>
+          <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #f8fafc;">Pilih Mode Auto-Enrich Data Resi</h4>
+          <p style="margin: 2px 0 0; font-size: 0.76rem; color: #94a3b8;">Tarik live Nama Barang, Pengirim, Penerima &amp; Alamat via JFS Batch OMS</p>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeEnrichModal()" style="padding: 4px 8px; border-radius: 6px;">✕</button>
+    </div>
+
+    <!-- BODY WITH OPTIONS -->
+    <div style="padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; max-height: 70vh; overflow-y: auto;">
+      <!-- OPSI 1: HALAMAN INI -->
+      <div onclick="startEnrichByMode('page')" style="padding: 14px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(56, 189, 248, 0.25); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 1.5rem;">📄</div>
+          <div>
+            <div style="font-weight: 700; color: #f8fafc; font-size: 0.9rem;">Enrich Halaman Ini (50 Resi)</div>
+            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Cocok untuk memproses cepat nomor resi yang sedang tampil di layar (~3-5 detik).</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" style="pointer-events: none; background: #0284c7;">Mulai</button>
+      </div>
+
+      <!-- OPSI 2: 500 RESI -->
+      <div onclick="startEnrichByMode('500')" style="padding: 14px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(167, 139, 250, 0.3); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 1.5rem;">⚡</div>
+          <div>
+            <div style="font-weight: 700; color: #c084fc; font-size: 0.9rem;">Enrich 500 Resi Sekaligus</div>
+            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Cepat &amp; aman. Memproses 500 resi dalam 25 batch (~15-20 detik).</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" style="pointer-events: none; background: #7c3aed;">Mulai</button>
+      </div>
+
+      <!-- OPSI 3: 1.000 RESI -->
+      <div onclick="startEnrichByMode('1000')" style="padding: 14px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(52, 211, 153, 0.3); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 1.5rem;">🚀</div>
+          <div>
+            <div style="font-weight: 700; color: #34d399; font-size: 0.9rem;">Enrich 1.000 Resi Sekaligus</div>
+            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Memproses 1.000 resi kosong secara batching di latar belakang (~35 detik).</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" style="pointer-events: none; background: #059669;">Mulai</button>
+      </div>
+
+      <!-- OPSI 4: SEMUA RESI DI DATABASE (BACKGROUND NON-STOP) -->
+      <div onclick="startEnrichByMode('all')" style="padding: 14px 16px; border-radius: 10px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.08)); border: 1px solid rgba(245, 158, 11, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 1.5rem;">🌐</div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 800; color: #fbbf24; font-size: 0.9rem;">Enrich Semua Resi di Database (Non-Stop)</span>
+              <span style="padding: 1px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; background: #f59e0b; color: #000;">PRO</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #cbd5e1; margin-top: 3px;">Sistem akan memproses terus ribuan resi di latar belakang sampai selesai. Lu bisa tinggal kerja atau ngopi, dan bisa dihentikan sewaktu-waktu!</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" style="pointer-events: none; background: #d97706; font-weight: 700;">Jalankan</button>
+      </div>
+
+      <!-- OPSI 5: SYNC DB LOKAL -->
+      <div onclick="closeEnrichModal(); runInstantDbEnrich();" style="padding: 12px 16px; border-radius: 10px; background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(148, 163, 184, 0.3); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 1.3rem;">🔄</div>
+          <div>
+            <div style="font-weight: 600; color: #94a3b8; font-size: 0.85rem;">Sinkronisasi Basis Data Lokal Saja (0 Detik)</div>
+            <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Hanya mencocokkan dengan data PTO &amp; Stuck yang sudah tersimpan di database lokal.</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" style="pointer-events: none; font-size: 0.75rem;">Cocokkan</button>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="padding: 14px 24px; background: #1e293b; border-top: 1px solid rgba(148, 163, 184, 0.16); display: flex; justify-content: flex-end;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeEnrichModal()" style="padding: 6px 18px;">Tutup</button>
     </div>
   </div>
 </div>

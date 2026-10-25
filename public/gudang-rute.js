@@ -912,38 +912,62 @@ async function enrichSingleGudangWaybill(waybillNo, btnEl) {
   }
 }
 
-async function enrichCurrentPage() {
-  const unenrichedBtns = document.querySelectorAll('button[onclick*="enrichSingleGudangWaybill"]');
-  if (unenrichedBtns.length === 0) {
-    alert('Semua waybill di halaman ini sudah terisi nama barang!');
-    return;
+// MODAL CONTROL: BUKA / TUTUP PILIHAN ENRICH MASSAL
+function openEnrichOptionsModal() {
+  const modal = document.getElementById('modalEnrichOptions');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeEnrichModal() {
+  const modal = document.getElementById('modalEnrichOptions');
+  if (modal) modal.style.display = 'none';
+}
+
+// EKSEKUSI ENRICH BERDASARKAN MODE YANG DIPILIH
+async function startEnrichByMode(mode) {
+  closeEnrichModal();
+
+  let payload = {};
+  if (mode === 'page') {
+    const unenrichedBtns = document.querySelectorAll('button[onclick*="enrichSingleGudangWaybill"]');
+    if (unenrichedBtns.length === 0) {
+      alert('Semua waybill di halaman ini sudah memiliki rincian nama barang!');
+      return;
+    }
+    const waybills = [];
+    unenrichedBtns.forEach(btn => {
+      const m = btn.getAttribute('onclick').match(/enrichSingleGudangWaybill\('([^']+)'/);
+      if (m && m[1]) waybills.push(m[1]);
+    });
+    if (waybills.length === 0) {
+      alert('Tidak ada waybill yang perlu di-enrich di halaman ini.');
+      return;
+    }
+    payload = { waybills, mode: 'page' };
+  } else if (mode === '500') {
+    payload = { limit: 500, mode: 'limit' };
+  } else if (mode === '1000') {
+    payload = { limit: 1000, mode: 'limit' };
+  } else if (mode === 'all') {
+    if (!confirm('Jalankan Auto-Enrich Latar Belakang untuk seluruh waybill yang belum terisi di database?\n\nSistem akan memproses terus ribuan data secara otomatis tanpa mengganggu pekerjaan lu. Lu bisa stop kapan saja.')) {
+      return;
+    }
+    payload = { mode: 'all' };
+  } else {
+    payload = { limit: 100 };
   }
-
-  const waybills = [];
-  unenrichedBtns.forEach(btn => {
-    const m = btn.getAttribute('onclick').match(/enrichSingleGudangWaybill\('([^']+)'/);
-    if (m && m[1]) waybills.push(m[1]);
-  });
-
-  if (waybills.length === 0) {
-    alert('Tidak ada waybill yang perlu di-enrich di halaman ini.');
-    return;
-  }
-
-  if (!confirm(`Otomatis ambil data barang & customer untuk ${waybills.length} waybill di halaman ini dari JFS?`)) {
-    return;
-  }
-
-  const btn = document.getElementById('btnEnrichCurrentPage');
-  const btnText = document.getElementById('btnEnrichPageText');
-  if (btn) btn.disabled = true;
-  if (btnText) btnText.textContent = '⏳ Meng-enrich...';
 
   showGudangProgress(true);
   const pTitle = document.getElementById('gudangProgressTitle');
   const pMsg = document.getElementById('gudangProgressMessage');
-  if (pTitle) pTitle.textContent = `Meng-enrich ${waybills.length} Waybill di Halaman Ini...`;
-  if (pMsg) pMsg.textContent = 'Menghubungkan ke API JFS Operating Platform...';
+  if (pTitle) pTitle.textContent = 'Memulai Auto-Enrich JFS OMS...';
+  if (pMsg) pMsg.textContent = 'Menghubungkan ke API Batch OMS...';
+
+  // Toggle stop button
+  const btnStop = document.getElementById('btnStopAutoEnrich');
+  const btnOpen = document.getElementById('btnOpenEnrichModal');
+  if (btnStop) btnStop.style.display = 'inline-flex';
+  if (btnOpen) btnOpen.style.display = 'none';
 
   try {
     const token = localStorage.getItem('token');
@@ -953,29 +977,64 @@ async function enrichCurrentPage() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ waybills })
+      body: JSON.stringify(payload)
     });
 
     const json = await res.json();
     if (!res.ok || !json.success) {
-      alert(json.message || 'Gagal memulai enrich');
+      alert(json.message || 'Gagal memulai auto-enrich');
       showGudangProgress(false);
+      if (btnStop) btnStop.style.display = 'none';
+      if (btnOpen) btnOpen.style.display = 'inline-flex';
       return;
     }
 
+    showGudangToast(`⚡ Auto-enrich dimulai untuk ${json.total?.toLocaleString('id-ID') || 0} waybill!`);
     startBulkEnrichPolling();
   } catch (err) {
     alert('Error: ' + err.message);
     showGudangProgress(false);
+    if (btnStop) btnStop.style.display = 'none';
+    if (btnOpen) btnOpen.style.display = 'inline-flex';
+  }
+}
+
+// HENTIKAN PROSES AUTO-ENRICH (STOP BUTTON)
+async function stopBulkEnrich() {
+  const btnStop = document.getElementById('btnStopAutoEnrich');
+  if (btnStop) {
+    btnStop.disabled = true;
+    btnStop.textContent = '⏳ Menghentikan...';
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/bulk-enrich-stop', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const json = await res.json();
+    showGudangToast(json.message || 'Auto-enrich dihentikan.');
+    checkBulkEnrichStatus();
+  } catch (err) {
+    alert('Gagal menghentikan: ' + err.message);
   } finally {
-    if (btn) btn.disabled = false;
-    if (btnText) btnText.textContent = '⚡ Enrich Halaman Ini (50 Resi)';
+    if (btnStop) {
+      btnStop.disabled = false;
+      btnStop.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg><span>⏹️ Hentikan Enrich</span>`;
+      btnStop.style.display = 'none';
+    }
+    const btnOpen = document.getElementById('btnOpenEnrichModal');
+    if (btnOpen) btnOpen.style.display = 'inline-flex';
   }
 }
 
 function startBulkEnrichPolling() {
   if (gudangState.bulkTimer) clearInterval(gudangState.bulkTimer);
-  gudangState.bulkTimer = setInterval(checkBulkEnrichStatus, 1500);
+  gudangState.bulkTimer = setInterval(checkBulkEnrichStatus, 1200);
 }
 
 async function checkBulkEnrichStatus() {
@@ -987,22 +1046,39 @@ async function checkBulkEnrichStatus() {
     if (!res.ok) return;
     const json = await res.json();
 
-    const pBar = document.getElementById('gudangImportProgressBar');
     const pTitle = document.getElementById('gudangProgressTitle');
     const pCount = document.getElementById('gudangProgressCount');
     const pMsg = document.getElementById('gudangProgressMessage');
+    const pFill = document.getElementById('gudangProgressFill');
+    const btnStop = document.getElementById('btnStopAutoEnrich');
+    const btnOpen = document.getElementById('btnOpenEnrichModal');
 
     if (json.isBulkEnriching || json.isRunning) {
       showGudangProgress(true);
-      if (pTitle) pTitle.textContent = `⚡ Auto-Enrich JFS Massal: ${json.progress?.processed || 0} / ${json.progress?.total || 0}`;
-      if (pCount) pCount.textContent = `${json.progress?.successCount || 0} berhasil`;
+      if (btnStop) btnStop.style.display = 'inline-flex';
+      if (btnOpen) btnOpen.style.display = 'none';
+
+      const curr = json.progress?.current ?? json.progress?.processed ?? 0;
+      const total = json.progress?.total || 0;
+      const succ = json.progress?.successCount || 0;
+      const pct = total > 0 ? Math.min(100, Math.round((curr / total) * 100)) : 0;
+
+      if (pTitle) pTitle.textContent = `⚡ Auto-Enrich JFS OMS: ${curr.toLocaleString('id-ID')} / ${total.toLocaleString('id-ID')} waybill (${pct}%)`;
+      if (pCount) pCount.textContent = `${succ.toLocaleString('id-ID')} berhasil`;
       if (pMsg) pMsg.textContent = json.progress?.message || 'Memperkaya data produk & pelanggan...';
+      if (pFill) pFill.style.width = `${pct}%`;
     } else {
       if (gudangState.bulkTimer) {
         clearInterval(gudangState.bulkTimer);
         gudangState.bulkTimer = null;
       }
       showGudangProgress(false);
+      if (btnStop) btnStop.style.display = 'none';
+      if (btnOpen) btnOpen.style.display = 'inline-flex';
+
+      if (json.progress?.status === 'success') {
+        showGudangToast(`✔ ${json.progress.message || 'Auto-enrich selesai!'}`);
+      }
       fetchGudangInventory();
     }
   } catch (err) {
@@ -1010,53 +1086,7 @@ async function checkBulkEnrichStatus() {
   }
 }
 
-async function promptBulkEnrich() {
-  const countStr = prompt('Masukkan jumlah waybill yang ingin di-enrich otomatis dari JFS:\n(Contoh: 100, 200, atau 500)', '100');
-  if (!countStr) return;
-  const count = parseInt(countStr, 10);
-  if (isNaN(count) || count <= 0) {
-    alert('Jumlah tidak valid.');
-    return;
-  }
-  const maxLimit = Math.min(count, 1000);
-
-  const btn = document.getElementById('btnBulkEnrichJfs');
-  const btnText = document.getElementById('btnBulkEnrichText');
-  if (btn) btn.disabled = true;
-  if (btnText) btnText.textContent = '⏳ Memulai...';
-
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/gudang-rute/bulk-enrich', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ limit: maxLimit })
-    });
-
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      alert(json.message || 'Gagal memulai bulk enrich');
-      return;
-    }
-
-    showGudangProgress(true);
-    startBulkEnrichPolling();
-  } catch (err) {
-    alert('Error: ' + err.message);
-  } finally {
-    if (btn) btn.disabled = false;
-    if (btnText) btnText.textContent = '⚡ Auto-Enrich Massal (100 - 500)';
-  }
-}
-
 async function runInstantDbEnrich() {
-  if (!confirm('Tarik nama barang & customer yang sudah tersimpan di database lokal PTO & Stuck secara instan?')) {
-    return;
-  }
-
   showGudangProgress(true);
   const pTitle = document.getElementById('gudangProgressTitle');
   const pMsg = document.getElementById('gudangProgressMessage');
