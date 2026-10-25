@@ -29,6 +29,10 @@ def main():
         sys.stderr.write(f"File not found: {xlsx_path}\n")
         sys.exit(1)
 
+    allowed_gws = None
+    if filter_gw and filter_gw.upper() != 'ALL':
+        allowed_gws = set(x.strip().upper() for x in filter_gw.split(',') if x.strip())
+
     try:
         with zipfile.ZipFile(xlsx_path) as z:
             # 1. Read sharedStrings.xml
@@ -56,14 +60,8 @@ def main():
                 sys.stderr.write("No worksheet found in xlsx\n")
                 sys.exit(1)
 
-            # Column positions mapping based on headers or defaults
-            # A: waybill, B: tanggal_simpan, C: holding_gw, D: status_simpan
-            # E: berat, F: volume, G: is_dfod, H: tgl_buka, I: outlet_asal
-            # J: tgl_tiba, K: next_stop, L: gw_asal, M: gw_tujuan, N: outlet_tujuan
-            # O: frekuensi_kirim, P: durasi_jam, Q: is_problem, R: status_penangguhan
-            # S: durasi_kategori, T: rute, U: gw_tujuan_2, W: next_gw, X: outlet_akhir, AA: tipe_jalur
-            
             row_idx = 0
+            emitted_count = 0
             with z.open(sheet_target) as s:
                 for event, elem in ET.iterparse(s):
                     if elem.tag.endswith('row'):
@@ -93,13 +91,9 @@ def main():
                             continue
 
                         holding_gw = cell_map.get('C', '')
-                        if filter_gw and filter_gw.upper() != 'ALL':
-                            # Support comma-separated filter or single
-                            allowed = [x.strip().upper() for x in filter_gw.split(',') if x.strip()]
-                            if holding_gw.upper() not in allowed:
-                                continue
+                        if allowed_gws and (holding_gw.upper() not in allowed_gws):
+                            continue
 
-                        # Convert numbers safely
                         berat_str = cell_map.get('E', '0')
                         vol_str = cell_map.get('F', '0')
                         durasi_str = cell_map.get('P', '0')
@@ -154,6 +148,11 @@ def main():
                         }
 
                         sys.stdout.write(json.dumps(record) + '\n')
+                        emitted_count += 1
+                        if emitted_count % 500 == 0:
+                            sys.stdout.flush()
+
+        sys.stdout.flush()
 
     except Exception as e:
         sys.stderr.write(f"Error parsing xlsx: {str(e)}\n")
@@ -161,4 +160,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

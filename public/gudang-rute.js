@@ -7,6 +7,14 @@ let gudangState = {
   page: 1,
   limit: 50,
   search: '',
+  col_waybill: '',
+  col_nama_barang: '',
+  col_pengirim: '',
+  col_penerima: '',
+  col_alamat: '',
+  col_rute: '',
+  col_durasi_min: '',
+  col_durasi_max: '',
   holdingGw: 'GW-Jakarta',
   destGw: 'ALL',
   tipeJalur: 'ALL',
@@ -188,10 +196,19 @@ async function fetchGudangInventory() {
       },
       body: JSON.stringify({
         search: gudangState.search,
+        col_waybill: gudangState.col_waybill,
+        col_nama_barang: gudangState.col_nama_barang,
+        col_pengirim: gudangState.col_pengirim,
+        col_penerima: gudangState.col_penerima,
+        col_alamat: gudangState.col_alamat,
+        col_rute: gudangState.col_rute,
+        col_durasi_min: gudangState.col_durasi_min,
+        col_durasi_max: gudangState.col_durasi_max,
         holding_gw: gudangState.holdingGw,
         gw_tujuan: gudangState.destGw,
         tipe_jalur: gudangState.tipeJalur,
         durasi_kategori: gudangState.aging,
+        is_problem: gudangState.is_problem || '',
         enrich_status: gudangState.enrichStatus,
         page: gudangState.page,
         limit: gudangState.limit,
@@ -995,7 +1012,70 @@ window.closePodModal = closePodModal;
 window.copyPodTraceText = copyPodTraceText;
 window.enrichSingleGudangWaybill = enrichSingleGudangWaybill;
 window.openPrintAwbFromGudang = openPrintAwbFromGudang;
+
+// Per-Column Filter Handlers
+function handleColumnSearch(event) {
+  if (event.key === 'Enter' || event.type === 'change') {
+    applyColumnFilters();
+  }
+}
+
+function applyColumnFilters() {
+  gudangState.col_waybill = document.getElementById('colSearchWaybill')?.value.trim() || '';
+  gudangState.col_nama_barang = document.getElementById('colSearchNamaBarang')?.value.trim() || '';
+  gudangState.col_pengirim = document.getElementById('colSearchPengirim')?.value.trim() || '';
+  gudangState.col_penerima = document.getElementById('colSearchPenerima')?.value.trim() || '';
+  gudangState.col_alamat = document.getElementById('colSearchAlamat')?.value.trim() || '';
+  gudangState.col_rute = document.getElementById('colSearchRute')?.value.trim() || '';
+  gudangState.col_durasi_min = document.getElementById('colSearchDurasiMin')?.value.trim() || '';
+  gudangState.col_durasi_max = document.getElementById('colSearchDurasiMax')?.value.trim() || '';
+  
+  const statusVal = document.getElementById('colSearchStatus')?.value;
+  if (statusVal && statusVal !== 'ALL') {
+    gudangState.is_problem = statusVal;
+  } else {
+    gudangState.is_problem = '';
+  }
+
+  const holdingVal = document.getElementById('colSearchHoldingGw')?.value.trim();
+  if (holdingVal) {
+    gudangState.holdingGw = holdingVal;
+  }
+
+  gudangState.page = 1;
+  fetchGudangInventory();
+}
+
+function clearAllColumnFilters() {
+  const ids = [
+    'colSearchWaybill', 'colSearchNamaBarang', 'colSearchPengirim',
+    'colSearchPenerima', 'colSearchAlamat', 'colSearchHoldingGw',
+    'colSearchDurasiMin', 'colSearchDurasiMax', 'colSearchRute'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const st = document.getElementById('colSearchStatus');
+  if (st) st.value = 'ALL';
+
+  gudangState.col_waybill = '';
+  gudangState.col_nama_barang = '';
+  gudangState.col_pengirim = '';
+  gudangState.col_penerima = '';
+  gudangState.col_alamat = '';
+  gudangState.col_rute = '';
+  gudangState.col_durasi_min = '';
+  gudangState.col_durasi_max = '';
+  gudangState.is_problem = '';
+  gudangState.page = 1;
+  fetchGudangInventory();
+}
+
 window.exportGudangRuteExcel = exportGudangRuteExcel;
 window.enrichCurrentPage = enrichCurrentPage;
 window.promptBulkEnrich = promptBulkEnrich;
 window.runInstantDbEnrich = runInstantDbEnrich;
+window.handleColumnSearch = handleColumnSearch;
+window.applyColumnFilters = applyColumnFilters;
+window.clearAllColumnFilters = clearAllColumnFilters;

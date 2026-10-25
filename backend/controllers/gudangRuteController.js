@@ -366,6 +366,14 @@ async function queryInventory(req, res) {
   try {
     const {
       search = '',
+      col_waybill = '',
+      col_nama_barang = '',
+      col_pengirim = '',
+      col_penerima = '',
+      col_alamat = '',
+      col_rute = '',
+      col_durasi_min = '',
+      col_durasi_max = '',
       holding_gw = '',
       gw_tujuan = '',
       tipe_jalur = '',
@@ -385,13 +393,56 @@ async function queryInventory(req, res) {
     const conditions = ['1=1'];
     const params = [];
 
-    // Search query
+    // Helper to process multi-token waybills (supports newline, comma, semicolon, space)
+    function parseWaybillFilter(inputStr) {
+      if (!inputStr || !inputStr.trim()) return null;
+      const tokens = inputStr.split(/[\r\n,;\s]+/).map(s => s.trim()).filter(Boolean);
+      if (tokens.length === 0) return null;
+
+      const exacts = [];
+      const wildcards = [];
+      tokens.forEach(t => {
+        if (t.includes('*')) {
+          wildcards.push(t.replace(/\*/g, '%'));
+        } else {
+          exacts.push(t);
+        }
+      });
+
+      const subConds = [];
+      const subParams = [];
+      if (exacts.length === 1) {
+        subConds.push('g.waybill LIKE ?');
+        subParams.push(`%${exacts[0]}%`);
+      } else if (exacts.length > 1) {
+        subConds.push('g.waybill IN (?)');
+        subParams.push(exacts);
+      }
+      wildcards.forEach(w => {
+        subConds.push('g.waybill LIKE ?');
+        subParams.push(w);
+      });
+
+      if (subConds.length === 0) return null;
+      return { clause: `(${subConds.join(' OR ')})`, params: subParams };
+    }
+
+    // 1. Generic Search (with multi-waybill paste detection)
     if (search && search.trim()) {
       const q = search.trim();
-      if (q.includes('*')) {
+      const tokens = q.split(/[\r\n,;\s]+/).map(s => s.trim()).filter(Boolean);
+      
+      // If multiple tokens and they look like waybills/numbers, do multi-waybill search
+      if (tokens.length > 1 && tokens.every(t => /^[0-9A-Za-z*]{5,}$/.test(t))) {
+        const wbFilter = parseWaybillFilter(q);
+        if (wbFilter) {
+          conditions.push(wbFilter.clause);
+          params.push(...wbFilter.params);
+        }
+      } else if (q.includes('*')) {
         const pattern = q.replace(/\*/g, '%');
-        conditions.push('(g.waybill LIKE ?)');
-        params.push(pattern);
+        conditions.push('(g.waybill LIKE ? OR g.nama_barang LIKE ? OR g.pengirim LIKE ? OR g.penerima LIKE ?)');
+        params.push(pattern, pattern, pattern, pattern);
       } else {
         conditions.push(`(
           g.waybill LIKE ? OR 
@@ -406,6 +457,62 @@ async function queryInventory(req, res) {
         const searchPattern = `%${q}%`;
         params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
       }
+    }
+
+    // 2. Specific Per-Column Filter: Waybill (Multi-waybill support)
+    if (col_waybill && col_waybill.trim()) {
+      const wbFilter = parseWaybillFilter(col_waybill);
+      if (wbFilter) {
+        conditions.push(wbFilter.clause);
+        params.push(...wbFilter.params);
+      }
+    }
+
+    // 3. Per-Column Filter: Nama Barang (Supports pipe | for OR search, e.g. "sepatu | treadmill")
+    if (col_nama_barang && col_nama_barang.trim()) {
+      const tokens = col_nama_barang.split('|').map(s => s.trim()).filter(Boolean);
+      if (tokens.length > 0) {
+        const subConds = tokens.map(() => 'g.nama_barang LIKE ?');
+        conditions.push(`(${subConds.join(' OR ')})`);
+        tokens.forEach(t => params.push(`%${t}%`));
+      }
+    }
+
+    // 4. Per-Column Filter: Pengirim & Toko
+    if (col_pengirim && col_pengirim.trim()) {
+      const p = `%${col_pengirim.trim()}%`;
+      conditions.push('(g.pengirim LIKE ? OR g.perusahaan_pengirim LIKE ? OR g.no_hp_pengirim LIKE ?)');
+      params.push(p, p, p);
+    }
+
+    // 5. Per-Column Filter: Penerima & HP
+    if (col_penerima && col_penerima.trim()) {
+      const p = `%${col_penerima.trim()}%`;
+      conditions.push('(g.penerima LIKE ? OR g.perusahaan_penerima LIKE ? OR g.no_hp_penerima LIKE ?)');
+      params.push(p, p, p);
+    }
+
+    // 6. Per-Column Filter: Alamat Penerima
+    if (col_alamat && col_alamat.trim()) {
+      conditions.push('g.alamat_penerima LIKE ?');
+      params.push(`%${col_alamat.trim()}%`);
+    }
+
+    // 7. Per-Column Filter: Rute & Outlet Tujuan
+    if (col_rute && col_rute.trim()) {
+      const p = `%${col_rute.trim()}%`;
+      conditions.push('(g.rute LIKE ? OR g.outlet_tujuan LIKE ? OR g.gw_tujuan LIKE ? OR g.outlet_asal LIKE ?)');
+      params.push(p, p, p, p);
+    }
+
+    // 8. Per-Column Filter: Durasi Jam Range (Min & Max)
+    if (col_durasi_min !== '' && col_durasi_min !== null && !isNaN(Number(col_durasi_min))) {
+      conditions.push('g.durasi_jam >= ?');
+      params.push(Number(col_durasi_min));
+    }
+    if (col_durasi_max !== '' && col_durasi_max !== null && !isNaN(Number(col_durasi_max))) {
+      conditions.push('g.durasi_jam <= ?');
+      params.push(Number(col_durasi_max));
     }
 
     if (holding_gw && holding_gw !== 'ALL') {

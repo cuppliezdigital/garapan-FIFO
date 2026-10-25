@@ -123,7 +123,7 @@
         <div style="grid-column: span 2; min-width: 260px;">
           <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 5px;">Pencarian (Resi / Wildcard / Barang / Orang)</label>
           <div style="position: relative;">
-            <input type="text" id="gudangSearchInput" placeholder="Ketik Resi (2018*237), Nama Barang, Seller, Pembeli..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;" />
+            <input type="text" id="gudangSearchInput" placeholder="Tempel banyak resi (pisah enter / koma / spasi) atau cari barang, toko, penerima..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid var(--border-color, #475569); background: var(--input-bg, #0f172a); color: var(--text-color, #fff); font-size: 0.85rem;" />
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
         </div>
@@ -209,6 +209,52 @@
               <th style="padding: 12px 10px; min-width: 150px;">Alur Rute &amp; Tipe</th>
               <th style="padding: 12px 10px; min-width: 100px; text-align: center;">Status</th>
               <th style="padding: 12px 10px; min-width: 140px; text-align: center;">Aksi</th>
+            </tr>
+            <!-- ROW 2: PENCARIAN DI SETIAP KOLOM (MULTI-COLUMN & MULTI-SEARCH) -->
+            <tr style="background: rgba(15, 23, 42, 0.95); border-bottom: 2px solid var(--border-color, #334155);">
+              <th style="padding: 6px 4px; text-align: center;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllColumnFilters()" title="Bersihkan semua pencarian kolom" style="padding: 3px 6px; font-size: 0.68rem; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.3);">✕</button>
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchWaybill" placeholder="Resi (bisa banyak / *)..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #38bdf8; font-family: monospace;" />
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchNamaBarang" placeholder="Cari barang (bisa a|b)..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #f8fafc;" />
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchPengirim" placeholder="Pengirim / seller..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchPenerima" placeholder="Penerima / HP..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchAlamat" placeholder="Cari jalan / kota..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchHoldingGw" placeholder="Posisi gudang..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px 6px; text-align: center;">
+                <div style="display: flex; gap: 3px; align-items: center; justify-content: center;">
+                  <input type="number" id="colSearchDurasiMin" placeholder="Min" onkeyup="handleColumnSearch(event)" style="width: 44px; padding: 3px 4px; font-size: 0.7rem; border-radius: 3px; border: 1px solid #475569; background: #0f172a; color: #fbbf24; text-align: center;" />
+                  <span style="font-size: 0.68rem; color: #64748b;">-</span>
+                  <input type="number" id="colSearchDurasiMax" placeholder="Max" onkeyup="handleColumnSearch(event)" style="width: 44px; padding: 3px 4px; font-size: 0.7rem; border-radius: 3px; border: 1px solid #475569; background: #0f172a; color: #fbbf24; text-align: center;" />
+                </div>
+              </th>
+              <th style="padding: 6px 6px;">
+                <input type="text" id="colSearchRute" placeholder="Rute / tujuan..." onkeyup="handleColumnSearch(event)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;" />
+              </th>
+              <th style="padding: 6px 6px; text-align: center;">
+                <select id="colSearchStatus" onchange="handleColumnSearch(event)" style="width: 100%; padding: 3px 4px; font-size: 0.7rem; border-radius: 3px; border: 1px solid #475569; background: #0f172a; color: #cbd5e1;">
+                  <option value="ALL">Semua</option>
+                  <option value="ya">Bermasalah</option>
+                  <option value="tidak">Normal</option>
+                </select>
+              </th>
+              <th style="padding: 6px 6px; text-align: center;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="applyColumnFilters()" style="width: 100%; padding: 4px 6px; font-size: 0.72rem; font-weight: 600; border-radius: 4px;">
+                  🔍 Cari
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody id="tbodyGudangRute">
