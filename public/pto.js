@@ -153,6 +153,8 @@ async function executePtoQuery(targetPage = 1) {
     const endVal = document.getElementById('ptoEndDate')?.value;
     const siteVal = document.getElementById('ptoSiteCode')?.value.trim();
     const sourceVal = document.getElementById('ptoOrderSource')?.value;
+    const goodsVal = document.getElementById('ptoGoodsName')?.value.trim();
+    const personVal = document.getElementById('ptoPersonName')?.value.trim();
     const sizeVal = parseInt(document.getElementById('ptoPageSize')?.value, 10) || 100;
     const searchVal = document.getElementById('ptoWaybillSearch')?.value.trim();
 
@@ -168,6 +170,12 @@ async function executePtoQuery(targetPage = 1) {
       orderSourceName: sourceVal !== 'all' ? sourceVal : undefined
     };
 
+    if (goodsVal) {
+      payload.goodsName = goodsVal;
+    }
+    if (personVal) {
+      payload.personName = personVal;
+    }
     if (searchVal) {
       payload.waybillIds = searchVal;
     }
@@ -1024,6 +1032,11 @@ function initPtoEventListeners() {
           ptoSearchBadge.textContent = `${items.length} Resi / Order Terdeteksi`;
           ptoSearchBadge.classList.remove('hidden');
         }
+      } else if (items.length === 1 && /[*%]|.{2,}/.test(items[0])) {
+        if (ptoSearchBadge) {
+          ptoSearchBadge.textContent = 'Pencarian Resi Sobek (Wildcard)';
+          ptoSearchBadge.classList.remove('hidden');
+        }
       } else {
         if (ptoSearchBadge) ptoSearchBadge.classList.add('hidden');
       }
@@ -1078,6 +1091,10 @@ function initPtoEventListeners() {
       initPtoDates();
       const src = document.getElementById('ptoOrderSource');
       if (src) src.value = 'all';
+      const goods = document.getElementById('ptoGoodsName');
+      if (goods) goods.value = '';
+      const person = document.getElementById('ptoPersonName');
+      if (person) person.value = '';
       const size = document.getElementById('ptoPageSize');
       if (size) size.value = '100';
       const search = document.getElementById('ptoWaybillSearch');

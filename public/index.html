@@ -2931,6 +2931,16 @@
                   </div>
 
                   <div class="pto-field-group">
+                    <label for="ptoGoodsName">Nama Barang / Produk</label>
+                    <input type="text" id="ptoGoodsName" class="pto-input" placeholder="Contoh: baju, jaket, kulkas..." />
+                  </div>
+
+                  <div class="pto-field-group">
+                    <label for="ptoPersonName">Penerima / Pengirim</label>
+                    <input type="text" id="ptoPersonName" class="pto-input" placeholder="Contoh: Bu Entin, Budi, Toko Berkah..." />
+                  </div>
+
+                  <div class="pto-field-group">
                     <label for="ptoPageSize">Baris per Halaman</label>
                     <select id="ptoPageSize" class="pto-input">
                       <option value="50">50 Baris</option>
@@ -2945,18 +2955,18 @@
                     <label for="ptoWaybillSearch">
                       <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <span style="display: flex; align-items: center; gap: 8px;">
-                          <span>Cari Nomor Resi (AWB) ATAU Nomor Pesanan Marketplace (Resi Sobek)</span>
-                          <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">MULTI-AWB SUPPORT</span>
+                          <span>Cari Nomor Resi (AWB) / Resi Sobek / No. Pesanan Marketplace</span>
+                          <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">MULTI-AWB &amp; WILDCARD SUPPORT</span>
                         </span>
                         <span id="ptoSearchCountBadge" class="pto-search-count-badge hidden">0 Resi</span>
                       </span>
-                      <small class="text-muted">(Bisa masukkan 1 atau BANYAK resi sekaligus! Copy-paste kolom Excel, pisah Enter/baris baru, spasi, atau koma)</small>
+                      <small class="text-muted">(Bisa masukkan 1 atau BANYAK resi sekaligus! Copy-paste kolom Excel, pisah Enter/baris baru, spasi, atau gunakan tanda bintang * / titik ... untuk resi sobek)</small>
                     </label>
                     <div class="pto-search-input-wrap">
-                      <textarea id="ptoWaybillSearch" class="pto-input pto-search-textarea" rows="2" placeholder="Masukkan 1 atau banyak No. Resi / No. Pesanan (contoh: 201692897928, ID266645347008T)... Bisa copy-paste 1 kolom Excel langsung tanpa koma!"></textarea>
+                      <textarea id="ptoWaybillSearch" class="pto-input pto-search-textarea" rows="2" placeholder="Masukkan No. Resi / Resi Sobek (contoh: 2018*995, 2018...995, ID266645347008T)... Bisa copy-paste 1 kolom Excel langsung!"></textarea>
                       <button type="button" class="btn-clear-input" id="btnClearPtoSearch" title="Bersihkan input">✕</button>
                     </div>
-                    <span style="font-size: 0.74rem; color: #94a3b8; margin-top: 5px; display: block;">💡 <strong>Multi-AWB & Resi Sobek:</strong> Bisa cari banyak resi sekaligus tanpa koma (cukup pisah Enter/baris baru). Tekan <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Ctrl</kbd> + <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Enter</kbd> untuk langsung cari.</span>
+                    <span style="font-size: 0.74rem; color: #94a3b8; margin-top: 5px; display: block;">💡 <strong>Tips Resi Sobek:</strong> Jika resi hilang/sobek di tengah dan cuma kelihatan depan &amp; belakangnya, gunakan tanda bintang <code>*</code> atau titik <code>...</code> (contoh: <code>2018*995</code> atau <code>2018...995</code>). Tekan <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Ctrl</kbd> + <kbd style="background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; border: 1px solid #475569;">Enter</kbd> untuk langsung cari.</span>
                   </div>
 
                   <div class="pto-actions-row full-width">

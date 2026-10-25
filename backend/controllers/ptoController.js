@@ -388,6 +388,8 @@ exports.queryOrders = async (req, res) => {
       startDate,
       endDate,
       waybillIds,
+      goodsName,
+      personName,
       current = 1,
       size = 100,
       orderSourceName,
@@ -398,6 +400,9 @@ exports.queryOrders = async (req, res) => {
     const token = await getPtoToken();
     const defaultSiteCode = await getScanSiteCode();
     const effectiveSiteCode = (siteCode && String(siteCode).trim()) ? String(siteCode).trim().toUpperCase() : defaultSiteCode;
+
+    const cleanGoods = (goodsName && String(goodsName).trim()) ? String(goodsName).trim() : '';
+    const cleanPerson = (personName && String(personName).trim()) ? String(personName).trim() : '';
 
     // Default dates if omitted: past 30 days to today
     const now = new Date();
@@ -432,16 +437,31 @@ exports.queryOrders = async (req, res) => {
       payload.orderSourceName = String(orderSourceName).trim();
     }
 
+    // Parsing fleksibel: support multi-AWB paste, wildcard resi robek (2018*995, 2018...995), atau teks
+    let rawTerms = [];
     if (Array.isArray(waybillIds) && waybillIds.length > 0) {
-      payload.waybillIds = waybillIds.map(w => String(w).trim()).filter(Boolean);
+      rawTerms = waybillIds.map(w => String(w).trim()).filter(Boolean);
     } else if (typeof waybillIds === 'string' && waybillIds.trim().length > 0) {
-      payload.waybillIds = waybillIds.split(/[\s,;\n\t]+/).map(w => w.trim()).filter(Boolean);
+      const lines = waybillIds.split(/[\r\n,;]+/).map(l => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        const tokens = line.split(/\s+/).filter(Boolean);
+        if (tokens.length > 1 && tokens.every(t => /^[0-9a-zA-Z*._%-]{6,}$/.test(t))) {
+          rawTerms.push(...tokens);
+        } else {
+          rawTerms.push(line);
+        }
+      }
     }
 
-    // Jika pencarian menggunakan nomor resi spesifik, luaskan rentang tanggal ke 90 hari
-    if (payload.waybillIds && payload.waybillIds.length > 0) {
-      const past90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      payload.startDate = past90.toISOString().slice(0, 10) + ' 00:00:00';
+    if (rawTerms.length > 0) {
+      payload.waybillIds = rawTerms;
+    }
+
+    // Jika pencarian menggunakan nomor resi spesifik, nama barang, atau nama orang, luaskan rentang tanggal jika pakai default
+    const hasSpecificFilter = (rawTerms && rawTerms.length > 0) || cleanGoods || cleanPerson;
+    if (hasSpecificFilter && (!startDate || startDate === defaultStart.slice(0, 10))) {
+      const past180 = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      payload.startDate = past180.toISOString().slice(0, 10) + ' 00:00:00';
     }
 
     let records = [];
@@ -454,15 +474,54 @@ exports.queryOrders = async (req, res) => {
       let ptoWhereClauses = [];
       let ptoQueryParams = [];
 
-      if (payload.waybillIds && payload.waybillIds.length > 0) {
-        const clauses = [];
-        const params = [];
-        for (const term of payload.waybillIds) {
-          clauses.push(`(waybill = ? OR nomor_pesanan_pelanggan = ? OR nomor_pesanan_pelanggan LIKE ? OR waybill LIKE ?)`);
-          params.push(term, term, `%${term}%`, `%${term}%`);
+      // 1. Filter waybill / terms (bisa exact AWB, wildcard resi robek 2018*995, nomor pesanan, atau text search)
+      if (rawTerms && rawTerms.length > 0) {
+        const termClauses = [];
+        for (const term of rawTerms) {
+          const hasWildcard = /[*%]|\.{2,}/.test(term);
+          if (hasWildcard) {
+            const sqlTerm = term.replace(/\.{2,}/g, '%').replace(/\*/g, '%');
+            termClauses.push('(waybill LIKE ? OR nomor_pesanan_pelanggan LIKE ?)');
+            ptoQueryParams.push(sqlTerm, sqlTerm);
+          } else {
+            const isNumericWb = /^\d{8,16}$/.test(term);
+            if (isNumericWb) {
+              termClauses.push('(waybill = ? OR nomor_pesanan_pelanggan = ? OR waybill LIKE ? OR nomor_pesanan_pelanggan LIKE ?)');
+              ptoQueryParams.push(term, term, `%${term}%`, `%${term}%`);
+            } else {
+              // Jika mengandung huruf / kata umum (seperti 'baju', 'Ibu Entin'), cari fleksibel di berbagai kolom teks
+              termClauses.push('(waybill LIKE ? OR nomor_pesanan_pelanggan LIKE ? OR nama_barang LIKE ? OR penerima LIKE ? OR pengirim LIKE ? OR perusahaan_penerima_paket LIKE ? OR perusahaan_pengirim LIKE ?)');
+              ptoQueryParams.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`);
+            }
+          }
         }
-        ptoWhereClauses.push(`(${clauses.join(' OR ')})`);
-        ptoQueryParams.push(...params);
+        if (termClauses.length > 0) {
+          ptoWhereClauses.push(`(${termClauses.join(' OR ')})`);
+        }
+      }
+
+      // 2. Filter spesifik Nama Barang jika diisi di form
+      if (cleanGoods) {
+        ptoWhereClauses.push('(nama_barang LIKE ?)');
+        ptoQueryParams.push(`%${cleanGoods}%`);
+      }
+
+      // 3. Filter spesifik Nama Penerima / Pengirim jika diisi di form
+      if (cleanPerson) {
+        ptoWhereClauses.push('(penerima LIKE ? OR pengirim LIKE ? OR perusahaan_penerima_paket LIKE ? OR perusahaan_pengirim LIKE ?)');
+        ptoQueryParams.push(`%${cleanPerson}%`, `%${cleanPerson}%`, `%${cleanPerson}%`, `%${cleanPerson}%`);
+      }
+
+      // 4. Filter Sumber Platform jika dipilih spesifik
+      if (orderSourceName && String(orderSourceName).trim() && String(orderSourceName).toLowerCase() !== 'all') {
+        ptoWhereClauses.push('(sumber_pesanan LIKE ?)');
+        ptoQueryParams.push(`%${orderSourceName.trim()}%`);
+      }
+
+      // 5. Filter tanggal jika user mencari tanpa filter kata kunci spesifik
+      if (!hasSpecificFilter && cleanStart && cleanEnd) {
+        ptoWhereClauses.push('((waktu_input_pesanan >= ? AND waktu_input_pesanan <= ?) OR (created_at >= ? AND created_at <= ?))');
+        ptoQueryParams.push(cleanStart, cleanEnd, cleanStart, cleanEnd);
       }
 
       const ptoWhereSql = ptoWhereClauses.length > 0 ? `WHERE ${ptoWhereClauses.join(' AND ')}` : '';
@@ -484,10 +543,9 @@ exports.queryOrders = async (req, res) => {
           total = ptoTotal;
           querySuccessful = true;
 
-          // Jika pencarian nomor resi spesifik:
-          // 1. Cek apakah ada data di DB yang masih mengandung bintang (*) -> unmask dari JFS
-          // 2. Cek apakah jumlah yang ditemukan di DB lebih sedikit dari total nomor yang dicari -> tarik sisanya dari JFS
-          if (payload.waybillIds && payload.waybillIds.length > 0) {
+          // Cek apakah ada data di DB yang masih mengandung bintang (*) -> unmask jika resi spesifik
+          const isWildcardOrGeneral = (rawTerms && rawTerms.some(t => /[*%]|\.{2,}/.test(t) || !/^\d{8,16}$/.test(t))) || cleanGoods || cleanPerson;
+          if (!isWildcardOrGeneral && payload.waybillIds && payload.waybillIds.length > 0) {
             const hasMasked = ptoRows.some(r => (r.penerima && r.penerima.includes('*')) || (r.pengirim && r.pengirim.includes('*')));
             const isMissingSome = ptoRows.length < payload.waybillIds.length;
             if (hasMasked || isMissingSome) {
@@ -517,8 +575,9 @@ exports.queryOrders = async (req, res) => {
         const wbsToQuery = targetWbs.length > 0 ? targetWbs : payload.waybillIds;
 
         // Pisahkan AWB standar numerik (10-16 digit) untuk batching super cepat
-        const numericAwbs = wbsToQuery.filter(w => /^\d{10,16}$/.test(w));
-        const otherTerms = wbsToQuery.filter(w => !/^\d{10,16}$/.test(w));
+        const validLiveTerms = wbsToQuery.filter(w => !/[*%]|\.{2,}/.test(w));
+        const numericAwbs = validLiveTerms.filter(w => /^\d{10,16}$/.test(w));
+        const otherTerms = validLiveTerms.filter(w => !/^\d{10,16}$/.test(w));
 
         // 1. Batch Query untuk AWB numerik (maksimal 20 resi per request via p_billNo koma)
         if (numericAwbs.length > 0) {
@@ -552,7 +611,7 @@ exports.queryOrders = async (req, res) => {
         }
 
         // 2. Query untuk nomor pesanan marketplace (Shopee, TikTok, ID Booking, dll.) atau nomor yang belum terjaring batch
-        const missingWbs = wbsToQuery.filter(w => !liveFoundSet.has(w));
+        const missingWbs = validLiveTerms.filter(w => !liveFoundSet.has(w));
         if (missingWbs.length > 0) {
           await mapConcurrent(missingWbs, 4, async (wb) => {
             try {
@@ -661,6 +720,11 @@ exports.queryOrders = async (req, res) => {
       }
     }
 
+    // Jaga agar records dari Tier 0 tidak hilang jika Tier 1 tidak mendapatkan data baru
+    if (!querySuccessful && records.length > 0) {
+      querySuccessful = true;
+    }
+
     // --- TIER 2: SMART HYBRID FALLBACK KE DATABASE JFS REALTIME (12.000+ WAYBILL FIFO) ---
     // Jangan pernah memasukkan kode outlet (seperti SIN020B / KUB003A) ke dalam nama orang Pengirim/Penerima!
     if (!querySuccessful || records.length === 0) {
@@ -669,11 +733,41 @@ exports.queryOrders = async (req, res) => {
         let whereClauses = [];
         let queryParams = [];
 
-        // Filter nomor resi jika user mencari resi tertentu
-        if (payload.waybillIds && payload.waybillIds.length > 0) {
-          const placeholders = payload.waybillIds.map(() => '?').join(',');
-          whereClauses.push(`waybill IN (${placeholders})`);
-          queryParams.push(...payload.waybillIds);
+        // Filter nomor resi / terms (termasuk wildcard 2018*995 dan teks umum)
+        if (rawTerms && rawTerms.length > 0) {
+          const stuckTermClauses = [];
+          for (const term of rawTerms) {
+            const hasWildcard = /[*%]|\.{2,}/.test(term);
+            if (hasWildcard) {
+              const sqlTerm = term.replace(/\.{2,}/g, '%').replace(/\*/g, '%');
+              stuckTermClauses.push('waybill LIKE ?');
+              queryParams.push(sqlTerm);
+            } else {
+              const isNumericWb = /^\d{8,16}$/.test(term);
+              if (isNumericWb) {
+                stuckTermClauses.push('(waybill = ? OR waybill LIKE ?)');
+                queryParams.push(term, `%${term}%`);
+              } else {
+                stuckTermClauses.push('(waybill LIKE ? OR nama_barang LIKE ? OR client_name LIKE ?)');
+                queryParams.push(`%${term}%`, `%${term}%`, `%${term}%`);
+              }
+            }
+          }
+          if (stuckTermClauses.length > 0) {
+            whereClauses.push(`(${stuckTermClauses.join(' OR ')})`);
+          }
+        }
+
+        // Filter spesifik Nama Barang
+        if (cleanGoods) {
+          whereClauses.push('nama_barang LIKE ?');
+          queryParams.push(`%${cleanGoods}%`);
+        }
+
+        // Filter spesifik Nama Penerima / Pengirim (di monitoring_stuck tersimpan di client_name)
+        if (cleanPerson) {
+          whereClauses.push('client_name LIKE ?');
+          queryParams.push(`%${cleanPerson}%`);
         }
 
         const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -683,7 +777,7 @@ exports.queryOrders = async (req, res) => {
 
         if (localTotal > 0) {
           const [localRows] = await db.query(
-            `SELECT waybill, tanggal, outlet_asal, outlet, stuck, tlc, nama_barang, created_at
+            `SELECT waybill, tanggal, outlet_asal, outlet, stuck, tlc, nama_barang, client_name, created_at
              FROM monitoring_stuck
              ${whereSql}
              ORDER BY id DESC
@@ -701,7 +795,7 @@ exports.queryOrders = async (req, res) => {
             orderSourceName: 'Monitoring FIFO (Belum di-import PTO)',
             customerOrderNo: '-',
             senderCompanyName: '-',
-            senderName: '-',
+            senderName: r.client_name || '-',
             senderMobile: '-',
             senderMobilePhone: '-',
             senderProvinceName: '',
