@@ -405,11 +405,16 @@ async function importExcelData(req, res) {
 }
 
 
-// In-memory cache for holdingGateways & destGateways (avoids 2 heavy DISTINCT queries on 567k rows per keystroke)
+// In-memory cache for holdingGateways & destGateways (avoids 2 heavy DISTINCT queries on 1.4M rows per keystroke)
 let cachedHoldingGws = null;
 let cachedDestGws = null;
 let lastDropdownCacheTime = 0;
 const DROPDOWN_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// In-memory cache for unfiltered global KPIs / totalRows (avoids 10s full-table scan on 1.4M rows during pagination)
+let cachedGlobalStats = null;
+let lastGlobalStatsTime = 0;
+const GLOBAL_STATS_TTL = 3 * 60 * 1000; // 3 minutes
 
 async function getCachedDropdowns() {
   const now = Date.now();
@@ -459,8 +464,9 @@ async function queryInventory(req, res) {
       sortDir = 'DESC'
     } = req.body || {};
 
+    const rawLimit = (req.body && (req.body.limit || req.body.pageSize)) || limit || 50;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(1000, Math.max(1, parseInt(limit, 10) || 50));
+    const limitNum = Math.min(1000, Math.max(1, parseInt(rawLimit, 10) || 50));
     const offset = (pageNum - 1) * limitNum;
 
     const conditions = ['1=1'];
@@ -698,10 +704,25 @@ async function queryInventory(req, res) {
       LIMIT ? OFFSET ?
     `;
 
+    // Fast-path: If no specific filter active (whereClause is '1=1'), reuse cached global stats to avoid 11s full table scan
+    const isUnfiltered = (conditions.length === 1 && conditions[0] === '1=1');
+    let statsPromise;
+    if (isUnfiltered && cachedGlobalStats && (Date.now() - lastGlobalStatsTime < GLOBAL_STATS_TTL)) {
+      statsPromise = Promise.resolve([[cachedGlobalStats]]);
+    } else {
+      statsPromise = db.query(countSql, params).then(([res]) => {
+        if (isUnfiltered && res && res[0]) {
+          cachedGlobalStats = res[0];
+          lastGlobalStatsTime = Date.now();
+        }
+        return [res];
+      });
+    }
+
     // Concurrently run Data Query, Stats Query, and get Cached Dropdowns in PARALLEL
     const [[rows], [statsRes], dropdowns] = await Promise.all([
       db.query(dataSql, [...params, limitNum, offset]),
-      db.query(countSql, params),
+      statsPromise,
       getCachedDropdowns()
     ]);
 
@@ -720,6 +741,7 @@ async function queryInventory(req, res) {
       pagination: {
         page: pageNum,
         limit: limitNum,
+        pageSize: limitNum,
         totalRows: stats.totalRows,
         totalPages: Math.ceil(stats.totalRows / limitNum) || 1
       },

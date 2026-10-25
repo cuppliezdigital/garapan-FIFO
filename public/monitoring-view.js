@@ -436,6 +436,8 @@ function renderMonitoringPagination(totalRows, totalPages) {
           <option value="50" ${monitoringPageSize === 50 ? 'selected' : ''}>50</option>
           <option value="100" ${monitoringPageSize === 100 ? 'selected' : ''}>100</option>
           <option value="200" ${monitoringPageSize === 200 ? 'selected' : ''}>200</option>
+          <option value="500" ${monitoringPageSize === 500 ? 'selected' : ''}>500</option>
+          <option value="1000" ${monitoringPageSize === 1000 ? 'selected' : ''}>1.000</option>
         </select> data
       </label>
       <button type="button" class="page-btn" data-page="${Math.max(1, monitoringPage - 1)}" ${monitoringPage === 1 ? 'disabled' : ''}>‹</button>

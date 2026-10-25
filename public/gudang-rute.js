@@ -174,7 +174,19 @@ async function checkGudangImportStatus() {
 
 // 4. Fetch Inventory from Server with Live Column Filters & Pagination
 async function fetchGudangInventory() {
-  if (gudangState.isLoading) return;
+  // Cancel previous in-flight query if user changes page size or types rapidly
+  if (gudangFetchAbortController) {
+    try { gudangFetchAbortController.abort(); } catch (_) {}
+  }
+  gudangFetchAbortController = new AbortController();
+  const currentSignal = gudangFetchAbortController.signal;
+
+  // Always sync limit with select element in DOM
+  const selPageSize = document.getElementById('gudangPageSize');
+  if (selPageSize && selPageSize.value) {
+    gudangState.limit = parseInt(selPageSize.value, 10) || gudangState.limit || 50;
+  }
+
   gudangState.isLoading = true;
 
   const tbody = document.getElementById('tbodyGudangRute');
@@ -184,7 +196,7 @@ async function fetchGudangInventory() {
         <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
             <div class="spinner-small" style="width: 24px; height: 24px; border: 3px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-            <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data...</span>
+            <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data (${gudangState.limit.toLocaleString('id-ID')} baris)...</span>
           </div>
         </td>
       </tr>
@@ -195,6 +207,7 @@ async function fetchGudangInventory() {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/gudang-rute/query', {
       method: 'POST',
+      signal: currentSignal,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
@@ -221,6 +234,7 @@ async function fetchGudangInventory() {
         enrich_status: gudangState.enrichStatus,
         page: gudangState.page,
         limit: gudangState.limit,
+        pageSize: gudangState.limit,
         sortBy: gudangState.sortBy,
         sortDir: gudangState.sortDir
       })
@@ -236,6 +250,10 @@ async function fetchGudangInventory() {
     renderGudangTable(json.data);
     updateGudangPagination(json.pagination);
   } catch (err) {
+    if (err.name === 'AbortError') {
+      // Ignored: new request was triggered
+      return;
+    }
     console.error('fetchGudangInventory error:', err);
     if (tbody) {
       tbody.innerHTML = `
@@ -597,12 +615,20 @@ function showGudangToast(msg) {
 function updateGudangPagination(p = {}) {
   gudangState.totalRows = p.totalRows || 0;
   gudangState.totalPages = p.totalPages || 1;
+  const activeLimit = p.limit || p.pageSize || gudangState.limit;
+  gudangState.limit = activeLimit;
+
+  // Keep select dropdown in perfect sync
+  const selPageSize = document.getElementById('gudangPageSize');
+  if (selPageSize && selPageSize.value !== String(activeLimit)) {
+    selPageSize.value = String(activeLimit);
+  }
 
   const info = document.getElementById('gudangPaginationInfo');
   if (info) {
-    const from = (gudangState.page - 1) * gudangState.limit + 1;
-    const to = Math.min(gudangState.page * gudangState.limit, gudangState.totalRows);
-    info.textContent = `Menampilkan ${gudangState.totalRows > 0 ? from : 0} - ${to} dari ${gudangState.totalRows.toLocaleString('id-ID')} waybill`;
+    const from = (gudangState.page - 1) * activeLimit + 1;
+    const to = Math.min(gudangState.page * activeLimit, gudangState.totalRows);
+    info.textContent = `Menampilkan ${gudangState.totalRows > 0 ? from.toLocaleString('id-ID') : 0} - ${to.toLocaleString('id-ID')} dari ${gudangState.totalRows.toLocaleString('id-ID')} waybill`;
   }
 
   const badge = document.getElementById('gudangCurrentPageBadge');
@@ -623,8 +649,13 @@ function navigateGudangPage(dir) {
 }
 
 function changeGudangPageSize(size) {
-  gudangState.limit = parseInt(size, 10) || 50;
+  const parsed = parseInt(size, 10) || 50;
+  gudangState.limit = parsed;
   gudangState.page = 1;
+  const selPageSize = document.getElementById('gudangPageSize');
+  if (selPageSize && selPageSize.value !== String(parsed)) {
+    selPageSize.value = String(parsed);
+  }
   fetchGudangInventory();
 }
 
@@ -641,6 +672,10 @@ function onGudangSearchInput(instant = false) {
 }
 
 function applyGudangAutoSearch() {
+  const selPageSize = document.getElementById('gudangPageSize');
+  if (selPageSize && selPageSize.value) {
+    gudangState.limit = parseInt(selPageSize.value, 10) || gudangState.limit || 50;
+  }
   gudangState.search = document.getElementById('gudangSearchInput')?.value.trim() || '';
   gudangState.holdingGw = document.getElementById('gudangFilterHoldingGw')?.value || 'ALL';
   gudangState.destGw = document.getElementById('gudangFilterDestGw')?.value || 'ALL';
