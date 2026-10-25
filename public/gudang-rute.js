@@ -41,10 +41,11 @@ let gudangFetchAbortController = null;
 // 1. Initial Dashboard Load
 async function loadGudangRuteDashboard() {
   await fetchGudangFileInfo();
+  checkGudangImportStatus(false);
   await fetchGudangInventory();
 }
 
-// 2. Fetch File Info and Check Status
+// 2. Fetch File Info (Tanpa recursive checkGudangImportStatus)
 async function fetchGudangFileInfo() {
   try {
     const token = localStorage.getItem('token');
@@ -66,8 +67,6 @@ async function fetchGudangFileInfo() {
         badge.textContent = 'Batch: Belum ada file';
       }
     }
-
-    checkGudangImportStatus();
   } catch (err) {
     console.warn('fetchGudangFileInfo error:', err);
   }
@@ -120,12 +119,15 @@ function showGudangProgress(show) {
   if (pBar) pBar.style.display = show ? 'block' : 'none';
 }
 
+let isImportPollingActive = false;
+
 function startGudangPolling() {
   if (gudangState.pollTimer) clearInterval(gudangState.pollTimer);
-  gudangState.pollTimer = setInterval(checkGudangImportStatus, 2000);
+  isImportPollingActive = true;
+  gudangState.pollTimer = setInterval(() => checkGudangImportStatus(true), 2000);
 }
 
-async function checkGudangImportStatus() {
+async function checkGudangImportStatus(isTriggeredByPoll = false) {
   try {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/gudang-rute/import-status', {
@@ -149,7 +151,14 @@ async function checkGudangImportStatus() {
       if (pTitle) pTitle.textContent = `Memproses: ${json.progress?.fileName || 'Excel 258MB'}`;
       if (pCount) pCount.textContent = `${(json.progress?.totalProcessed || 0).toLocaleString('id-ID')} waybill`;
       if (pMsg) pMsg.textContent = json.progress?.message || 'Sedang memproses...';
+
+      if (!gudangState.pollTimer) {
+        startGudangPolling();
+      }
     } else {
+      const wasPolling = isImportPollingActive || isTriggeredByPoll;
+      isImportPollingActive = false;
+
       if (gudangState.pollTimer) {
         clearInterval(gudangState.pollTimer);
         gudangState.pollTimer = null;
@@ -157,14 +166,17 @@ async function checkGudangImportStatus() {
 
       if (btn) btn.disabled = false;
       if (btnText) btnText.textContent = '⚡ Baca File Terbaru (Downloads)';
+      showGudangProgress(false);
 
-      if (json.progress?.status === 'success') {
-        showGudangProgress(false);
-        fetchGudangFileInfo();
-        fetchGudangInventory();
-      } else if (json.progress?.status === 'error') {
-        showGudangProgress(false);
-        alert('Gagal mengimpor file: ' + (json.progress?.message || 'Unknown error'));
+      // ONLY re-fetch if this was actively polling an ongoing import that just finished!
+      if (wasPolling) {
+        if (json.progress?.status === 'success') {
+          showGudangToast(`✔ Berhasil mengimpor waybill!`);
+          fetchGudangFileInfo();
+          fetchGudangInventory();
+        } else if (json.progress?.status === 'error') {
+          alert('Gagal mengimpor file: ' + (json.progress?.message || 'Unknown error'));
+        }
       }
     }
   } catch (err) {
@@ -191,16 +203,23 @@ async function fetchGudangInventory() {
 
   const tbody = document.getElementById('tbodyGudangRute');
   if (tbody) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-            <div class="spinner-small" style="width: 24px; height: 24px; border: 3px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-            <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data (${gudangState.limit.toLocaleString('id-ID')} baris)...</span>
-          </div>
-        </td>
-      </tr>
-    `;
+    // Only wipe and show big centered spinner if table is currently completely empty
+    if (!tbody.hasChildNodes() || tbody.children.length === 0 || tbody.innerText.trim() === '') {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="13" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div class="spinner-small" style="width: 24px; height: 24px; border: 3px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+              <span style="font-size: 0.86rem; font-weight: 600; color: #cbd5e1;">Memuat data (${gudangState.limit.toLocaleString('id-ID')} baris)...</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      // Table already has data: dim gently so rows don't violently flash/disappear
+      tbody.style.opacity = '0.45';
+      tbody.style.transition = 'opacity 0.15s ease';
+    }
   }
 
   try {
@@ -266,6 +285,9 @@ async function fetchGudangInventory() {
     }
   } finally {
     gudangState.isLoading = false;
+    if (tbody) {
+      tbody.style.opacity = '1';
+    }
   }
 }
 
