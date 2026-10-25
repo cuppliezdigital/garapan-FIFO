@@ -772,8 +772,9 @@ async function openPodTraceModal(waybillNo) {
       throw new Error(json.error || 'Gagal memuat jejak POD');
     }
 
-    gudangState.activeTraceData = json.data;
-    renderPodTraceModal(json.data);
+    const traceData = json.data || json;
+    gudangState.activeTraceData = traceData;
+    renderPodTraceModal(traceData);
   } catch (err) {
     console.error('openPodTraceModal error:', err);
     if (tbody) {
@@ -886,12 +887,12 @@ async function enrichSingleGudangWaybill(waybillNo, btnEl) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ waybill: waybillNo })
+      body: JSON.stringify({ waybill: waybillNo, waybillNo: waybillNo })
     });
 
     const json = await res.json();
     if (!res.ok || !json.success) {
-      alert(json.error || 'Gagal mengambil data dari JFS.');
+      alert(json.message || json.error || 'Gagal mengambil data dari JFS.');
       if (btnEl) {
         btnEl.disabled = false;
         btnEl.textContent = '⚡ Enrich';
@@ -899,7 +900,8 @@ async function enrichSingleGudangWaybill(waybillNo, btnEl) {
       return;
     }
 
-    showGudangToast(`✔ Resi ${waybillNo} berhasil diperkaya!`);
+    const goodsLabel = json.data?.goodsName ? (json.data.goodsName.slice(0, 32) + '...') : 'Rincian produk';
+    showGudangToast(`✔ Resi <b>${waybillNo}</b> berhasil diperkaya (${goodsLabel})!`);
     fetchGudangInventory();
   } catch (err) {
     alert('Error enrich: ' + err.message);
@@ -990,7 +992,7 @@ async function checkBulkEnrichStatus() {
     const pCount = document.getElementById('gudangProgressCount');
     const pMsg = document.getElementById('gudangProgressMessage');
 
-    if (json.isRunning) {
+    if (json.isBulkEnriching || json.isRunning) {
       showGudangProgress(true);
       if (pTitle) pTitle.textContent = `⚡ Auto-Enrich JFS Massal: ${json.progress?.processed || 0} / ${json.progress?.total || 0}`;
       if (pCount) pCount.textContent = `${json.progress?.successCount || 0} berhasil`;

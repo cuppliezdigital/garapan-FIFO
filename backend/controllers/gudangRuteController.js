@@ -6,6 +6,7 @@ const readline = require('readline');
 const db = require('../config/db');
 const jfsService = require('../services/jfsService');
 const auditService = require('../services/auditService');
+const ptoController = require('./ptoController');
 
 const DOWNLOADS_DIR = path.join(process.env.USERPROFILE || 'C:\\Users\\Yimi Cargo', 'Downloads');
 
@@ -679,10 +680,140 @@ async function queryInventory(req, res) {
   }
 }
 
+
+// Helper to extract 12-digit main waybill from a 15-digit piece barcode
+function extractMainWaybill(waybill) {
+  if (!waybill) return '';
+  const clean = String(waybill).trim();
+  if (clean.length === 15 && /^\d+$/.test(clean)) {
+    return clean.slice(0, 12);
+  }
+  return clean;
+}
+
+// Multi-tier resolver for waybill details:
+// Tier 1: Local pto_orders table (56,000+ orders with full unmasked customer & goods details)
+// Tier 2: Local monitoring_stuck table (12,000+ waybills with goods name & client)
+// Tier 3: Live JFS OMS via ptoController.getOrderDetail (unthrottled, unmasked, auto-persists to pto_orders)
+async function resolveWaybillInfo(rawWaybill) {
+  if (!rawWaybill) return null;
+  const cleanWb = String(rawWaybill).trim();
+  const mainWb = extractMainWaybill(cleanWb);
+
+  // 1. Check local pto_orders
+  try {
+    const [ptoRows] = await db.query(
+      'SELECT * FROM pto_orders WHERE waybill IN (?, ?) LIMIT 1',
+      [cleanWb, mainWb]
+    );
+    if (ptoRows && ptoRows.length > 0) {
+      const p = ptoRows[0];
+      const hasGoods = p.nama_barang && p.nama_barang.trim() !== '' && p.nama_barang !== '-';
+      const hasPerson = (p.penerima && p.penerima.trim() !== '' && p.penerima !== '-') ||
+                        (p.pengirim && p.pengirim.trim() !== '' && p.pengirim !== '-');
+      if (hasGoods || hasPerson) {
+        return {
+          source: 'pto_orders',
+          goodsName: p.nama_barang || p.jenis_barang || '',
+          senderName: p.pengirim || '',
+          senderCompany: p.perusahaan_pengirim || '',
+          senderPhone: p.nomor_ponsel_pengirim || '',
+          receiverName: p.penerima || '',
+          receiverCompany: p.perusahaan_penerima_paket || '',
+          receiverPhone: p.nomor_handphone_penerima || '',
+          receiverAddress: p.alamat_lengkap_penerima || ''
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('pto_orders lookup warning:', err.message);
+  }
+
+  // 2. Check local monitoring_stuck
+  try {
+    const [stuckRows] = await db.query(
+      'SELECT waybill, nama_barang, client_name FROM monitoring_stuck WHERE waybill COLLATE utf8mb4_unicode_ci IN (?, ?) LIMIT 1',
+      [cleanWb, mainWb]
+    );
+    if (stuckRows && stuckRows.length > 0) {
+      const s = stuckRows[0];
+      if ((s.nama_barang && s.nama_barang.trim()) || (s.client_name && s.client_name.trim())) {
+        return {
+          source: 'monitoring_stuck',
+          goodsName: s.nama_barang || '',
+          senderName: s.client_name || '',
+          senderCompany: '',
+          senderPhone: '',
+          receiverName: '',
+          receiverCompany: '',
+          receiverPhone: '',
+          receiverAddress: ''
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('monitoring_stuck lookup warning:', err.message);
+  }
+
+  // 3. Query JFS OMS via ptoController.getOrderDetail (unthrottled, unmasked)
+  return new Promise((resolve) => {
+    const fakeReq = { params: { id: mainWb } };
+    let done = false;
+
+    const fakeRes = {
+      json: (payload) => {
+        if (done) return;
+        done = true;
+        if (payload && payload.success && payload.data) {
+          const d = payload.data;
+          const bestGoods = d.goodsName || d.goodsTypeName || d.remarks || '';
+          resolve({
+            source: payload.fromPtoDb ? 'pto_orders' : 'jfs_oms',
+            goodsName: bestGoods,
+            senderName: d.senderName || '',
+            senderCompany: d.senderCompany || d.senderCompanyName || d.customerName || '',
+            senderPhone: d.senderMobilePhone || d.senderTelphone || d.senderMobile || '',
+            receiverName: d.receiverName || '',
+            receiverCompany: d.receiverCompany || d.receiverCompanyName || '',
+            receiverPhone: d.receiverMobilePhone || d.receiverTelphone || d.receiverMobile || '',
+            receiverAddress: d.receiverDetailedAddress || ''
+          });
+        } else {
+          resolve(null);
+        }
+      },
+      status: () => fakeRes
+    };
+
+    try {
+      ptoController.getOrderDetail(fakeReq, fakeRes).catch((err) => {
+        if (!done) {
+          done = true;
+          console.warn('getOrderDetail catch warning:', err.message);
+          resolve(null);
+        }
+      });
+    } catch (callErr) {
+      if (!done) {
+        done = true;
+        console.warn('getOrderDetail exception:', callErr.message);
+        resolve(null);
+      }
+    }
+
+    setTimeout(() => {
+      if (!done) {
+        done = true;
+        resolve(null);
+      }
+    }, 12000);
+  });
+}
+
 // 4. Get POD Trace (100% matches screenshot!)
 async function getPodTrace(req, res) {
   try {
-    const { waybillNo } = req.body || req.query || {};
+    const waybillNo = (req.params?.waybill || req.body?.waybillNo || req.body?.waybill || req.query?.waybillNo || req.query?.waybill || '').trim();
     if (!waybillNo) {
       return res.status(400).json({ success: false, message: 'Nomor waybill wajib diisi' });
     }
@@ -817,8 +948,7 @@ async function getPodTrace(req, res) {
       }
     }
 
-    res.json({
-      success: true,
+const payloadData = {
       waybillNo,
       routes: {
         dynamicRoute: dynamicRouteString || '-',
@@ -827,8 +957,15 @@ async function getPodTrace(req, res) {
         returnRoute: returnRouteString || '-'
       },
       scans: scanItems,
+      abnormalScans: abnormalRes?.data?.records || abnormalRes?.data || [],
       abnormalList: abnormalRes?.data?.records || abnormalRes?.data || [],
       orderDetail: orderDetailRes?.data || null
+    };
+
+    res.json({
+      success: true,
+      data: payloadData,
+      ...payloadData
     });
   } catch (error) {
     console.error('getPodTrace error:', error);
@@ -836,69 +973,67 @@ async function getPodTrace(req, res) {
   }
 }
 
-// 5. Enrich single waybill or batch from JFS API
+// 5. Enrich single waybill using Multi-Tier Resolver
 async function enrichWaybill(req, res) {
   try {
-    const { waybillNo } = req.body || {};
-    if (!waybillNo) {
+    const rawWaybill = (req.body?.waybillNo || req.body?.waybill || req.body?.id || '').trim();
+    if (!rawWaybill) {
       return res.status(400).json({ success: false, message: 'Nomor waybill wajib diisi' });
     }
 
-    const jfsConfig = await jfsService.getConfig();
-    const token = jfsConfig.authtoken;
-
-    const orderDetailRes = await jfsApiRequest('https://jfsgw.jtcargo.co.id/operatingplatform/order/getOrderDetail', 'POST', {
-      waybillNo,
-      countryId: '1'
-    }, token);
-
-    if (!orderDetailRes || !orderDetailRes.data) {
-      return res.status(404).json({ success: false, message: 'Data pesanan tidak ditemukan di JFS' });
+    const resolved = await resolveWaybillInfo(rawWaybill);
+    if (!resolved || (!resolved.goodsName && !resolved.senderName && !resolved.receiverName)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Data rincian barang & customer belum ditemukan di JFS PTO / OMS untuk resi ini.'
+      });
     }
 
-    const d = orderDetailRes.data;
+    const mainWb = extractMainWaybill(rawWaybill);
     await db.query(`
       UPDATE gudang_rute_inventory
       SET 
-        nama_barang = COALESCE(?, nama_barang),
-        pengirim = COALESCE(?, pengirim),
-        perusahaan_pengirim = COALESCE(?, perusahaan_pengirim),
-        no_hp_pengirim = COALESCE(?, no_hp_pengirim),
-        penerima = COALESCE(?, penerima),
-        perusahaan_penerima = COALESCE(?, perusahaan_penerima),
-        no_hp_penerima = COALESCE(?, no_hp_penerima),
-        alamat_penerima = COALESCE(?, alamat_penerima)
-      WHERE waybill = ?
+        nama_barang = COALESCE(NULLIF(?, ''), nama_barang),
+        pengirim = COALESCE(NULLIF(?, ''), pengirim),
+        perusahaan_pengirim = COALESCE(NULLIF(?, ''), perusahaan_pengirim),
+        no_hp_pengirim = COALESCE(NULLIF(?, ''), no_hp_pengirim),
+        penerima = COALESCE(NULLIF(?, ''), penerima),
+        perusahaan_penerima = COALESCE(NULLIF(?, ''), perusahaan_penerima),
+        no_hp_penerima = COALESCE(NULLIF(?, ''), no_hp_penerima),
+        alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima)
+      WHERE waybill = ? OR (LENGTH(waybill) = 15 AND LEFT(waybill, 12) = ?)
     `, [
-      d.goodsName || null,
-      d.senderName || null,
-      d.senderCompany || d.customerName || null,
-      d.senderMobilePhone || d.senderTelphone || null,
-      d.receiverName || null,
-      d.receiverCompany || null,
-      d.receiverMobilePhone || d.receiverTelphone || null,
-      d.receiverDetailedAddress || null,
-      waybillNo
+      resolved.goodsName || '',
+      resolved.senderName || '',
+      resolved.senderCompany || '',
+      resolved.senderPhone || '',
+      resolved.receiverName || '',
+      resolved.receiverCompany || '',
+      resolved.receiverPhone || '',
+      resolved.receiverAddress || '',
+      rawWaybill,
+      mainWb
     ]);
 
     res.json({
       success: true,
-      message: 'Berhasil memperbarui rincian barang & customer dari JFS!',
+      message: `Berhasil memperkaya rincian barang dari ${resolved.source}!`,
       data: {
-        waybill: waybillNo,
-        goodsName: d.goodsName,
-        senderName: d.senderName,
-        receiverName: d.receiverName
+        waybill: rawWaybill,
+        goodsName: resolved.goodsName,
+        senderName: resolved.senderName,
+        receiverName: resolved.receiverName,
+        receiverAddress: resolved.receiverAddress,
+        source: resolved.source
       }
     });
   } catch (error) {
     console.error('enrichWaybill error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 }
 
-
-// 6. Bulk Enrich Worker via JFS API (Processes 50, 100, 500 at once in background!)
+// 6. Bulk Enrich Worker (Processes in background with instant DB join + throttled OMS resolver)
 let isBulkEnriching = false;
 let bulkEnrichProgress = { current: 0, total: 0, successCount: 0, status: 'idle', message: '' };
 
@@ -906,20 +1041,21 @@ async function getBulkEnrichStatus(req, res) {
   res.json({
     success: true,
     isBulkEnriching,
+    isRunning: isBulkEnriching,
     progress: bulkEnrichProgress
   });
 }
 
 async function bulkEnrichWaybills(req, res) {
   if (isBulkEnriching) {
-    return res.status(409).json({ success: false, message: 'Proses bulk enrich sedang berjalan.' });
+    return res.status(409).json({ success: false, message: 'Proses bulk enrich sedang berjalan di latar belakang.' });
   }
 
   const { waybills = [], limit = 100 } = req.body || {};
   let targetWaybills = [];
 
   if (Array.isArray(waybills) && waybills.length > 0) {
-    targetWaybills = waybills;
+    targetWaybills = waybills.map(w => String(w).trim()).filter(Boolean);
   } else {
     const maxLimit = Math.min(1000, Math.max(10, parseInt(limit, 10) || 100));
     const [rows] = await db.query(`
@@ -933,7 +1069,7 @@ async function bulkEnrichWaybills(req, res) {
   }
 
   if (targetWaybills.length === 0) {
-    return res.json({ success: true, message: 'Semua waybill sudah memiliki rincian barang.', enrichedCount: 0 });
+    return res.json({ success: true, message: 'Semua waybill target sudah memiliki rincian nama barang.', enrichedCount: 0 });
   }
 
   isBulkEnriching = true;
@@ -942,7 +1078,7 @@ async function bulkEnrichWaybills(req, res) {
     total: targetWaybills.length,
     successCount: 0,
     status: 'running',
-    message: `Memulai auto-enrich untuk ${targetWaybills.length} waybill...`
+    message: `Menyiapkan sinkronisasi database & OMS untuk ${targetWaybills.length} waybill...`
   };
 
   res.json({
@@ -953,57 +1089,94 @@ async function bulkEnrichWaybills(req, res) {
 
   (async () => {
     try {
-      const jfsConfig = await jfsService.getConfig();
-      const token = jfsConfig.authtoken;
-      const CONCURRENCY = 5;
-      let enrichedCount = 0;
+      // Step 1: Instant SQL Join update against pto_orders & monitoring_stuck first!
+      try {
+        await db.query(`
+          UPDATE gudang_rute_inventory g
+          JOIN pto_orders p ON g.waybill = p.waybill
+          SET 
+            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang),
+            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), p.pengirim),
+            g.perusahaan_pengirim = COALESCE(NULLIF(g.perusahaan_pengirim, ''), p.perusahaan_pengirim),
+            g.no_hp_pengirim = COALESCE(NULLIF(g.no_hp_pengirim, ''), p.nomor_ponsel_pengirim),
+            g.penerima = COALESCE(NULLIF(g.penerima, ''), p.penerima),
+            g.perusahaan_penerima = COALESCE(NULLIF(g.perusahaan_penerima, ''), p.perusahaan_penerima_paket),
+            g.no_hp_penerima = COALESCE(NULLIF(g.no_hp_penerima, ''), p.nomor_handphone_penerima),
+            g.alamat_penerima = COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima)
+          WHERE (g.nama_barang IS NULL OR g.nama_barang = '')
+        `);
 
-      for (let i = 0; i < targetWaybills.length; i += CONCURRENCY) {
+        await db.query(`
+          UPDATE gudang_rute_inventory g
+          JOIN monitoring_stuck m ON g.waybill = m.waybill COLLATE utf8mb4_unicode_ci
+          SET 
+            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
+            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
+          WHERE (g.nama_barang IS NULL OR g.nama_barang = '') 
+            AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
+        `);
+      } catch (dbErr) {
+        console.warn('bulkEnrich instant DB sync warning:', dbErr.message);
+      }
+
+      // Step 2: Filter waybills that still lack goodsName
+      const [stillMissingRows] = await db.query(
+        `SELECT waybill FROM gudang_rute_inventory WHERE waybill IN (?) AND (nama_barang IS NULL OR nama_barang = '')`,
+        [targetWaybills]
+      );
+      const remainingWaybills = stillMissingRows.map(r => r.waybill);
+      let enrichedCount = targetWaybills.length - remainingWaybills.length;
+
+      bulkEnrichProgress.current = enrichedCount;
+      bulkEnrichProgress.successCount = enrichedCount;
+      bulkEnrichProgress.message = `Database lokal mencocokkan ${enrichedCount} waybill. Melanjutkan ${remainingWaybills.length} via OMS...`;
+
+      // Step 3: Iterate sequentially with throttle for remaining waybills
+      for (let i = 0; i < remainingWaybills.length; i++) {
         if (!isBulkEnriching) break;
-        const chunk = targetWaybills.slice(i, i + CONCURRENCY);
-        await Promise.all(chunk.map(async (wb) => {
-          try {
-            const resp = await jfsApiRequest('https://jfsgw.jtcargo.co.id/operatingplatform/order/getOrderDetail', 'POST', {
-              waybillNo: wb,
-              countryId: '1'
-            }, token);
+        const wb = remainingWaybills[i];
+        try {
+          const resolved = await resolveWaybillInfo(wb);
+          if (resolved && (resolved.goodsName || resolved.senderName || resolved.receiverName)) {
+            const mainWb = extractMainWaybill(wb);
+            await db.query(`
+              UPDATE gudang_rute_inventory
+              SET 
+                nama_barang = COALESCE(NULLIF(?, ''), nama_barang),
+                pengirim = COALESCE(NULLIF(?, ''), pengirim),
+                perusahaan_pengirim = COALESCE(NULLIF(?, ''), perusahaan_pengirim),
+                no_hp_pengirim = COALESCE(NULLIF(?, ''), no_hp_pengirim),
+                penerima = COALESCE(NULLIF(?, ''), penerima),
+                perusahaan_penerima = COALESCE(NULLIF(?, ''), perusahaan_penerima),
+                no_hp_penerima = COALESCE(NULLIF(?, ''), no_hp_penerima),
+                alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima)
+              WHERE waybill = ? OR (LENGTH(waybill) = 15 AND LEFT(waybill, 12) = ?)
+            `, [
+              resolved.goodsName || '',
+              resolved.senderName || '',
+              resolved.senderCompany || '',
+              resolved.senderPhone || '',
+              resolved.receiverName || '',
+              resolved.receiverCompany || '',
+              resolved.receiverPhone || '',
+              resolved.receiverAddress || '',
+              wb,
+              mainWb
+            ]);
+            enrichedCount++;
+          }
+        } catch (_) {}
 
-            if (resp && resp.data && resp.data.goodsName) {
-              const d = resp.data;
-              await db.query(`
-                UPDATE gudang_rute_inventory
-                SET 
-                  nama_barang = COALESCE(?, nama_barang),
-                  pengirim = COALESCE(?, pengirim),
-                  perusahaan_pengirim = COALESCE(?, perusahaan_pengirim),
-                  no_hp_pengirim = COALESCE(?, no_hp_pengirim),
-                  penerima = COALESCE(?, penerima),
-                  perusahaan_penerima = COALESCE(?, perusahaan_penerima),
-                  no_hp_penerima = COALESCE(?, no_hp_penerima),
-                  alamat_penerima = COALESCE(?, alamat_penerima)
-                WHERE waybill = ?
-              `, [
-                d.goodsName || null,
-                d.senderName || null,
-                d.senderCompany || d.customerName || null,
-                d.senderMobilePhone || d.senderTelphone || null,
-                d.receiverName || null,
-                d.receiverCompany || null,
-                d.receiverMobilePhone || d.receiverTelphone || null,
-                d.receiverDetailedAddress || null,
-                wb
-              ]);
-              enrichedCount++;
-            }
-          } catch (_) {}
-          bulkEnrichProgress.current++;
-          bulkEnrichProgress.successCount = enrichedCount;
-          bulkEnrichProgress.message = `Meng-enrich waybill: ${bulkEnrichProgress.current} / ${bulkEnrichProgress.total} (${enrichedCount} berhasil)`;
-        }));
+        bulkEnrichProgress.current = targetWaybills.length - remainingWaybills.length + i + 1;
+        bulkEnrichProgress.successCount = enrichedCount;
+        bulkEnrichProgress.message = `Meng-enrich: ${bulkEnrichProgress.current} / ${bulkEnrichProgress.total} (${enrichedCount} berhasil)`;
+
+        // Delay 120ms to protect network & rate limits
+        await new Promise(r => setTimeout(r, 120));
       }
 
       bulkEnrichProgress.status = 'success';
-      bulkEnrichProgress.message = `Selesai! Berhasil meng-enrich ${enrichedCount} waybill dari JFS.`;
+      bulkEnrichProgress.message = `Selesai! Berhasil meng-enrich ${enrichedCount} dari ${targetWaybills.length} waybill.`;
     } catch (err) {
       console.error('bulkEnrichWorker error:', err);
       bulkEnrichProgress.status = 'error';
