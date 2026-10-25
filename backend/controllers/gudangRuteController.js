@@ -372,6 +372,32 @@ async function importExcelData(req, res) {
   })();
 }
 
+
+// In-memory cache for holdingGateways & destGateways (avoids 2 heavy DISTINCT queries on 567k rows per keystroke)
+let cachedHoldingGws = null;
+let cachedDestGws = null;
+let lastDropdownCacheTime = 0;
+const DROPDOWN_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+async function getCachedDropdowns() {
+  const now = Date.now();
+  if (cachedHoldingGws && cachedDestGws && (now - lastDropdownCacheTime < DROPDOWN_CACHE_TTL)) {
+    return { holdingGws: cachedHoldingGws, destGws: cachedDestGws };
+  }
+  try {
+    const [hRows] = await db.query('SELECT DISTINCT holding_gw FROM gudang_rute_inventory WHERE holding_gw IS NOT NULL AND holding_gw != "" ORDER BY holding_gw ASC LIMIT 100');
+    const [dRows] = await db.query('SELECT DISTINCT gw_tujuan FROM gudang_rute_inventory WHERE gw_tujuan IS NOT NULL AND gw_tujuan != "" ORDER BY gw_tujuan ASC LIMIT 100');
+    cachedHoldingGws = hRows.map(x => x.holding_gw);
+    cachedDestGws = dRows.map(x => x.gw_tujuan);
+    lastDropdownCacheTime = now;
+  } catch (err) {
+    console.warn('getCachedDropdowns error:', err.message);
+    if (!cachedHoldingGws) cachedHoldingGws = [];
+    if (!cachedDestGws) cachedDestGws = [];
+  }
+  return { holdingGws: cachedHoldingGws, destGws: cachedDestGws };
+}
+
 // 3. Query inventory with filters and pagination
 async function queryInventory(req, res) {
   try {
@@ -427,8 +453,17 @@ async function queryInventory(req, res) {
       const subConds = [];
       const subParams = [];
       if (exacts.length === 1) {
-        subConds.push('g.waybill LIKE ?');
-        subParams.push(`%${exacts[0]}%`);
+        const raw = exacts[0];
+        if (/^\d{8,15}$/.test(raw)) {
+          subConds.push('(g.waybill = ? OR g.waybill LIKE ?)');
+          subParams.push(raw, `${raw}%`);
+        } else if (/^\d{3,7}$/.test(raw)) {
+          subConds.push('g.waybill LIKE ?');
+          subParams.push(`${raw}%`);
+        } else {
+          subConds.push('g.waybill LIKE ?');
+          subParams.push(`%${raw}%`);
+        }
       } else if (exacts.length > 1) {
         subConds.push('g.waybill IN (?)');
         subParams.push(exacts);
@@ -454,23 +489,29 @@ async function queryInventory(req, res) {
           conditions.push(wbFilter.clause);
           params.push(...wbFilter.params);
         }
+      } else if (/^\d{6,15}$/.test(q)) {
+        // Pure waybill number (or piece barcode): Index exact or prefix match (10-20ms)
+        conditions.push('(g.waybill = ? OR g.waybill LIKE ?)');
+        params.push(q, `${q}%`);
+      } else if (/^\d{3,5}$/.test(q)) {
+        // Waybill prefix (e.g. 2018 or 570): Index prefix match (15-30ms)
+        conditions.push('g.waybill LIKE ?');
+        params.push(`${q}%`);
       } else if (q.includes('*')) {
         const pattern = q.replace(/\*/g, '%');
-        conditions.push('(g.waybill LIKE ? OR g.nama_barang LIKE ? OR g.pengirim LIKE ? OR g.penerima LIKE ?)');
-        params.push(pattern, pattern, pattern, pattern);
+        conditions.push('(g.waybill LIKE ? OR g.nama_barang LIKE ?)');
+        params.push(pattern, pattern);
       } else {
         conditions.push(`(
-          g.waybill LIKE ? OR 
           g.nama_barang LIKE ? OR 
           g.pengirim LIKE ? OR 
           g.perusahaan_pengirim LIKE ? OR 
           g.penerima LIKE ? OR 
-          g.perusahaan_penerima LIKE ? OR 
-          g.outlet_tujuan LIKE ? OR
-          g.rute LIKE ?
+          g.perusahaan_penerima LIKE ? OR
+          g.outlet_tujuan LIKE ?
         )`);
         const searchPattern = `%${q}%`;
-        params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+        params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
       }
     }
 
@@ -608,16 +649,6 @@ async function queryInventory(req, res) {
       WHERE ${whereClause}
     `;
 
-    const [statsRes] = await db.query(countSql, params);
-    const stats = statsRes[0] || {
-      totalRows: 0,
-      totalWeight: 0,
-      totalVolume: 0,
-      totalEnriched: 0,
-      totalProblem: 0,
-      avgDuration: 0
-    };
-
     // Query records
     const dataSql = `
       SELECT 
@@ -635,24 +666,21 @@ async function queryInventory(req, res) {
       LIMIT ? OFFSET ?
     `;
 
-    const [rows] = await db.query(dataSql, [...params, limitNum, offset]);
+    // Concurrently run Data Query, Stats Query, and get Cached Dropdowns in PARALLEL
+    const [[rows], [statsRes], dropdowns] = await Promise.all([
+      db.query(dataSql, [...params, limitNum, offset]),
+      db.query(countSql, params),
+      getCachedDropdowns()
+    ]);
 
-    // Unique holding gateways and dest gateways for filter dropdowns
-    const [holdingGws] = await db.query(`
-      SELECT DISTINCT holding_gw 
-      FROM gudang_rute_inventory 
-      WHERE holding_gw IS NOT NULL AND holding_gw != '' 
-      ORDER BY holding_gw ASC
-      LIMIT 100
-    `);
-
-    const [destGws] = await db.query(`
-      SELECT DISTINCT gw_tujuan 
-      FROM gudang_rute_inventory 
-      WHERE gw_tujuan IS NOT NULL AND gw_tujuan != '' 
-      ORDER BY gw_tujuan ASC
-      LIMIT 100
-    `);
+    const stats = statsRes[0] || {
+      totalRows: 0,
+      totalWeight: 0,
+      totalVolume: 0,
+      totalEnriched: 0,
+      totalProblem: 0,
+      avgDuration: 0
+    };
 
     res.json({
       success: true,
@@ -671,8 +699,8 @@ async function queryInventory(req, res) {
         totalProblem: stats.totalProblem,
         avgDuration: Number(stats.avgDuration).toFixed(1)
       },
-      holdingGateways: holdingGws.map(x => x.holding_gw),
-      destGateways: destGws.map(x => x.gw_tujuan)
+      holdingGateways: dropdowns.holdingGws,
+      destGateways: dropdowns.destGws
     });
   } catch (error) {
     console.error('queryInventory error:', error);

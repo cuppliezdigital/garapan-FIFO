@@ -36,6 +36,7 @@ let gudangState = {
 };
 
 let gudangSearchDebounceTimer = null;
+let gudangFetchAbortController = null;
 
 // 1. Initial Dashboard Load
 async function loadGudangRuteDashboard() {
@@ -635,7 +636,7 @@ function onGudangSearchInput(instant = false) {
   } else {
     gudangSearchDebounceTimer = setTimeout(() => {
       applyGudangAutoSearch();
-    }, 280);
+    }, 350);
   }
 }
 
