@@ -286,14 +286,46 @@ async function importExcelData(req, res) {
       }
     });
 
+    let stderrText = '';
     py.stderr.on('data', (data) => {
-      console.warn('excel_stream.py stderr:', data.toString());
+      const msg = data.toString();
+      stderrText += msg;
+      console.warn('excel_stream.py stderr:', msg);
     });
 
     py.on('close', async (code) => {
       try {
         if (buffer.length > 0) {
           await flushBuffer();
+        }
+
+        if (code !== 0) {
+          console.error(`excel_stream.py exited with error code ${code}: ${stderrText}`);
+          const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+          await db.query(`
+            INSERT INTO gudang_rute_sync_logs (
+              filename, batch_time, total_rows, new_count, updated_count,
+              enriched_count, duration_seconds, status, message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'error', ?)
+          `, [
+            targetFile.fileName,
+            batchTime,
+            totalInserted,
+            0,
+            totalInserted,
+            0,
+            durationSec,
+            `Gagal sebagian / terhenti (exit code ${code}) setelah ${totalInserted.toLocaleString('id-ID')} waybill (${durationSec} detik): ${stderrText.slice(0, 200)}`
+          ]);
+
+          importProgress = {
+            status: 'error',
+            fileName: targetFile.fileName,
+            batchTime,
+            totalProcessed: totalInserted,
+            message: `Proses impor terhenti (kode ${code}). Berhasil menyimpan ${totalInserted.toLocaleString('id-ID')} waybill.`
+          };
+          return;
         }
 
         importProgress.message = 'Menjalankan auto-enrichment nama barang & customer dari PTO...';
