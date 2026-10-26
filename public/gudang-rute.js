@@ -131,6 +131,7 @@ function onQuickPasteInput() {
   // Count lines skipping headers
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let count = 0;
+  let maxCols = 1;
   for (const line of lines) {
     if (
       line.includes('运单号') || 
@@ -139,14 +140,17 @@ function onQuickPasteInput() {
     ) {
       continue;
     }
-    const firstCol = (line.split('\t')[0] || '').replace(/[^a-zA-Z0-9]/g, '');
+    const cols = line.split('\t');
+    if (cols.length > maxCols) maxCols = cols.length;
+    const firstCol = (cols[0] || '').replace(/[^a-zA-Z0-9]/g, '');
     if (firstCol && firstCol.length >= 5) {
       count++;
     }
   }
 
   if (count > 0) {
-    badgeText.textContent = `✔ ${count.toLocaleString('id-ID')} waybill siap diproses`;
+    const colInfo = maxCols >= 15 ? 'Tabel 19 Kolom Feishu/Excel' : (maxCols > 1 ? `${maxCols} Kolom` : 'Daftar Resi');
+    badgeText.textContent = `✔ ${count.toLocaleString('id-ID')} waybill valid siap diproses (${colInfo})`;
     if (badgeDot) badgeDot.style.background = '#34d399';
     if (badgeContainer) {
       badgeContainer.style.background = 'rgba(52, 211, 153, 0.15)';
