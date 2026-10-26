@@ -404,6 +404,387 @@ async function importExcelData(req, res) {
   })();
 }
 
+// 2b. Fast Quick Paste & Auto-Enrich Parser
+function parseClipboardText(rawText, batchTime = '') {
+  if (!rawText || !rawText.trim()) return [];
+
+  const rows = [];
+  let currentRow = [];
+  let currentCell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < rawText.length; i++) {
+    const char = rawText[i];
+    const nextChar = rawText[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        currentCell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === '\t' && !inQuotes) {
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') i++;
+      currentRow.push(currentCell.trim());
+      if (currentRow.some(c => c !== '')) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = '';
+    } else {
+      currentCell += char;
+    }
+  }
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some(c => c !== '')) {
+      rows.push(currentRow);
+    }
+  }
+
+  const parsedRecords = [];
+  const waybillsSet = new Set();
+
+  for (const cols of rows) {
+    if (!cols || cols.length === 0) continue;
+    const firstCol = cols[0] || '';
+
+    // Check if header row
+    if (
+      firstCol.includes('运单号') || 
+      firstCol.toLowerCase().includes('waybill') || 
+      firstCol.toLowerCase().includes('nomor')
+    ) {
+      continue;
+    }
+
+    // Must be a valid waybill (alphanumeric, at least 5 chars)
+    const waybill = firstCol.replace(/[^a-zA-Z0-9]/g, '');
+    if (!waybill || waybill.length < 5) continue;
+    if (waybillsSet.has(waybill)) continue;
+    waybillsSet.add(waybill);
+
+    // If single column pasted (just a list of waybills):
+    if (cols.length === 1) {
+      parsedRecords.push({
+        waybill,
+        tanggal_simpan: '',
+        holding_gw: '',
+        status_simpan: '',
+        berat: 0,
+        volume: 0,
+        is_dfod: '',
+        tgl_buka: '',
+        outlet_asal: '',
+        tgl_tiba: '',
+        next_stop: '',
+        gw_asal: '',
+        gw_tujuan: '',
+        outlet_tujuan: '',
+        frekuensi_kirim: 0,
+        durasi_jam: 0,
+        durasi_kategori: '',
+        is_problem: '',
+        status_penangguhan: '',
+        rute: '',
+        gw_tujuan_2: '',
+        next_gw: '',
+        outlet_akhir: '',
+        tipe_jalur: '',
+        batch_time: batchTime
+      });
+      continue;
+    }
+
+    // Multi-column pasted (Standard Feishu / Excel 19+ columns)
+    const berat = parseFloat((cols[4] || '0').replace(',', '.')) || 0;
+    const vol = parseFloat((cols[5] || '0').replace(',', '.')) || 0;
+    const durasi = parseFloat((cols[15] || '0').replace(',', '.')) || 0;
+    const freq = parseInt(cols[14] || '0', 10) || 0;
+
+    const gwAsal = cols[11] || '';
+    const gwTujuan = cols[12] || '';
+    const nextStop = cols[10] || '';
+    const outletTujuan = cols[13] || '';
+
+    const rute = cols[19] || (gwAsal && gwTujuan ? `${gwAsal} - ${gwTujuan}` : '');
+    const nextGw = cols[22] || (nextStop.startsWith('GW-') ? nextStop : '');
+    const outletAkhir = cols[23] || outletTujuan;
+    const tipeJalur = cols[26] || (gwAsal && gwTujuan && gwAsal === gwTujuan ? 'Lokal' : 'Antar Gateway');
+
+    parsedRecords.push({
+      waybill,
+      tanggal_simpan: cols[1] || '',
+      holding_gw: cols[2] || '',
+      status_simpan: cols[3] || '',
+      berat,
+      volume: vol,
+      is_dfod: cols[6] || '',
+      tgl_buka: cols[7] || '',
+      outlet_asal: cols[8] || '',
+      tgl_tiba: cols[9] || '',
+      next_stop: nextStop,
+      gw_asal: gwAsal,
+      gw_tujuan: gwTujuan,
+      outlet_tujuan: outletTujuan,
+      frekuensi_kirim: freq,
+      durasi_jam: durasi,
+      durasi_kategori: cols[18] || '',
+      is_problem: cols[16] || '',
+      status_penangguhan: cols[17] || '',
+      rute,
+      gw_tujuan_2: cols[20] || '',
+      next_gw: nextGw,
+      outlet_akhir: outletAkhir,
+      tipe_jalur: tipeJalur,
+      batch_time: batchTime
+    });
+  }
+
+  return parsedRecords;
+}
+
+// 2c. Controller: Paste Import & Auto-Enrich
+async function pasteImportGudangData(req, res) {
+  try {
+    const { rawText, batchTime: customBatchTime, autoEnrichJfs = true } = req.body || {};
+    if (!rawText || !rawText.trim()) {
+      return res.status(400).json({ success: false, message: 'Data yang ditempel kosong. Silakan copy data dari Feishu atau Excel lalu tempel di kolom yang disediakan.' });
+    }
+
+    const now = new Date();
+    const defaultBatchTime = now.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const batchTime = customBatchTime && customBatchTime.trim() ? customBatchTime.trim() : defaultBatchTime;
+
+    const records = parseClipboardText(rawText, batchTime);
+    if (records.length === 0) {
+      return res.status(400).json({ success: false, message: 'Tidak ada baris waybill yang valid terdeteksi dari teks yang ditempel.' });
+    }
+
+    const startTime = Date.now();
+    const waybills = records.map(r => r.waybill);
+
+    // 1. Bulk insert in chunks of 1,000 with ON DUPLICATE KEY UPDATE (preserves existing enrichments)
+    const BATCH_SIZE = 1000;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const chunk = records.slice(i, i + BATCH_SIZE);
+      const values = chunk.map(item => [
+        item.waybill, item.tanggal_simpan, item.holding_gw, item.status_simpan, item.berat, item.volume, item.is_dfod,
+        item.tgl_buka, item.outlet_asal, item.tgl_tiba, item.next_stop, item.gw_asal, item.gw_tujuan, item.outlet_tujuan,
+        item.frekuensi_kirim, item.durasi_jam, item.durasi_kategori, item.is_problem, item.status_penangguhan,
+        item.rute, item.gw_tujuan_2, item.next_gw, item.outlet_akhir, item.tipe_jalur, item.batch_time
+      ]);
+
+      const sql = `
+        INSERT INTO gudang_rute_inventory (
+          waybill, tanggal_simpan, holding_gw, status_simpan, berat, volume, is_dfod,
+          tgl_buka, outlet_asal, tgl_tiba, next_stop, gw_asal, gw_tujuan, outlet_tujuan,
+          frekuensi_kirim, durasi_jam, durasi_kategori, is_problem, status_penangguhan,
+          rute, gw_tujuan_2, next_gw, outlet_akhir, tipe_jalur, batch_time
+        ) VALUES ?
+        ON DUPLICATE KEY UPDATE
+          tanggal_simpan = VALUES(tanggal_simpan),
+          holding_gw = VALUES(holding_gw),
+          status_simpan = VALUES(status_simpan),
+          berat = VALUES(berat),
+          volume = VALUES(volume),
+          is_dfod = VALUES(is_dfod),
+          tgl_buka = VALUES(tgl_buka),
+          outlet_asal = VALUES(outlet_asal),
+          tgl_tiba = VALUES(tgl_tiba),
+          next_stop = VALUES(next_stop),
+          gw_asal = VALUES(gw_asal),
+          gw_tujuan = VALUES(gw_tujuan),
+          outlet_tujuan = VALUES(outlet_tujuan),
+          frekuensi_kirim = VALUES(frekuensi_kirim),
+          durasi_jam = VALUES(durasi_jam),
+          durasi_kategori = VALUES(durasi_kategori),
+          is_problem = VALUES(is_problem),
+          status_penangguhan = VALUES(status_penangguhan),
+          rute = COALESCE(NULLIF(VALUES(rute), ''), rute),
+          gw_tujuan_2 = COALESCE(NULLIF(VALUES(gw_tujuan_2), ''), gw_tujuan_2),
+          next_gw = COALESCE(NULLIF(VALUES(next_gw), ''), next_gw),
+          outlet_akhir = COALESCE(NULLIF(VALUES(outlet_akhir), ''), outlet_akhir),
+          tipe_jalur = COALESCE(NULLIF(VALUES(tipe_jalur), ''), tipe_jalur),
+          batch_time = VALUES(batch_time),
+          updated_at = NOW()
+      `;
+      await db.query(sql, [values]);
+    }
+
+    // Invalidate caches so UI immediately sees new data
+    cachedHoldingGws = null;
+    cachedDestGws = null;
+    cachedGlobalStats = null;
+
+    // 2. Instant Local DB Sync (PTO + Monitoring Stuck) for these waybills
+    let localEnrichedCount = 0;
+    try {
+      const CHUNK_SIZE = 5000;
+      for (let i = 0; i < waybills.length; i += CHUNK_SIZE) {
+        const wbChunk = waybills.slice(i, i + CHUNK_SIZE);
+
+        const [resPto] = await db.query(`
+          UPDATE gudang_rute_inventory g
+          JOIN pto_orders p ON (g.waybill = p.waybill OR g.waybill LIKE CONCAT(p.waybill, '%'))
+          SET 
+            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang),
+            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), p.pengirim),
+            g.perusahaan_pengirim = COALESCE(NULLIF(g.perusahaan_pengirim, ''), p.perusahaan_pengirim),
+            g.no_hp_pengirim = COALESCE(NULLIF(g.no_hp_pengirim, ''), p.nomor_ponsel_pengirim),
+            g.penerima = COALESCE(NULLIF(g.penerima, ''), p.penerima),
+            g.perusahaan_penerima = COALESCE(NULLIF(g.perusahaan_penerima, ''), p.perusahaan_penerima_paket),
+            g.no_hp_penerima = COALESCE(NULLIF(g.no_hp_penerima, ''), p.nomor_handphone_penerima),
+            g.alamat_penerima = COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima)
+          WHERE g.waybill IN (?) AND (g.nama_barang IS NULL OR g.nama_barang = '')
+        `, [wbChunk]);
+
+        const [resStuck] = await db.query(`
+          UPDATE gudang_rute_inventory g
+          JOIN monitoring_stuck m ON (g.waybill = m.waybill COLLATE utf8mb4_unicode_ci OR g.waybill LIKE CONCAT(m.waybill COLLATE utf8mb4_unicode_ci, '%'))
+          SET 
+            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
+            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
+          WHERE g.waybill IN (?) AND (g.nama_barang IS NULL OR g.nama_barang = '') 
+            AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
+        `, [wbChunk]);
+
+        localEnrichedCount += (resPto?.affectedRows || 0) + (resStuck?.affectedRows || 0);
+      }
+    } catch (dbSyncErr) {
+      console.warn('pasteImport local DB sync warning:', dbSyncErr.message);
+    }
+
+    // 3. Find waybills still lacking goodsName
+    const [unenrichedRows] = await db.query(`
+      SELECT waybill 
+      FROM gudang_rute_inventory 
+      WHERE waybill IN (?) AND (nama_barang IS NULL OR nama_barang = '')
+    `, [waybills]);
+
+    const remainingUnenriched = unenrichedRows.map(r => r.waybill);
+    let jfsEnrichedCount = 0;
+    let backgroundTriggered = false;
+
+    // 4. JFS OMS Auto-Enrichment if requested
+    if (autoEnrichJfs && remainingUnenriched.length > 0) {
+      if (remainingUnenriched.length <= 50) {
+        // Fast path: In-flight OMS query (completes in ~500ms - 1.2s for up to 50 resi)
+        try {
+          const token = await ptoController.getPtoToken();
+          const past90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+          const omsNow = new Date();
+
+          for (let i = 0; i < remainingUnenriched.length; i += 20) {
+            const rawChunk = remainingUnenriched.slice(i, i + 20);
+            const mainWbs = [...new Set(rawChunk.map(w => extractMainWaybill(w)).filter(Boolean))];
+            if (mainWbs.length === 0) continue;
+
+            const payload = {
+              siteCode: 'JKT99A',
+              startDate: past90.toISOString().slice(0, 10) + ' 00:00:00',
+              endDate: omsNow.toISOString().slice(0, 10) + ' 23:59:59',
+              p_billType: 1,
+              p_billNo: mainWbs.join(','),
+              current: 1,
+              size: 50,
+              lowerSiteQuery: true,
+              countryId: '1'
+            };
+
+            const omsRes = await ptoController.makeJfsPtoRequest(
+              '/customerplatform/omsOrderStatus/statusQuery',
+              'POST',
+              JSON.stringify(payload),
+              token
+            ).catch(() => null);
+
+            const records = omsRes?.data?.records || [];
+            for (const r of records) {
+              if (!r.waybillId) continue;
+              const gName = r.goodsName || r.goodsTypeName || null;
+              if (gName) {
+                await db.query(`
+                  UPDATE gudang_rute_inventory
+                  SET 
+                    nama_barang = COALESCE(NULLIF(?, ''), nama_barang),
+                    pengirim = COALESCE(NULLIF(?, ''), pengirim),
+                    perusahaan_pengirim = COALESCE(NULLIF(?, ''), perusahaan_pengirim),
+                    no_hp_pengirim = COALESCE(NULLIF(?, ''), no_hp_pengirim),
+                    penerima = COALESCE(NULLIF(?, ''), penerima),
+                    perusahaan_penerima = COALESCE(NULLIF(?, ''), perusahaan_penerima),
+                    no_hp_penerima = COALESCE(NULLIF(?, ''), no_hp_penerima),
+                    alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima)
+                  WHERE waybill = ? OR waybill LIKE ?
+                `, [
+                  gName,
+                  r.senderName || '',
+                  r.senderCompany || r.customerName || '',
+                  r.senderMobilePhone || r.senderTelphone || '',
+                  r.receiverName || '',
+                  r.receiverCompany || '',
+                  r.receiverMobilePhone || r.receiverTelphone || '',
+                  r.receiverDetailedAddress || '',
+                  r.waybillId,
+                  r.waybillId + '%'
+                ]);
+                jfsEnrichedCount++;
+              }
+            }
+          }
+        } catch (omsErr) {
+          console.warn('pasteImport in-flight OMS error:', omsErr.message);
+        }
+      } else {
+        // High count: Trigger background worker for remaining unenriched waybills
+        backgroundTriggered = true;
+        startBackgroundEnrichRunner(remainingUnenriched);
+      }
+    }
+
+    const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    // 5. Log sync operation to database
+    try {
+      await db.query(`
+        INSERT INTO gudang_rute_sync_logs (
+          filename, batch_time, total_rows, new_count, updated_count, enriched_count, duration_seconds, status, message
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        `Quick Paste (${records.length.toLocaleString('id-ID')} Resi)`,
+        batchTime,
+        records.length,
+        records.length,
+        0,
+        localEnrichedCount + jfsEnrichedCount,
+        durationSec,
+        'success',
+        `Quick Paste selesai. ${localEnrichedCount} ter-enrich database lokal, ${jfsEnrichedCount} dari OMS.`
+      ]);
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      message: `Berhasil mengimpor ${records.length.toLocaleString('id-ID')} waybill (${durationSec} detik)!`,
+      totalPasted: records.length,
+      localEnrichedCount,
+      jfsEnrichedCount,
+      totalEnriched: localEnrichedCount + jfsEnrichedCount,
+      backgroundTriggered,
+      remainingUnenriched: remainingUnenriched.length - jfsEnrichedCount,
+      batchTime
+    });
+
+  } catch (error) {
+    console.error('pasteImportGudangData error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengimpor data tempel: ' + error.message });
+  }
+}
+
 
 // In-memory cache for holdingGateways & destGateways (avoids 2 heavy DISTINCT queries on 1.4M rows per keystroke)
 let cachedHoldingGws = null;
@@ -1138,77 +1519,8 @@ async function cancelBulkEnrich(req, res) {
   res.json({ success: true, message: 'Auto-enrich berhasil dihentikan.' });
 }
 
-async function bulkEnrichWaybills(req, res) {
-  if (isBulkEnriching) {
-    return res.status(409).json({ success: false, message: 'Proses auto-enrich sedang berjalan di latar belakang.' });
-  }
-
-  const { waybills = [], limit = 100, mode = 'normal' } = req.body || {};
-  let targetWaybills = [];
-
-  // Step 1: Run instant DB update first (PTO & Monitoring Stuck)
-  try {
-    await db.query(`
-      UPDATE gudang_rute_inventory g
-      JOIN pto_orders p ON g.waybill = p.waybill
-      SET 
-        g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang),
-        g.pengirim = COALESCE(NULLIF(g.pengirim, ''), p.pengirim),
-        g.perusahaan_pengirim = COALESCE(NULLIF(g.perusahaan_pengirim, ''), p.perusahaan_pengirim),
-        g.no_hp_pengirim = COALESCE(NULLIF(g.no_hp_pengirim, ''), p.nomor_ponsel_pengirim),
-        g.penerima = COALESCE(NULLIF(g.penerima, ''), p.penerima),
-        g.perusahaan_penerima = COALESCE(NULLIF(g.perusahaan_penerima, ''), p.perusahaan_penerima_paket),
-        g.no_hp_penerima = COALESCE(NULLIF(g.no_hp_penerima, ''), p.nomor_handphone_penerima),
-        g.alamat_penerima = COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima)
-      WHERE (g.nama_barang IS NULL OR g.nama_barang = '')
-    `);
-
-    await db.query(`
-      UPDATE gudang_rute_inventory g
-      JOIN monitoring_stuck m ON g.waybill = m.waybill COLLATE utf8mb4_unicode_ci
-      SET 
-        g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
-        g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
-      WHERE (g.nama_barang IS NULL OR g.nama_barang = '') 
-        AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
-    `);
-  } catch (dbErr) {
-    console.warn('bulkEnrich instant DB update warning:', dbErr.message);
-  }
-
-  // Step 2: Determine target waybills
-  if (Array.isArray(waybills) && waybills.length > 0) {
-    targetWaybills = waybills.map(w => String(w).trim()).filter(Boolean);
-  } else if (mode === 'all') {
-    // Mode ALL: Fetch up to 10,000 unenriched waybills in this session (can be run continuously)
-    const [rows] = await db.query(`
-      SELECT waybill 
-      FROM gudang_rute_inventory 
-      WHERE (nama_barang IS NULL OR nama_barang = '')
-      ORDER BY id ASC
-      LIMIT 10000
-    `);
-    targetWaybills = rows.map(r => r.waybill);
-  } else {
-    const parsedLimit = Math.min(5000, Math.max(10, parseInt(limit, 10) || 100));
-    const [rows] = await db.query(`
-      SELECT waybill 
-      FROM gudang_rute_inventory 
-      WHERE (nama_barang IS NULL OR nama_barang = '')
-      ORDER BY id ASC
-      LIMIT ?
-    `, [parsedLimit]);
-    targetWaybills = rows.map(r => r.waybill);
-  }
-
-  if (targetWaybills.length === 0) {
-    return res.json({
-      success: true,
-      message: 'Semua waybill target sudah terisi rincian nama barang.',
-      enrichedCount: 0
-    });
-  }
-
+function startBackgroundEnrichRunner(targetWaybills) {
+  if (isBulkEnriching) return false;
   isBulkEnriching = true;
   bulkEnrichProgress = {
     current: 0,
@@ -1217,12 +1529,6 @@ async function bulkEnrichWaybills(req, res) {
     status: 'running',
     message: `Memulai auto-enrich batch untuk ${targetWaybills.length.toLocaleString('id-ID')} waybill...`
   };
-
-  res.json({
-    success: true,
-    message: `Memulai auto-enrich untuk ${targetWaybills.length.toLocaleString('id-ID')} waybill di latar belakang...`,
-    total: targetWaybills.length
-  });
 
   // Background Runner
   (async () => {
@@ -1319,6 +1625,88 @@ async function bulkEnrichWaybills(req, res) {
       isBulkEnriching = false;
     }
   })();
+
+  return true;
+}
+
+async function bulkEnrichWaybills(req, res) {
+  if (isBulkEnriching) {
+    return res.status(409).json({ success: false, message: 'Proses auto-enrich sedang berjalan di latar belakang.' });
+  }
+
+  const { waybills = [], limit = 100, mode = 'normal' } = req.body || {};
+  let targetWaybills = [];
+
+  // Step 1: Run instant DB update first (PTO & Monitoring Stuck)
+  try {
+    await db.query(`
+      UPDATE gudang_rute_inventory g
+      JOIN pto_orders p ON g.waybill = p.waybill
+      SET 
+        g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang),
+        g.pengirim = COALESCE(NULLIF(g.pengirim, ''), p.pengirim),
+        g.perusahaan_pengirim = COALESCE(NULLIF(g.perusahaan_pengirim, ''), p.perusahaan_pengirim),
+        g.no_hp_pengirim = COALESCE(NULLIF(g.no_hp_pengirim, ''), p.nomor_ponsel_pengirim),
+        g.penerima = COALESCE(NULLIF(g.penerima, ''), p.penerima),
+        g.perusahaan_penerima = COALESCE(NULLIF(g.perusahaan_penerima, ''), p.perusahaan_penerima_paket),
+        g.no_hp_penerima = COALESCE(NULLIF(g.no_hp_penerima, ''), p.nomor_handphone_penerima),
+        g.alamat_penerima = COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima)
+      WHERE (g.nama_barang IS NULL OR g.nama_barang = '')
+    `);
+
+    await db.query(`
+      UPDATE gudang_rute_inventory g
+      JOIN monitoring_stuck m ON g.waybill = m.waybill COLLATE utf8mb4_unicode_ci
+      SET 
+        g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
+        g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
+      WHERE (g.nama_barang IS NULL OR g.nama_barang = '') 
+        AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
+    `);
+  } catch (dbErr) {
+    console.warn('bulkEnrich instant DB update warning:', dbErr.message);
+  }
+
+  // Step 2: Determine target waybills
+  if (Array.isArray(waybills) && waybills.length > 0) {
+    targetWaybills = waybills.map(w => String(w).trim()).filter(Boolean);
+  } else if (mode === 'all') {
+    // Mode ALL: Fetch up to 10,000 unenriched waybills in this session (can be run continuously)
+    const [rows] = await db.query(`
+      SELECT waybill 
+      FROM gudang_rute_inventory 
+      WHERE (nama_barang IS NULL OR nama_barang = '')
+      ORDER BY id ASC
+      LIMIT 10000
+    `);
+    targetWaybills = rows.map(r => r.waybill);
+  } else {
+    const parsedLimit = Math.min(5000, Math.max(10, parseInt(limit, 10) || 100));
+    const [rows] = await db.query(`
+      SELECT waybill 
+      FROM gudang_rute_inventory 
+      WHERE (nama_barang IS NULL OR nama_barang = '')
+      ORDER BY id ASC
+      LIMIT ?
+    `, [parsedLimit]);
+    targetWaybills = rows.map(r => r.waybill);
+  }
+
+  if (targetWaybills.length === 0) {
+    return res.json({
+      success: true,
+      message: 'Semua waybill target sudah terisi rincian nama barang.',
+      enrichedCount: 0
+    });
+  }
+
+  startBackgroundEnrichRunner(targetWaybills);
+
+  res.json({
+    success: true,
+    message: `Memulai auto-enrich untuk ${targetWaybills.length.toLocaleString('id-ID')} waybill di latar belakang...`,
+    total: targetWaybills.length
+  });
 }
 
 // 7. Instant Local DB Enrich (PTO + Monitoring Stuck)
@@ -1372,6 +1760,7 @@ module.exports = {
   getLatestFileInfo,
   getImportStatus,
   importExcelData,
+  pasteImportGudangData,
   queryInventory,
   getPodTrace,
   enrichWaybill,

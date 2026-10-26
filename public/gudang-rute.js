@@ -45,7 +45,7 @@ async function loadGudangRuteDashboard() {
   await fetchGudangInventory();
 }
 
-// 2. Fetch File Info (Tanpa recursive checkGudangImportStatus)
+// 2. Fetch File Info & Sync Status
 async function fetchGudangFileInfo() {
   try {
     const token = localStorage.getItem('token');
@@ -58,13 +58,15 @@ async function fetchGudangFileInfo() {
 
     const badge = document.getElementById('gudangBatchTimeLabel');
     if (badge) {
-      if (json.latestFile) {
-        badge.textContent = `File: ${json.latestFile.fileName.substring(0, 30)}... (${json.latestFile.sizeMB} MB)`;
-        badge.title = `File: ${json.latestFile.filePath} | Dimodifikasi: ${new Date(json.latestFile.mtime).toLocaleString('id-ID')}`;
+      if (json.stats?.lastSync?.filename) {
+        badge.textContent = `${json.stats.lastSync.filename} • ${json.stats.lastSync.batch_time || ''}`.trim();
+        badge.title = `Sync: ${json.stats.lastSync.filename} | Waktu: ${json.stats.lastSync.batch_time} | ${json.stats.lastSync.message || ''}`;
       } else if (json.stats && json.stats.latestBatchTime !== '-') {
         badge.textContent = `Batch: ${json.stats.latestBatchTime}`;
+      } else if (json.latestFile) {
+        badge.textContent = `File: ${json.latestFile.fileName.substring(0, 30)}... (${json.latestFile.sizeMB} MB)`;
       } else {
-        badge.textContent = 'Batch: Belum ada file';
+        badge.textContent = 'Batch: Siap Tempel Data';
       }
     }
   } catch (err) {
@@ -72,7 +74,156 @@ async function fetchGudangFileInfo() {
   }
 }
 
-// 3. Trigger 1-Click Import from Downloads (Default: ALL Gateways Se-Indonesia)
+// 3. Quick Paste Modal & Ingestion Controller
+function openQuickPasteModal() {
+  const modal = document.getElementById('modalQuickPasteGudang');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  const batchInput = document.getElementById('quickPasteBatchTime');
+  if (batchInput && !batchInput.value) {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    batchInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+
+  const textarea = document.getElementById('quickPasteTextarea');
+  if (textarea) {
+    textarea.focus();
+    onQuickPasteInput();
+  }
+}
+
+function closeQuickPasteModal() {
+  const modal = document.getElementById('modalQuickPasteGudang');
+  if (modal) modal.style.display = 'none';
+}
+
+function clearQuickPasteText() {
+  const textarea = document.getElementById('quickPasteTextarea');
+  if (textarea) {
+    textarea.value = '';
+    onQuickPasteInput();
+    textarea.focus();
+  }
+}
+
+function onQuickPasteInput() {
+  const textarea = document.getElementById('quickPasteTextarea');
+  const badgeText = document.getElementById('quickPasteStatusText');
+  const badgeDot = document.getElementById('quickPasteStatusDot');
+  const badgeContainer = document.getElementById('quickPasteStatusBadge');
+
+  if (!textarea || !badgeText) return;
+
+  const raw = textarea.value || '';
+  if (!raw.trim()) {
+    badgeText.textContent = '0 baris waybill terdeteksi';
+    if (badgeDot) badgeDot.style.background = '#94a3b8';
+    if (badgeContainer) {
+      badgeContainer.style.background = 'rgba(148, 163, 184, 0.12)';
+      badgeContainer.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+      badgeContainer.style.color = '#94a3b8';
+    }
+    return;
+  }
+
+  // Count lines skipping headers
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let count = 0;
+  for (const line of lines) {
+    if (
+      line.includes('运单号') || 
+      line.toLowerCase().includes('waybill') || 
+      line.toLowerCase().includes('nomor')
+    ) {
+      continue;
+    }
+    const firstCol = (line.split('\t')[0] || '').replace(/[^a-zA-Z0-9]/g, '');
+    if (firstCol && firstCol.length >= 5) {
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    badgeText.textContent = `✔ ${count.toLocaleString('id-ID')} waybill siap diproses`;
+    if (badgeDot) badgeDot.style.background = '#34d399';
+    if (badgeContainer) {
+      badgeContainer.style.background = 'rgba(52, 211, 153, 0.15)';
+      badgeContainer.style.borderColor = 'rgba(52, 211, 153, 0.35)';
+      badgeContainer.style.color = '#34d399';
+    }
+  } else {
+    badgeText.textContent = 'Menunggu data waybill yang valid...';
+    if (badgeDot) badgeDot.style.background = '#fbbf24';
+    if (badgeContainer) {
+      badgeContainer.style.background = 'rgba(245, 158, 11, 0.15)';
+      badgeContainer.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+      badgeContainer.style.color = '#fbbf24';
+    }
+  }
+}
+
+async function submitQuickPaste() {
+  const textarea = document.getElementById('quickPasteTextarea');
+  const batchInput = document.getElementById('quickPasteBatchTime');
+  const chkAutoEnrich = document.getElementById('chkQuickPasteAutoEnrich');
+  const btn = document.getElementById('btnSubmitQuickPaste');
+  const btnText = document.getElementById('btnSubmitQuickPasteText');
+
+  const rawText = textarea ? textarea.value.trim() : '';
+  if (!rawText) {
+    alert('Silakan tempel (Ctrl + V) data tabel waybill terlebih dahulu.');
+    if (textarea) textarea.focus();
+    return;
+  }
+
+  const batchTime = batchInput ? batchInput.value.trim() : '';
+  const autoEnrichJfs = chkAutoEnrich ? chkAutoEnrich.checked : true;
+
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Menyimpan & Meng-enrich...';
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/paste-import', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ rawText, batchTime, autoEnrichJfs })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      alert(json.message || 'Gagal memproses data tempel.');
+      return;
+    }
+
+    closeQuickPasteModal();
+    if (textarea) textarea.value = '';
+
+    showGudangToast(`✔ Sukses! ${json.totalPasted.toLocaleString('id-ID')} waybill disimpan (${json.totalEnriched.toLocaleString('id-ID')} langsung ter-enrich)!`);
+
+    // If background enrichment was triggered for large remaining sets:
+    if (json.backgroundTriggered) {
+      startEnrichStatusPolling();
+    }
+
+    // Refresh inventory and stats
+    await fetchGudangFileInfo();
+    await fetchGudangInventory();
+
+  } catch (err) {
+    alert('Terjadi kesalahan saat memproses data: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = '🚀 Simpan & Auto-Enrich Sekarang';
+  }
+}
+
+// 3b. Trigger 1-Click Import from Downloads (Fallback)
 async function importLatestGudangRuteFile() {
   const btn = document.getElementById('btnImportLatestGudang');
   const btnText = document.getElementById('btnImportLatestText');
@@ -1291,6 +1442,11 @@ function escapeHtml(text) {
 
 // Global window exposure
 window.loadGudangRuteDashboard = loadGudangRuteDashboard;
+window.openQuickPasteModal = openQuickPasteModal;
+window.closeQuickPasteModal = closeQuickPasteModal;
+window.clearQuickPasteText = clearQuickPasteText;
+window.onQuickPasteInput = onQuickPasteInput;
+window.submitQuickPaste = submitQuickPaste;
 window.importLatestGudangRuteFile = importLatestGudangRuteFile;
 window.fetchGudangInventory = fetchGudangInventory;
 window.handleGudangFilterSubmit = handleGudangFilterSubmit;
