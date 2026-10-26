@@ -67,6 +67,126 @@ function jfsApiRequest(endpointUrl, method, payload, token) {
   });
 }
 
+// Calculate duration in hours from scan time string (e.g. '2026-10-26 11:45:16') to now
+function calculateDurationHours(scanTimeStr) {
+  if (!scanTimeStr) return 0;
+  const scanDate = new Date(String(scanTimeStr).replace(' ', 'T'));
+  if (isNaN(scanDate.getTime())) return 0;
+  const now = new Date();
+  const diffMs = Math.max(0, now.getTime() - scanDate.getTime());
+  return parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
+}
+
+// Duration category helper
+function getDurationCategory(hours) {
+  const h = parseFloat(hours) || 0;
+  if (h < 24) return '0-24 Jam';
+  if (h < 48) return '24-48 Jam';
+  if (h < 72) return '48-72 Jam';
+  return '>72 Jam';
+}
+
+// Clean Chinese punctuation / trailing commas from unmasked names
+function cleanPersonName(name) {
+  if (!name) return '';
+  return String(name).replace(/[、,，\s]+$/, '').trim();
+}
+
+// Fetch POD tracking in batches of 20 to extract holding gateway, status simpan, duration & origin
+async function fetchBatchPodTracking(waybillList, token) {
+  if (!Array.isArray(waybillList) || waybillList.length === 0) return new Map();
+  const podMap = new Map();
+  const CHUNK_SIZE = 20;
+
+  for (let i = 0; i < waybillList.length; i += CHUNK_SIZE) {
+    const chunk = waybillList.slice(i, i + CHUNK_SIZE);
+    try {
+      const podRes = await jfsApiRequest(
+        'https://jfsgw.jtcargo.co.id/operatingplatform/podTracking/inner/query/keywordList',
+        'POST',
+        {
+          keywordList: chunk,
+          trackingTypeEnum: 'WAYBILL',
+          countryId: '1'
+        },
+        token
+      );
+
+      if (podRes?.data && Array.isArray(podRes.data)) {
+        for (const item of podRes.data) {
+          const wb = String(item.billCode || item.keyword || '').trim();
+          const scans = item.details || [];
+          if (wb && scans.length > 0) {
+            // scans[0] is latest scan, scans[scans.length - 1] is origin pickup
+            const latest = scans[0];
+            const earliest = scans[scans.length - 1];
+            const durHours = calculateDurationHours(latest.scanTime);
+            podMap.set(wb, {
+              holdingGw: latest.scanNetworkName || latest.scanNetworkCode || '',
+              statusSimpan: latest.scanTypeName || 'Di Gudang',
+              tanggalSimpan: latest.scanTime || '',
+              durasiJam: durHours,
+              durasiKategori: getDurationCategory(durHours),
+              outletAsal: earliest.scanNetworkName || earliest.scanNetworkCode || '',
+              deskripsi: latest.waybillTrackingContent || latest.scanDesc || ''
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('fetchBatchPodTracking chunk warning:', e.message);
+    }
+  }
+
+  return podMap;
+}
+
+// Unmask OMS records via /customerplatform/omsOrderStatus/detail?id=... with routename orderTrackingView
+async function unmaskAndEnrichOmsRecords(records, token) {
+  if (!Array.isArray(records) || records.length === 0) return;
+  const toFetch = records.filter(r => r && r.id);
+  if (toFetch.length === 0) return;
+
+  await ptoController.mapConcurrent(toFetch, 10, async (r) => {
+    try {
+      let detailRes = await ptoController.makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detail?id=${encodeURIComponent(r.id)}`, 'GET', null, token).catch(() => null);
+      if (!detailRes || !detailRes.data || typeof detailRes.data !== 'object') {
+        detailRes = await ptoController.makeJfsPtoRequest(`/customerplatform/omsOrderStatus/detailByLog?id=${encodeURIComponent(r.id)}`, 'GET', null, token).catch(() => null);
+      }
+      if (detailRes && detailRes.data && typeof detailRes.data === 'object') {
+        const d = detailRes.data;
+        if (d.senderName && !d.senderName.includes('*')) {
+          r.senderName = cleanPersonName(d.senderName);
+        }
+        if (d.receiverName && !d.receiverName.includes('*')) {
+          r.receiverName = cleanPersonName(d.receiverName);
+        }
+        if (d.receiverDetailedAddress && !d.receiverDetailedAddress.includes('****')) {
+          r.receiverDetailedAddress = d.receiverDetailedAddress;
+        }
+        if (d.senderDetailedAddress && !d.senderDetailedAddress.includes('****')) {
+          r.senderDetailedAddress = d.senderDetailedAddress;
+        }
+        if (d.goodsName && (!r.goodsName || r.goodsName === '-')) {
+          r.goodsName = d.goodsName;
+        }
+        if (d.packageChargeWeight) r.packageChargeWeight = d.packageChargeWeight;
+        if (d.packageTotalWeight) r.packageTotalWeight = d.packageTotalWeight;
+        if (d.packateVolume) r.packateVolume = d.packateVolume;
+        if (d.pickNetworkName) r.pickNetworkName = d.pickNetworkName;
+        if (d.dispatchNetworkCode) r.dispatchNetworkCode = d.dispatchNetworkCode;
+        if (d.terminalDispatchCode) r.terminalDispatchCode = d.terminalDispatchCode;
+        if (d.destinationDistributionName) r.destinationDistributionName = d.destinationDistributionName;
+
+        // Auto persist into pto_orders for fast caching
+        if (typeof ptoController.autoPersistOrderDetail === 'function') {
+          ptoController.autoPersistOrderDetail(d).catch(() => {});
+        }
+      }
+    } catch (_) {}
+  });
+}
+
 // Find latest matching Excel file in Downloads
 function findLatestExcelFile() {
   if (!fs.existsSync(DOWNLOADS_DIR)) return null;
@@ -605,6 +725,29 @@ async function pasteImportGudangData(req, res) {
     const startTime = Date.now();
     const waybills = records.map(r => r.waybill);
 
+    // 0. Auto POD Tracking for missing holding_gw (e.g. single-column waybill paste)
+    const needsPodTracking = records.filter(r => !r.holding_gw || r.holding_gw.trim() === '' || r.holding_gw === '-');
+    if (needsPodTracking.length > 0) {
+      try {
+        const token = await ptoController.getPtoToken();
+        const podWbs = needsPodTracking.map(r => r.waybill);
+        const podMap = await fetchBatchPodTracking(podWbs, token);
+        for (const r of needsPodTracking) {
+          const pod = podMap.get(r.waybill);
+          if (pod) {
+            if (pod.holdingGw) r.holding_gw = pod.holdingGw;
+            if (pod.statusSimpan) r.status_simpan = pod.statusSimpan;
+            if (pod.tanggalSimpan) r.tanggal_simpan = pod.tanggalSimpan;
+            if (pod.durasiJam !== undefined) r.durasi_jam = pod.durasiJam;
+            if (pod.durasiKategori) r.durasi_kategori = pod.durasiKategori;
+            if (pod.outletAsal && !r.outlet_asal) r.outlet_asal = pod.outletAsal;
+          }
+        }
+      } catch (podErr) {
+        console.warn('pasteImport POD fetch warning:', podErr.message);
+      }
+    }
+
     // 1. Bulk insert in chunks of 1,000 with ON DUPLICATE KEY UPDATE (preserves existing enrichments)
     const BATCH_SIZE = 1000;
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
@@ -717,18 +860,24 @@ async function pasteImportGudangData(req, res) {
       console.warn('pasteImport local DB sync warning:', dbSyncErr.message);
     }
 
-    // 3. Find waybills still lacking goodsName
+    // 3. Find waybills still lacking goodsName, containing asterisks, or missing gateway info
     const [unenrichedRows] = await db.query(`
       SELECT waybill 
       FROM gudang_rute_inventory 
-      WHERE waybill IN (?) AND (nama_barang IS NULL OR nama_barang = '')
+      WHERE waybill IN (?) 
+        AND (
+          nama_barang IS NULL OR nama_barang = '' OR nama_barang = '-' OR
+          penerima LIKE '%*%' OR pengirim LIKE '%*%' OR alamat_penerima LIKE '%*%' OR
+          gw_tujuan IS NULL OR gw_tujuan = '' OR
+          holding_gw IS NULL OR holding_gw = '' OR holding_gw = '-'
+        )
     `, [waybills]);
 
     const remainingUnenriched = unenrichedRows.map(r => r.waybill);
     let jfsEnrichedCount = 0;
     let backgroundTriggered = false;
 
-    // 4. JFS OMS Auto-Enrichment if requested
+    // 4. JFS OMS Auto-Enrichment & Unmasking if requested
     if (autoEnrichJfs && remainingUnenriched.length > 0) {
       if (remainingUnenriched.length <= 100) {
         // Fast path: In-flight OMS query (completes in ~500ms - 1.2s for up to 50 resi)
@@ -762,10 +911,14 @@ async function pasteImportGudangData(req, res) {
             ).catch(() => null);
 
             const records = omsRes?.data?.records || [];
+
+            // UNMASK sender, receiver, and address via OMS detail (no asterisks!)
+            await unmaskAndEnrichOmsRecords(records, token);
+
             for (const r of records) {
               if (!r.waybillId) continue;
               const gName = r.goodsName || r.goodsTypeName || null;
-              if (gName) {
+              if (gName || (r.senderName && !r.senderName.includes('*')) || (r.receiverName && !r.receiverName.includes('*'))) {
                 await db.query(`
                   UPDATE gudang_rute_inventory
                   SET 
@@ -781,24 +934,26 @@ async function pasteImportGudangData(req, res) {
                     outlet_tujuan = COALESCE(NULLIF(outlet_tujuan, ''), ?),
                     outlet_akhir = COALESCE(NULLIF(outlet_akhir, ''), ?),
                     gw_asal = COALESCE(NULLIF(gw_asal, ''), ?),
+                    gw_tujuan = COALESCE(NULLIF(gw_tujuan, ''), ?),
                     tgl_buka = COALESCE(NULLIF(tgl_buka, ''), ?),
                     berat = CASE WHEN berat = 0 OR berat IS NULL THEN ? ELSE berat END,
                     volume = CASE WHEN volume = 0 OR volume IS NULL THEN ? ELSE volume END
                   WHERE waybill = ? OR waybill LIKE ?
                 `, [
                   gName,
-                  r.senderName || '',
+                  cleanPersonName(r.senderName || ''),
                   r.senderCompany || r.customerName || '',
                   r.senderMobilePhone || r.senderTelphone || '',
-                  r.receiverName || '',
+                  cleanPersonName(r.receiverName || ''),
                   r.receiverCompany || '',
                   r.receiverMobilePhone || r.receiverTelphone || '',
                   r.receiverDetailedAddress || '',
                   r.pickNetworkName || r.realPickNetworkName || '',
-                  r.dispatchNetworkCode || r.dispatchNetworkName || '',
-                  r.dispatchNetworkCode || '',
+                  r.dispatchNetworkCode || r.dispatchNetworkName || (r.terminalDispatchCode && r.terminalDispatchCode.includes('-') ? r.terminalDispatchCode.split('-')[1].trim() : ''),
+                  r.dispatchNetworkCode || (r.terminalDispatchCode && r.terminalDispatchCode.includes('-') ? r.terminalDispatchCode.split('-')[1].trim() : ''),
                   r.proxyAreaName ? ('GW-' + r.proxyAreaName) : '',
-                  r.inputTime || '',
+                  r.destinationDistributionName ? ('GW-' + r.destinationDistributionName.replace(/^GW-/, '')) : (r.terminalDispatchCode && r.terminalDispatchCode.includes('-') ? ('GW-' + r.terminalDispatchCode.split('-')[0].trim()) : ''),
+                  r.customerOrderTime || r.inputTime || '',
                   parseFloat(r.packageChargeWeight || r.packageTotalWeight || 0),
                   parseFloat(r.packateVolume || 0),
                   r.waybillId,
@@ -808,6 +963,33 @@ async function pasteImportGudangData(req, res) {
               }
             }
           }
+
+          // Safety check: ensure any waybill with missing holding_gw or 0 durasi is resolved via POD
+          try {
+            const [stillNeedPod] = await db.query(`
+              SELECT waybill FROM gudang_rute_inventory
+              WHERE waybill IN (?) AND (holding_gw IS NULL OR holding_gw = '' OR holding_gw = '-' OR durasi_jam = 0)
+            `, [waybills]);
+            if (stillNeedPod.length > 0) {
+              const podMap = await fetchBatchPodTracking(stillNeedPod.map(r => r.waybill), token);
+              for (const [wb, pod] of podMap.entries()) {
+                await db.query(`
+                  UPDATE gudang_rute_inventory
+                  SET 
+                    holding_gw = COALESCE(NULLIF(?, ''), holding_gw),
+                    status_simpan = COALESCE(NULLIF(?, ''), status_simpan),
+                    tanggal_simpan = COALESCE(NULLIF(?, ''), tanggal_simpan),
+                    durasi_jam = CASE WHEN durasi_jam = 0 THEN ? ELSE durasi_jam END,
+                    durasi_kategori = COALESCE(NULLIF(?, ''), durasi_kategori),
+                    outlet_asal = COALESCE(NULLIF(outlet_asal, ''), ?)
+                  WHERE waybill = ? OR waybill LIKE ?
+                `, [
+                  pod.holdingGw, pod.statusSimpan, pod.tanggalSimpan, pod.durasiJam, pod.durasiKategori, pod.outletAsal, wb, wb + '%'
+                ]);
+              }
+            }
+          } catch (_) {}
+
         } catch (omsErr) {
           console.warn('pasteImport in-flight OMS error:', omsErr.message);
         }
@@ -847,7 +1029,7 @@ async function pasteImportGudangData(req, res) {
     let previewRows = [];
     try {
       const [pRows] = await db.query(`
-        SELECT waybill, nama_barang, pengirim, penerima, berat, volume, holding_gw, status_simpan
+        SELECT waybill, nama_barang, pengirim, penerima, berat, volume, holding_gw, status_simpan, durasi_jam
         FROM gudang_rute_inventory
         WHERE waybill IN (?)
         LIMIT 100
@@ -1764,10 +1946,14 @@ function startBackgroundEnrichRunner(targetWaybills) {
             ).catch(() => null);
 
             const records = omsRes?.data?.records || [];
+
+            // UNMASK sender, receiver, and address via OMS detail (no asterisks!)
+            await unmaskAndEnrichOmsRecords(records, token);
+
             for (const r of records) {
               if (!r.waybillId) continue;
               const gName = r.goodsName || r.goodsTypeName || null;
-              if (gName) {
+              if (gName || (r.senderName && !r.senderName.includes('*')) || (r.receiverName && !r.receiverName.includes('*'))) {
                 await db.query(`
                   UPDATE gudang_rute_inventory
                   SET 
@@ -1783,24 +1969,26 @@ function startBackgroundEnrichRunner(targetWaybills) {
                     outlet_tujuan = COALESCE(NULLIF(outlet_tujuan, ''), ?),
                     outlet_akhir = COALESCE(NULLIF(outlet_akhir, ''), ?),
                     gw_asal = COALESCE(NULLIF(gw_asal, ''), ?),
+                    gw_tujuan = COALESCE(NULLIF(gw_tujuan, ''), ?),
                     tgl_buka = COALESCE(NULLIF(tgl_buka, ''), ?),
                     berat = CASE WHEN berat = 0 OR berat IS NULL THEN ? ELSE berat END,
                     volume = CASE WHEN volume = 0 OR volume IS NULL THEN ? ELSE volume END
                   WHERE waybill = ? OR waybill LIKE ?
                 `, [
                   gName,
-                  r.senderName || '',
+                  cleanPersonName(r.senderName || ''),
                   r.senderCompany || r.customerName || '',
                   r.senderMobilePhone || r.senderTelphone || '',
-                  r.receiverName || '',
+                  cleanPersonName(r.receiverName || ''),
                   r.receiverCompany || '',
                   r.receiverMobilePhone || r.receiverTelphone || '',
                   r.receiverDetailedAddress || '',
                   r.pickNetworkName || r.realPickNetworkName || '',
-                  r.dispatchNetworkCode || r.dispatchNetworkName || '',
-                  r.dispatchNetworkCode || '',
+                  r.dispatchNetworkCode || r.dispatchNetworkName || (r.terminalDispatchCode && r.terminalDispatchCode.includes('-') ? r.terminalDispatchCode.split('-')[1].trim() : ''),
+                  r.dispatchNetworkCode || (r.terminalDispatchCode && r.terminalDispatchCode.includes('-') ? r.terminalDispatchCode.split('-')[1].trim() : ''),
                   r.proxyAreaName ? ('GW-' + r.proxyAreaName) : '',
-                  r.inputTime || '',
+                  r.destinationDistributionName ? ('GW-' + r.destinationDistributionName.replace(/^GW-/, '')) : (r.terminalDispatchCode && r.terminalDispatchCode.includes('-') ? ('GW-' + r.terminalDispatchCode.split('-')[0].trim()) : ''),
+                  r.customerOrderTime || r.inputTime || '',
                   parseFloat(r.packageChargeWeight || r.packageTotalWeight || 0),
                   parseFloat(r.packateVolume || 0),
                   r.waybillId,
@@ -1809,6 +1997,32 @@ function startBackgroundEnrichRunner(targetWaybills) {
                 enrichedCount++;
               }
             }
+
+            // Also check if any in this chunk has missing holding_gw
+            try {
+              const [chunkNeedPod] = await db.query(`
+                SELECT waybill FROM gudang_rute_inventory
+                WHERE waybill IN (?) AND (holding_gw IS NULL OR holding_gw = '' OR holding_gw = '-' OR durasi_jam = 0)
+              `, [uniqueMainWbs]);
+              if (chunkNeedPod.length > 0) {
+                const podMap = await fetchBatchPodTracking(chunkNeedPod.map(w => w.waybill), token);
+                for (const [wb, pod] of podMap.entries()) {
+                  await db.query(`
+                    UPDATE gudang_rute_inventory
+                    SET 
+                      holding_gw = COALESCE(NULLIF(?, ''), holding_gw),
+                      status_simpan = COALESCE(NULLIF(?, ''), status_simpan),
+                      tanggal_simpan = COALESCE(NULLIF(?, ''), tanggal_simpan),
+                      durasi_jam = CASE WHEN durasi_jam = 0 THEN ? ELSE durasi_jam END,
+                      durasi_kategori = COALESCE(NULLIF(?, ''), durasi_kategori),
+                      outlet_asal = COALESCE(NULLIF(outlet_asal, ''), ?)
+                    WHERE waybill = ? OR waybill LIKE ?
+                  `, [
+                    pod.holdingGw, pod.statusSimpan, pod.tanggalSimpan, pod.durasiJam, pod.durasiKategori, pod.outletAsal, wb, wb + '%'
+                  ]);
+                }
+              }
+            } catch (_) {}
           } catch (batchErr) {
             console.warn('Batch OMS chunk warning:', batchErr.message);
           }
@@ -1880,11 +2094,11 @@ async function bulkEnrichWaybills(req, res) {
   if (Array.isArray(waybills) && waybills.length > 0) {
     targetWaybills = waybills.map(w => String(w).trim()).filter(Boolean);
   } else if (mode === 'all') {
-    // Mode ALL: Fetch up to 10,000 unenriched waybills in this session (can be run continuously)
+    // Mode ALL: Fetch up to 10,000 unenriched or masked waybills in this session
     const [rows] = await db.query(`
       SELECT waybill 
       FROM gudang_rute_inventory 
-      WHERE (nama_barang IS NULL OR nama_barang = '')
+      WHERE (nama_barang IS NULL OR nama_barang = '' OR penerima LIKE '%*%' OR pengirim LIKE '%*%')
       ORDER BY id ASC
       LIMIT 10000
     `);
@@ -1894,7 +2108,7 @@ async function bulkEnrichWaybills(req, res) {
     const [rows] = await db.query(`
       SELECT waybill 
       FROM gudang_rute_inventory 
-      WHERE (nama_barang IS NULL OR nama_barang = '')
+      WHERE (nama_barang IS NULL OR nama_barang = '' OR penerima LIKE '%*%' OR pengirim LIKE '%*%')
       ORDER BY id ASC
       LIMIT ?
     `, [parsedLimit]);

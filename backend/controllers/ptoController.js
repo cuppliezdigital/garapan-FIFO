@@ -1411,3 +1411,7 @@ exports.initPtoScheduler = initPtoScheduler;
 exports.makeJfsPtoRequest = makeJfsPtoRequest;
 exports.getPtoToken = getPtoToken;
 exports.getScanSiteCode = getScanSiteCode;
+exports.applyDetailToRecord = applyDetailToRecord;
+exports.autoPersistOrderDetail = autoPersistOrderDetail;
+exports.mapConcurrent = mapConcurrent;
+exports.detailCache = detailCache;

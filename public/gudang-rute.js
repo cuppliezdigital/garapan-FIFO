@@ -383,9 +383,10 @@ async function submitQuickPaste() {
           <td style="padding: 9px 12px;">
             ${r.nama_barang ? `<span style="color: #34d399; font-weight: 600;">● ${escapeHtml(r.nama_barang)}</span>` : `<span style="color: #64748b; font-style: italic;">Belum ada nama</span>`}
           </td>
-          <td style="padding: 9px 12px; color: #cbd5e1;">${escapeHtml(r.pengirim || '-')}</td>
-          <td style="padding: 9px 12px; color: #cbd5e1;">${escapeHtml(r.penerima || '-')}</td>
-          <td style="padding: 9px 12px; color: #94a3b8;">${escapeHtml(r.holding_gw || '-')}</td>
+          <td style="padding: 9px 12px; color: #cbd5e1; font-weight: 500;">${escapeHtml(r.pengirim || '-')}</td>
+          <td style="padding: 9px 12px; color: #cbd5e1; font-weight: 500;">${escapeHtml(r.penerima || '-')}</td>
+          <td style="padding: 9px 12px; color: #94a3b8; font-weight: 600;">${escapeHtml(r.holding_gw || '-')}</td>
+          <td style="padding: 9px 12px; text-align: center;"><span style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700; padding: 2px 7px; border-radius: 9999px; font-size: 0.74rem;">${parseFloat(r.durasi_jam || 0).toFixed(1)} Jam</span></td>
         </tr>
       `).join('');
     }
