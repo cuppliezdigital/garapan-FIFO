@@ -1411,12 +1411,53 @@ async function getPodTrace(req, res) {
       }
     }
 
-const payloadData = {
+    // Check if JFS session token has expired on J&T Cargo server
+    const isTokenExpired = Boolean(
+      (keywordListRes && keywordListRes.code === 401) ||
+      (dynamicRouteRes && dynamicRouteRes.code === 401) ||
+      (actualRouteRes && actualRouteRes.code === 401) ||
+      (keywordListRes && keywordListRes.msg && (keywordListRes.msg.includes('重新登录') || keywordListRes.msg.includes('401')))
+    );
+
+    // Fetch local waybill details from database as immediate fallback
+    let localInfo = null;
+    try {
+      const [localRows] = await db.query(`
+        SELECT 
+          g.waybill, g.holding_gw, g.rute, g.status_simpan, g.tanggal_simpan, g.tgl_tiba, g.tgl_buka,
+          g.outlet_asal, g.outlet_tujuan, g.gw_asal, g.gw_tujuan, g.berat, g.volume,
+          COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang) AS nama_barang,
+          COALESCE(NULLIF(g.pengirim, ''), p.pengirim) AS pengirim,
+          COALESCE(NULLIF(g.penerima, ''), p.penerima) AS penerima,
+          COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima) AS alamat_penerima
+        FROM gudang_rute_inventory g
+        LEFT JOIN pto_orders p ON g.waybill = p.waybill
+        WHERE g.waybill = ? OR g.waybill LIKE ?
+        LIMIT 1
+      `, [waybillNo, waybillNo + '%']);
+      localInfo = localRows[0] || null;
+    } catch (_) {}
+
+    // Fallback routes from local database if live API was blocked
+    if (!dynamicRouteString && localInfo) {
+      if (localInfo.gw_asal && localInfo.gw_tujuan) {
+        dynamicRouteString = `${localInfo.gw_asal} → ${localInfo.holding_gw || localInfo.gw_tujuan} → ${localInfo.outlet_tujuan || localInfo.gw_tujuan}`;
+      } else if (localInfo.rute) {
+        dynamicRouteString = localInfo.rute;
+      }
+    }
+    if (!plannedRouteString && localInfo?.rute) {
+      plannedRouteString = localInfo.rute;
+    }
+
+    const payloadData = {
       waybillNo,
+      tokenExpired: isTokenExpired,
+      localInfo,
       routes: {
-        dynamicRoute: dynamicRouteString || '-',
-        plannedRoute: plannedRouteString || '-',
-        actualRoute: actualRouteString || '-',
+        dynamicRoute: dynamicRouteString || localInfo?.rute || '-',
+        plannedRoute: plannedRouteString || localInfo?.rute || '-',
+        actualRoute: actualRouteString || (localInfo?.holding_gw ? `Saat ini di ${localInfo.holding_gw}` : '-'),
         returnRoute: returnRouteString || '-'
       },
       scans: scanItems,
@@ -1427,6 +1468,10 @@ const payloadData = {
 
     res.json({
       success: true,
+      tokenExpired: isTokenExpired,
+      message: isTokenExpired 
+        ? 'Sesi Token JFS telah kedaluwarsa (HTTP 401). Silakan perbarui Auth Token agar live 18-step scan POD dapat diambil dari J&T Cargo.' 
+        : 'Berhasil memuat jejak POD',
       data: payloadData,
       ...payloadData
     });

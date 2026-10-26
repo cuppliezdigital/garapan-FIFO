@@ -1016,7 +1016,46 @@ function renderPodTraceModal(d = {}) {
   if (retText) retText.textContent = d.routes?.returnRoute || '-';
 
   if (tbody) {
-    if (!d.scans || d.scans.length === 0) {
+    if (d.tokenExpired) {
+      const loc = d.localInfo || {};
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="padding: 24px 20px; text-align: center; background: rgba(239, 68, 68, 0.08); border-bottom: 1px solid rgba(239, 68, 68, 0.25);">
+            <div style="max-width: 650px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+              <div style="font-size: 2.2rem;">⚠️</div>
+              <div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #f87171;">Token Sesi JFS Kedaluwarsa (HTTP 401)</div>
+                <p style="margin: 6px 0 0; font-size: 0.82rem; color: #cbd5e1; line-height: 1.55;">
+                  Sesi login ke gateway J&amp;T Cargo telah kedaluwarsa dari pusat (<em>"页面长时间未操作，请重新登录系统"</em>).<br/>
+                  Silakan masukkan <strong>authtoken</strong> terbaru dari web JFS agar riwayat 18-step scan POD langsung tampil kembali!
+                </p>
+              </div>
+              <button type="button" class="btn btn-primary" onclick="promptUpdateJfsToken()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 8px 20px; border-radius: 8px; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45); font-size: 0.88rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span>🔑 Masukkan Token JFS Baru</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        ${loc.waybill ? `
+        <tr style="background: rgba(15, 23, 42, 0.7);">
+          <td colspan="8" style="padding: 16px 20px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span>📦 Data Status Terakhir Dari Database Lokal</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.82rem;">
+              <div><strong style="color: #94a3b8;">Posisi Gudang:</strong> <span style="color: #f8fafc;">${escapeHtml(loc.holding_gw || '-')}</span></div>
+              <div><strong style="color: #94a3b8;">Status Simpan:</strong> <span style="color: #34d399;">${escapeHtml(loc.status_simpan || '-')}</span></div>
+              <div><strong style="color: #94a3b8;">Rute:</strong> <span style="color: #f8fafc;">${escapeHtml(loc.rute || '-')}</span></div>
+              <div><strong style="color: #94a3b8;">Nama Barang:</strong> <span style="color: #fbbf24;">${escapeHtml(loc.nama_barang || '(Belum ter-enrich)')}</span></div>
+              <div><strong style="color: #94a3b8;">Pengirim:</strong> <span style="color: #cbd5e1;">${escapeHtml(loc.pengirim || '-')}</span></div>
+              <div><strong style="color: #94a3b8;">Penerima:</strong> <span style="color: #cbd5e1;">${escapeHtml(loc.penerima || '-')}</span></div>
+            </div>
+          </td>
+        </tr>
+        ` : ''}
+      `;
+    } else if (!d.scans || d.scans.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">
@@ -1031,10 +1070,10 @@ function renderPodTraceModal(d = {}) {
           <td style="padding: 10px 10px; font-family: monospace; color: #f8fafc; font-size: 0.78rem;">${escapeHtml(s.scanTime || '-')}</td>
           <td style="padding: 10px 10px; font-family: monospace; color: #94a3b8; font-size: 0.78rem;">${escapeHtml(s.uploadTime || '-')}</td>
           <td style="padding: 10px 12px; font-weight: 700; color: #38bdf8;">${escapeHtml(s.scanType || '-')}</td>
-          <td style="padding: 10px 8px; color: #cbd5e1;">${escapeHtml(s.scanCategory || '-')}</td>
+          <td style="padding: 10px 8px; color: #cbd5e1;">${escapeHtml(s.scanDeviceType || s.scanCategory || '-')}</td>
           <td style="padding: 10px 14px; color: #f1f5f9; line-height: 1.45; word-break: break-word;">${escapeHtml(s.scanDesc || '-')}</td>
-          <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #cbd5e1;">${s.weight ? Number(s.weight).toFixed(2) : '-'}</td>
-          <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #cbd5e1;">${s.volumeWeight ? Number(s.volumeWeight).toFixed(3) : '-'}</td>
+          <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #cbd5e1;">${s.weight !== undefined && s.weight !== null ? s.weight : '--'}</td>
+          <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #cbd5e1;">${s.volumeWeight !== undefined && s.volumeWeight !== null ? s.volumeWeight : '--'}</td>
         </tr>
       `).join('');
     }
@@ -1053,6 +1092,44 @@ function renderPodTraceModal(d = {}) {
       `).join('');
     }
   }
+}
+
+// Quick JFS Token Updater Prompt
+async function promptUpdateJfsToken() {
+  const input = prompt(
+    'Token autentikasi JFS dari J&T Cargo sudah kedaluwarsa.\n\n' +
+    'Silakan masukkan authtoken JFS yang baru:\n' +
+    '(Buka web JFS di Chrome -> F12 -> Tab Network -> Cari request apa saja -> Copy nilai header "authtoken")',
+    ''
+  );
+  if (!input || !input.trim()) return;
+
+  const cleanToken = input.trim();
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/pto/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ authtoken: cleanToken })
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      alert('Gagal memperbarui token: ' + (json.error || 'Terjadi kesalahan'));
+      return;
+    }
+
+    alert('✔ Token JFS berhasil diperbarui! Memuat ulang pelacakan POD...');
+    if (gudangState.activeTraceWaybill) {
+      openPodTraceModal(gudangState.activeTraceWaybill);
+    }
+  } catch (err) {
+    alert('Error saat menyimpan token: ' + err.message);
+  }
+}
 }
 
 function closePodModal() {
@@ -1474,3 +1551,4 @@ window.applyGudangAutoSearch = applyGudangAutoSearch;
 window.handleColumnSearch = handleColumnSearch;
 window.applyColumnFilters = applyColumnFilters;
 window.clearAllColumnFilters = clearAllColumnFilters;
+window.promptUpdateJfsToken = promptUpdateJfsToken;
