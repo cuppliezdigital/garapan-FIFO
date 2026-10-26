@@ -1132,7 +1132,6 @@ async function promptUpdateJfsToken() {
     alert('Error saat menyimpan token: ' + err.message);
   }
 }
-}
 
 function closePodModal() {
   const modal = document.getElementById('modalPodTraceGudang');
@@ -1554,3 +1553,7 @@ window.handleColumnSearch = handleColumnSearch;
 window.applyColumnFilters = applyColumnFilters;
 window.clearAllColumnFilters = clearAllColumnFilters;
 window.promptUpdateJfsToken = promptUpdateJfsToken;
+window.openEnrichOptionsModal = openEnrichOptionsModal;
+window.closeEnrichModal = closeEnrichModal;
+window.startEnrichByMode = startEnrichByMode;
+window.stopBulkEnrich = stopBulkEnrich;
