@@ -82,6 +82,8 @@ function openQuickPasteModal() {
   if (!modal) return;
   modal.style.display = 'flex';
 
+  resetQuickPasteToInput();
+
   const batchInput = document.getElementById('quickPasteBatchTime');
   if (batchInput && !batchInput.value) {
     const now = new Date();
@@ -94,6 +96,43 @@ function openQuickPasteModal() {
     textarea.focus();
     onQuickPasteInput();
   }
+}
+
+let latestPastedWaybills = [];
+
+function resetQuickPasteToInput() {
+  const formSection = document.getElementById('quickPasteFormContainer');
+  const progSection = document.getElementById('quickPasteProgressContainer');
+  const textarea = document.getElementById('quickPasteTextarea');
+  const btn = document.getElementById('btnSubmitQuickPaste');
+  const btnText = document.getElementById('btnSubmitQuickPasteText');
+
+  if (formSection) formSection.style.display = 'flex';
+  if (progSection) progSection.style.display = 'none';
+  if (btn) btn.disabled = false;
+  if (btnText) btnText.textContent = '🚀 Simpan & Auto-Enrich Sekarang';
+
+  if (textarea) {
+    textarea.value = '';
+    onQuickPasteInput();
+    textarea.focus();
+  }
+}
+
+async function viewPastedInMainTable() {
+  closeQuickPasteModal();
+  if (!latestPastedWaybills || latestPastedWaybills.length === 0) return;
+
+  // Set the waybill search input in the table header to the pasted waybills
+  const searchInput = document.getElementById('colSearchWaybill');
+  if (searchInput) {
+    searchInput.value = latestPastedWaybills.join(', ');
+  }
+  gudangState.col_waybill = latestPastedWaybills.join(', ');
+  gudangState.page = 1;
+
+  showGudangToast(`🔍 Menampilkan ${latestPastedWaybills.length.toLocaleString('id-ID')} waybill yang baru ditempel di tabel.`);
+  await fetchGudangInventory();
 }
 
 function closeQuickPasteModal() {
@@ -271,6 +310,13 @@ async function submitQuickPaste() {
   const btn = document.getElementById('btnSubmitQuickPaste');
   const btnText = document.getElementById('btnSubmitQuickPasteText');
 
+  const formSection = document.getElementById('quickPasteFormContainer');
+  const progSection = document.getElementById('quickPasteProgressContainer');
+  const liveRunning = document.getElementById('quickPasteLiveRunning');
+  const liveDone = document.getElementById('quickPasteLiveDone');
+  const liveTitle = document.getElementById('quickPasteLiveStepTitle');
+  const liveDesc = document.getElementById('quickPasteLiveStepDesc');
+
   const rawText = textarea ? textarea.value.trim() : '';
   if (!rawText) {
     alert('Silakan tempel (Ctrl + V) data tabel waybill terlebih dahulu.');
@@ -282,8 +328,14 @@ async function submitQuickPaste() {
   const autoEnrichJfs = chkAutoEnrich ? chkAutoEnrich.checked : true;
   const importMode = importModeSelect ? importModeSelect.value : 'all';
 
-  if (btn) btn.disabled = true;
-  if (btnText) btnText.textContent = '⏳ Menyimpan & Meng-enrich...';
+  // Transition to Live Progress View inside modal
+  if (formSection) formSection.style.display = 'none';
+  if (progSection) progSection.style.display = 'flex';
+  if (liveRunning) liveRunning.style.display = 'flex';
+  if (liveDone) liveDone.style.display = 'none';
+
+  if (liveTitle) liveTitle.textContent = 'Menyimpan & Menarik Rincian Produk...';
+  if (liveDesc) liveDesc.textContent = 'Menyimpan data inventaris dan menghubungi JFS OMS untuk auto-enrich nama barang...';
 
   try {
     const token = localStorage.getItem('token');
@@ -299,12 +351,46 @@ async function submitQuickPaste() {
     const json = await res.json();
     if (!res.ok || !json.success) {
       alert(json.message || 'Gagal memproses data tempel.');
+      resetQuickPasteToInput();
       return;
     }
 
-    closeQuickPasteModal();
-    if (textarea) textarea.value = '';
+    latestPastedWaybills = json.pastedWaybills || [];
 
+    // Switch to Completed Preview View
+    if (liveRunning) liveRunning.style.display = 'none';
+    if (liveDone) liveDone.style.display = 'flex';
+
+    // Update Result Summary
+    const elSummary = document.getElementById('quickPasteResultSummary');
+    if (elSummary) {
+      elSummary.textContent = `${(json.importedCount || 0).toLocaleString('id-ID')} waybill berhasil disimpan (${(json.totalEnriched || 0).toLocaleString('id-ID')} langsung ter-enrich nama barang & toko).`;
+    }
+
+    // Update Count badge
+    const elCount = document.getElementById('quickPastePreviewCount');
+    if (elCount) {
+      elCount.textContent = `${(json.previewRows?.length || 0).toLocaleString('id-ID')} waybill ditampilkan`;
+    }
+
+    // Render Preview Table
+    const tbody = document.getElementById('quickPastePreviewTbody');
+    if (tbody && json.previewRows) {
+      tbody.innerHTML = json.previewRows.map((r, idx) => `
+        <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+          <td style="padding: 9px 12px; color: #94a3b8; text-align: center;">${idx + 1}</td>
+          <td style="padding: 9px 12px; font-family: monospace; font-weight: 700; color: #38bdf8;">${escapeHtml(r.waybill)}</td>
+          <td style="padding: 9px 12px;">
+            ${r.nama_barang ? `<span style="color: #34d399; font-weight: 600;">● ${escapeHtml(r.nama_barang)}</span>` : `<span style="color: #64748b; font-style: italic;">Belum ada nama</span>`}
+          </td>
+          <td style="padding: 9px 12px; color: #cbd5e1;">${escapeHtml(r.pengirim || '-')}</td>
+          <td style="padding: 9px 12px; color: #cbd5e1;">${escapeHtml(r.penerima || '-')}</td>
+          <td style="padding: 9px 12px; color: #94a3b8;">${escapeHtml(r.holding_gw || '-')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Toast notification
     if (json.skippedExisting) {
       showGudangToast(`ℹ Info: ${json.message}`);
     } else if (json.importMode === 'only_new') {
@@ -318,15 +404,12 @@ async function submitQuickPaste() {
       startEnrichStatusPolling();
     }
 
-    // Refresh inventory and stats
-    await fetchGudangFileInfo();
-    await fetchGudangInventory();
+    // Refresh background inventory
+    fetchGudangFileInfo();
 
   } catch (err) {
     alert('Terjadi kesalahan saat memproses data: ' + err.message);
-  } finally {
-    if (btn) btn.disabled = false;
-    if (btnText) btnText.textContent = '🚀 Simpan & Auto-Enrich Sekarang';
+    resetQuickPasteToInput();
   }
 }
 
@@ -1659,3 +1742,5 @@ window.closeEnrichModal = closeEnrichModal;
 window.startEnrichByMode = startEnrichByMode;
 window.stopBulkEnrich = stopBulkEnrich;
 window.toggleExistingListDropdown = toggleExistingListDropdown;
+window.viewPastedInMainTable = viewPastedInMainTable;
+window.resetQuickPasteToInput = resetQuickPasteToInput;

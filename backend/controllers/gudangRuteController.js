@@ -810,6 +810,18 @@ async function pasteImportGudangData(req, res) {
       cachedGlobalStats.totalEnriched += (localEnrichedCount + jfsEnrichedCount);
     }
 
+    // Fetch preview rows of the pasted waybills
+    let previewRows = [];
+    try {
+      const [pRows] = await db.query(`
+        SELECT waybill, nama_barang, pengirim, penerima, berat, volume, holding_gw, status_simpan
+        FROM gudang_rute_inventory
+        WHERE waybill IN (?)
+        LIMIT 100
+      `, [waybills.slice(0, 100)]);
+      previewRows = pRows || [];
+    } catch (_) {}
+
     res.json({
       success: true,
       message: importMode === 'only_new'
@@ -825,7 +837,9 @@ async function pasteImportGudangData(req, res) {
       totalEnriched: localEnrichedCount + jfsEnrichedCount,
       backgroundTriggered,
       remainingUnenriched: remainingUnenriched.length - jfsEnrichedCount,
-      batchTime
+      batchTime,
+      previewRows,
+      pastedWaybills: waybills
     });
 
   } catch (error) {

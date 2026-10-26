@@ -535,79 +535,137 @@
     </div>
 
     <!-- MODAL BODY -->
-    <div style="padding: 20px 26px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1;">
-      <!-- REAL-TIME STATUS BAR WITH AUTO-DETECT -->
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <!-- Badge Total -->
-          <span id="quickPasteStatusBadge" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; padding: 6px 14px; border-radius: 7px; background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2);">
-            <span id="quickPasteStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
-            <span id="quickPasteStatusText">0 baris waybill terdeteksi</span>
-          </span>
+    <div id="quickPasteFormContainer" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+      <div style="padding: 20px 26px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1;">
+        <!-- REAL-TIME STATUS BAR WITH AUTO-DETECT -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <!-- Badge Total -->
+            <span id="quickPasteStatusBadge" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; padding: 6px 14px; border-radius: 7px; background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2);">
+              <span id="quickPasteStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
+              <span id="quickPasteStatusText">0 baris waybill terdeteksi</span>
+            </span>
 
-          <!-- Badge Resi Baru (Green) -->
-          <span id="badgeQuickPasteNew" style="display: none; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; padding: 6px 12px; border-radius: 7px; background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.35);">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-            <span id="textQuickPasteNew">0 Resi Baru</span>
-          </span>
+            <!-- Badge Resi Baru (Green) -->
+            <span id="badgeQuickPasteNew" style="display: none; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; padding: 6px 12px; border-radius: 7px; background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.35);">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+              <span id="textQuickPasteNew">0 Resi Baru</span>
+            </span>
 
-          <!-- Badge Resi Sudah Ada (Amber) -->
-          <span id="badgeQuickPasteExisting" onclick="toggleExistingListDropdown()" style="display: none; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; padding: 6px 12px; border-radius: 7px; background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); cursor: pointer;" title="Klik untuk lihat rincian nomor resi yang sudah ada">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
-            <span id="textQuickPasteExisting">0 Sudah Ada di DB</span>
-            <span style="font-size: 0.72rem; text-decoration: underline; margin-left: 3px;">(Lihat)</span>
-          </span>
+            <!-- Badge Resi Sudah Ada (Amber) -->
+            <span id="badgeQuickPasteExisting" onclick="toggleExistingListDropdown()" style="display: none; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; padding: 6px 12px; border-radius: 7px; background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); cursor: pointer;" title="Klik untuk lihat rincian nomor resi yang sudah ada">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+              <span id="textQuickPasteExisting">0 Sudah Ada di DB</span>
+              <span style="font-size: 0.72rem; text-decoration: underline; margin-left: 3px;">(Lihat)</span>
+            </span>
+          </div>
+
+          <button type="button" class="btn btn-secondary btn-sm" onclick="clearQuickPasteText()" style="padding: 5px 12px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Bersihkan Kolom</span>
+          </button>
         </div>
 
-        <button type="button" class="btn btn-secondary btn-sm" onclick="clearQuickPasteText()" style="padding: 5px 12px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 6px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          <span>Bersihkan Kolom</span>
+        <!-- POPUP / DRAWER RINCIAN RESI SUDAH ADA -->
+        <div id="drawerExistingWaybills" style="display: none; padding: 12px 16px; border-radius: 10px; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(245, 158, 11, 0.45); max-height: 150px; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: #fbbf24;">🔍 Resi yang Sudah Pernah Ada di Database (Akan diperbarui / dilewati sesuai mode):</span>
+            <button type="button" onclick="toggleExistingListDropdown()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.78rem;">✕ Tutup</button>
+          </div>
+          <div id="listExistingWaybillsContent" style="display: flex; flex-wrap: wrap; gap: 6px; font-family: monospace; font-size: 0.78rem; color: #cbd5e1;"></div>
+        </div>
+
+        <!-- TEXTAREA (EXTRA WIDE WITH HORIZONTAL TABULAR SCROLL) -->
+        <div style="position: relative; flex: 1;">
+          <textarea id="quickPasteTextarea" oninput="onQuickPasteInput()" placeholder="Tempel (Ctrl + V) data tabel dari Feishu / Excel di sini...&#10;&#10;Contoh format tabel (19 kolom standar):&#10;100003200438015  2026-10-26 15:11:10  JBR021B  dalam perjalanan  327.00  1.000  tidak  2026-10-24 15:58:06 ...&#10;&#10;*Bisa juga langsung tempel nomor waybill saja (1 nomor per baris)!" style="width: 100%; height: 380px; min-height: 260px; padding: 14px 16px; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.82rem; line-height: 1.6; background: #060b14; color: #f1f5f9; border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 10px; resize: vertical; box-sizing: border-box; outline: none; white-space: pre; overflow-x: auto; tab-size: 8; -moz-tab-size: 8;"></textarea>
+        </div>
+
+        <!-- OPTIONS ROW -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: center; background: rgba(30, 41, 59, 0.45); padding: 14px 18px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.16); flex-shrink: 0;">
+          <div>
+            <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Pilihan Simpan (Mode Impor)</label>
+            <select id="quickPasteImportMode" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; border-radius: 6px; border: 1px solid rgba(52, 211, 153, 0.4); background: #0b1220; color: #f8fafc; outline: none; font-weight: 600;">
+              <option value="all">⚡ Simpan Semua (Resi Baru Masuk, Resi Lama Di-refresh Statusnya)</option>
+              <option value="only_new">🟢 Hanya Resi Baru Saja (Lewati Resi yang Sudah Ada)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Waktu Batch / Keterangan Simpan</label>
+            <input type="text" id="quickPasteBatchTime" placeholder="Contoh: 2026-10-26 16:00" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.3); background: #0b1220; color: #f8fafc;" />
+          </div>
+          <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 600; color: #34d399; cursor: pointer;">
+              <input type="checkbox" id="chkQuickPasteAutoEnrich" checked style="accent-color: #10b981; width: 17px; height: 17px;" />
+              <span>⚡ Langsung Auto-Enrich Nama Barang</span>
+            </label>
+            <span style="font-size: 0.74rem; color: #94a3b8; margin-left: 25px;">Sinkron PTO lokal + monitoring stuck + tarik JFS OMS.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL FOOTER -->
+      <div style="padding: 16px 26px; background: #0f172a; border-top: 1px solid rgba(148, 163, 184, 0.16); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <button type="button" class="btn btn-secondary" onclick="closeQuickPasteModal()" style="padding: 8px 20px; font-weight: 600;">Batal</button>
+        <button type="button" class="btn btn-primary" id="btnSubmitQuickPaste" onclick="submitQuickPaste()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 10px 26px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45); font-size: 0.92rem;">
+          <span id="btnSubmitQuickPasteText">🚀 Simpan &amp; Auto-Enrich Sekarang</span>
         </button>
-      </div>
-
-      <!-- POPUP / DRAWER RINCIAN RESI SUDAH ADA -->
-      <div id="drawerExistingWaybills" style="display: none; padding: 12px 16px; border-radius: 10px; background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(245, 158, 11, 0.45); max-height: 150px; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span style="font-size: 0.8rem; font-weight: 700; color: #fbbf24;">🔍 Resi yang Sudah Pernah Ada di Database (Akan diperbarui / dilewati sesuai mode):</span>
-          <button type="button" onclick="toggleExistingListDropdown()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.78rem;">✕ Tutup</button>
-        </div>
-        <div id="listExistingWaybillsContent" style="display: flex; flex-wrap: wrap; gap: 6px; font-family: monospace; font-size: 0.78rem; color: #cbd5e1;"></div>
-      </div>
-
-      <!-- TEXTAREA (EXTRA WIDE WITH HORIZONTAL TABULAR SCROLL) -->
-      <div style="position: relative; flex: 1;">
-        <textarea id="quickPasteTextarea" oninput="onQuickPasteInput()" placeholder="Tempel (Ctrl + V) data tabel dari Feishu / Excel di sini...&#10;&#10;Contoh format tabel (19 kolom standar):&#10;100003200438015  2026-10-26 15:11:10  JBR021B  dalam perjalanan  327.00  1.000  tidak  2026-10-24 15:58:06 ...&#10;&#10;*Bisa juga langsung tempel nomor waybill saja (1 nomor per baris)!" style="width: 100%; height: 380px; min-height: 260px; padding: 14px 16px; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.82rem; line-height: 1.6; background: #060b14; color: #f1f5f9; border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 10px; resize: vertical; box-sizing: border-box; outline: none; white-space: pre; overflow-x: auto; tab-size: 8; -moz-tab-size: 8;"></textarea>
-      </div>
-
-      <!-- OPTIONS ROW -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: center; background: rgba(30, 41, 59, 0.45); padding: 14px 18px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.16); flex-shrink: 0;">
-        <div>
-          <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Pilihan Simpan (Mode Impor)</label>
-          <select id="quickPasteImportMode" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; border-radius: 6px; border: 1px solid rgba(52, 211, 153, 0.4); background: #0b1220; color: #f8fafc; outline: none; font-weight: 600;">
-            <option value="all">⚡ Simpan Semua (Resi Baru Masuk, Resi Lama Di-refresh Statusnya)</option>
-            <option value="only_new">🟢 Hanya Resi Baru Saja (Lewati Resi yang Sudah Ada)</option>
-          </select>
-        </div>
-        <div>
-          <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Waktu Batch / Keterangan Simpan</label>
-          <input type="text" id="quickPasteBatchTime" placeholder="Contoh: 2026-10-26 16:00" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.3); background: #0b1220; color: #f8fafc;" />
-        </div>
-        <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 600; color: #34d399; cursor: pointer;">
-            <input type="checkbox" id="chkQuickPasteAutoEnrich" checked style="accent-color: #10b981; width: 17px; height: 17px;" />
-            <span>⚡ Langsung Auto-Enrich Nama Barang</span>
-          </label>
-          <span style="font-size: 0.74rem; color: #94a3b8; margin-left: 25px;">Sinkron PTO lokal + monitoring stuck + tarik JFS OMS.</span>
-        </div>
       </div>
     </div>
 
-    <!-- MODAL FOOTER -->
-    <div style="padding: 16px 26px; background: #0f172a; border-top: 1px solid rgba(148, 163, 184, 0.16); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-      <button type="button" class="btn btn-secondary" onclick="closeQuickPasteModal()" style="padding: 8px 20px; font-weight: 600;">Batal</button>
-      <button type="button" class="btn btn-primary" id="btnSubmitQuickPaste" onclick="submitQuickPaste()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 10px 26px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45); font-size: 0.92rem;">
-        <span id="btnSubmitQuickPasteText">🚀 Simpan &amp; Auto-Enrich Sekarang</span>
-      </button>
+    <!-- PROGRESS & RESULT PREVIEW SECTION -->
+    <div id="quickPasteProgressContainer" style="display: none; padding: 24px 26px; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1;">
+      <!-- LIVE RUNNING STATE -->
+      <div id="quickPasteLiveRunning" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 60px 20px;">
+        <div class="spinner-small" style="width: 48px; height: 48px; border: 4px solid #10b981; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <div style="text-align: center;">
+          <h4 style="margin: 0; font-size: 1.2rem; color: #f8fafc; font-weight: 700;" id="quickPasteLiveStepTitle">Menyimpan &amp; Menarik Nama Barang...</h4>
+          <p style="margin: 8px 0 0; font-size: 0.85rem; color: #94a3b8;" id="quickPasteLiveStepDesc">Menghubungkan JFS OMS &amp; database PTO lokal...</p>
+        </div>
+      </div>
+
+      <!-- COMPLETED RESULT WITH PREVIEW TABLE -->
+      <div id="quickPasteLiveDone" style="display: none; flex-direction: column; gap: 14px;">
+        <!-- RESULT STATS HEADER -->
+        <div style="padding: 16px 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.12)); border: 1px solid rgba(52, 211, 153, 0.4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h4 style="margin: 0; font-size: 1.05rem; color: #34d399; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <span>🎉 Proses Impor &amp; Auto-Enrich Berhasil!</span>
+            </h4>
+            <p style="margin: 4px 0 0; font-size: 0.82rem; color: #cbd5e1;" id="quickPasteResultSummary">Semua waybill berhasil disimpan dan ditarik rincian nama barangnya.</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-primary" onclick="viewPastedInMainTable()" style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid rgba(56, 189, 248, 0.4); padding: 9px 20px; border-radius: 8px; font-size: 0.88rem; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
+              <span>👀 Lihat di Tabel Utama (Auto-Filter)</span>
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="resetQuickPasteToInput()" style="padding: 9px 16px; border-radius: 8px; font-size: 0.84rem;">
+              <span>📋 Tempel Data Lainnya</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- PREVIEW TABLE CARD -->
+        <div style="border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.2); overflow: hidden; background: #060b14;">
+          <div style="padding: 12px 16px; background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid rgba(148, 163, 184, 0.15); font-size: 0.82rem; font-weight: 700; color: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <span>Pratinjau Rincian Nama Produk &amp; Toko:</span>
+            <span id="quickPastePreviewCount" style="color: #34d399; font-family: monospace; font-size: 0.85rem;">0 waybill</span>
+          </div>
+          <div style="max-height: 320px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
+              <thead>
+                <tr style="background: rgba(30, 41, 59, 0.6); color: #94a3b8; font-size: 0.74rem; text-transform: uppercase;">
+                  <th style="padding: 9px 12px; width: 45px; text-align: center;">No</th>
+                  <th style="padding: 9px 12px; min-width: 140px;">No Waybill</th>
+                  <th style="padding: 9px 12px; min-width: 180px;">⭐ Nama Barang</th>
+                  <th style="padding: 9px 12px; min-width: 130px;">Pengirim</th>
+                  <th style="padding: 9px 12px; min-width: 130px;">Penerima</th>
+                  <th style="padding: 9px 12px; min-width: 120px;">Gudang Saat Ini</th>
+                </tr>
+              </thead>
+              <tbody id="quickPastePreviewTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
