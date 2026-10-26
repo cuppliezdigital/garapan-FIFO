@@ -660,39 +660,58 @@ async function pasteImportGudangData(req, res) {
       cachedGlobalStats.totalRows += records.length;
     }
 
-    // 2. Instant Local DB Sync (PTO + Monitoring Stuck) for these waybills
+    // 2. Fast Instant Local DB Sync (PTO + Monitoring Stuck) for these waybills
     let localEnrichedCount = 0;
     try {
-      const CHUNK_SIZE = 5000;
+      const CHUNK_SIZE = 1000;
       for (let i = 0; i < waybills.length; i += CHUNK_SIZE) {
         const wbChunk = waybills.slice(i, i + CHUNK_SIZE);
 
-        const [resPto] = await db.query(`
-          UPDATE gudang_rute_inventory g
-          JOIN pto_orders p ON (g.waybill = p.waybill OR g.waybill LIKE CONCAT(p.waybill, '%'))
-          SET 
-            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), p.nama_barang),
-            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), p.pengirim),
-            g.perusahaan_pengirim = COALESCE(NULLIF(g.perusahaan_pengirim, ''), p.perusahaan_pengirim),
-            g.no_hp_pengirim = COALESCE(NULLIF(g.no_hp_pengirim, ''), p.nomor_ponsel_pengirim),
-            g.penerima = COALESCE(NULLIF(g.penerima, ''), p.penerima),
-            g.perusahaan_penerima = COALESCE(NULLIF(g.perusahaan_penerima, ''), p.perusahaan_penerima_paket),
-            g.no_hp_penerima = COALESCE(NULLIF(g.no_hp_penerima, ''), p.nomor_handphone_penerima),
-            g.alamat_penerima = COALESCE(NULLIF(g.alamat_penerima, ''), p.alamat_lengkap_penerima)
-          WHERE g.waybill IN (?) AND (g.nama_barang IS NULL OR g.nama_barang = '')
+        // Fast index query on PTO orders (<5ms)
+        const [ptoMatches] = await db.query(`
+          SELECT waybill, nama_barang, pengirim, perusahaan_pengirim, nomor_ponsel_pengirim, penerima, perusahaan_penerima_paket, nomor_handphone_penerima, alamat_lengkap_penerima
+          FROM pto_orders
+          WHERE waybill IN (?) AND nama_barang IS NOT NULL AND nama_barang != ''
         `, [wbChunk]);
 
-        const [resStuck] = await db.query(`
-          UPDATE gudang_rute_inventory g
-          JOIN monitoring_stuck m ON (g.waybill = m.waybill COLLATE utf8mb4_unicode_ci OR g.waybill LIKE CONCAT(m.waybill COLLATE utf8mb4_unicode_ci, '%'))
-          SET 
-            g.nama_barang = COALESCE(NULLIF(g.nama_barang, ''), m.nama_barang),
-            g.pengirim = COALESCE(NULLIF(g.pengirim, ''), m.client_name)
-          WHERE g.waybill IN (?) AND (g.nama_barang IS NULL OR g.nama_barang = '') 
-            AND (m.nama_barang IS NOT NULL AND m.nama_barang != '')
+        for (const p of ptoMatches) {
+          const [uRes] = await db.query(`
+            UPDATE gudang_rute_inventory
+            SET 
+              nama_barang = COALESCE(NULLIF(nama_barang, ''), ?),
+              pengirim = COALESCE(NULLIF(pengirim, ''), ?),
+              perusahaan_pengirim = COALESCE(NULLIF(perusahaan_pengirim, ''), ?),
+              no_hp_pengirim = COALESCE(NULLIF(no_hp_pengirim, ''), ?),
+              penerima = COALESCE(NULLIF(penerima, ''), ?),
+              perusahaan_penerima = COALESCE(NULLIF(perusahaan_penerima, ''), ?),
+              no_hp_penerima = COALESCE(NULLIF(no_hp_penerima, ''), ?),
+              alamat_penerima = COALESCE(NULLIF(alamat_penerima, ''), ?)
+            WHERE waybill = ? AND (nama_barang IS NULL OR nama_barang = '')
+          `, [
+            p.nama_barang, p.pengirim, p.perusahaan_pengirim, p.nomor_ponsel_pengirim,
+            p.penerima, p.perusahaan_penerima_paket, p.nomor_handphone_penerima, p.alamat_lengkap_penerima,
+            p.waybill
+          ]);
+          localEnrichedCount += (uRes?.affectedRows || 0);
+        }
+
+        // Fast index query on Monitoring Stuck (<5ms)
+        const [stuckMatches] = await db.query(`
+          SELECT waybill, nama_barang, client_name
+          FROM monitoring_stuck
+          WHERE waybill IN (?) AND nama_barang IS NOT NULL AND nama_barang != ''
         `, [wbChunk]);
 
-        localEnrichedCount += (resPto?.affectedRows || 0) + (resStuck?.affectedRows || 0);
+        for (const m of stuckMatches) {
+          const [uRes] = await db.query(`
+            UPDATE gudang_rute_inventory
+            SET 
+              nama_barang = COALESCE(NULLIF(nama_barang, ''), ?),
+              pengirim = COALESCE(NULLIF(pengirim, ''), ?)
+            WHERE waybill = ? AND (nama_barang IS NULL OR nama_barang = '')
+          `, [m.nama_barang, m.client_name, m.waybill]);
+          localEnrichedCount += (uRes?.affectedRows || 0);
+        }
       }
     } catch (dbSyncErr) {
       console.warn('pasteImport local DB sync warning:', dbSyncErr.message);
@@ -711,7 +730,7 @@ async function pasteImportGudangData(req, res) {
 
     // 4. JFS OMS Auto-Enrichment if requested
     if (autoEnrichJfs && remainingUnenriched.length > 0) {
-      if (remainingUnenriched.length <= 50) {
+      if (remainingUnenriched.length <= 100) {
         // Fast path: In-flight OMS query (completes in ~500ms - 1.2s for up to 50 resi)
         try {
           const token = await ptoController.getPtoToken();
