@@ -38,11 +38,13 @@ let gudangState = {
 let gudangSearchDebounceTimer = null;
 let gudangFetchAbortController = null;
 
-// 1. Initial Dashboard Load
+// 1. Initial Dashboard Load (Fast parallel dispatch)
 async function loadGudangRuteDashboard() {
-  await fetchGudangFileInfo();
   checkGudangImportStatus(false);
-  await fetchGudangInventory();
+  await Promise.all([
+    fetchGudangFileInfo(),
+    fetchGudangInventory()
+  ]);
 }
 
 // 2. Fetch File Info & Sync Status
