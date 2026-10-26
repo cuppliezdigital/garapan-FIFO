@@ -4290,13 +4290,88 @@
 
     <!-- PROGRESS & RESULT PREVIEW SECTION -->
     <div id="quickPasteProgressContainer" style="display: none; padding: 24px 26px; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1;">
-      <!-- LIVE RUNNING STATE -->
-      <div id="quickPasteLiveRunning" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 60px 20px;">
-        <div class="spinner-small" style="width: 48px; height: 48px; border: 4px solid #10b981; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-        <div style="text-align: center;">
-          <h4 style="margin: 0; font-size: 1.2rem; color: #f8fafc; font-weight: 700;" id="quickPasteLiveStepTitle">Menyimpan &amp; Menarik Nama Barang...</h4>
-          <p style="margin: 8px 0 0; font-size: 0.85rem; color: #94a3b8;" id="quickPasteLiveStepDesc">Menghubungkan JFS OMS &amp; database PTO lokal...</p>
+      <!-- LIVE RUNNING STATE (ENHANCED PROGRESS & STEPS) -->
+      <div id="quickPasteLiveRunning" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 28px 16px; max-width: 640px; margin: 0 auto; width: 100%;">
+        
+        <!-- Live Header Badge & Timer -->
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 18px; border-radius: 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.25);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse 1.5s infinite;"></span>
+            <span id="quickPasteLiveWbCountBadge" style="font-weight: 700; color: #f8fafc; font-size: 0.9rem;">Memproses Data Resi...</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-family: monospace; font-size: 0.88rem; color: #38bdf8; font-weight: 700; background: rgba(2, 132, 199, 0.15); padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+            <span>⏱</span>
+            <span id="quickPasteLiveTimer">0.0s</span>
+          </div>
         </div>
+
+        <!-- Big Neon Progress Bar with Percentage -->
+        <div style="width: 100%;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span id="quickPasteLiveCurrentTask" style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600;">Memulai proses...</span>
+            <span id="quickPasteLivePercent" style="font-family: monospace; font-size: 0.95rem; color: #34d399; font-weight: 800;">15%</span>
+          </div>
+          <div style="width: 100%; height: 12px; background: rgba(30, 41, 59, 0.9); border-radius: 9999px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);">
+            <div id="quickPasteProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #10b981, #06b6d4, #3b82f6); border-radius: 9999px; transition: width 0.35s ease; box-shadow: 0 0 14px rgba(16, 185, 129, 0.7);"></div>
+          </div>
+        </div>
+
+        <!-- 4 Step Interactive Status Cards -->
+        <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+          <!-- Step 1 -->
+          <div id="qpStep1" style="display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); transition: all 0.3s ease;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="qpStep1Icon" style="font-size: 1.1rem;">⏳</span>
+              <div>
+                <strong style="color: #f8fafc; font-size: 0.86rem; display: block;">Langkah 1: Validasi &amp; Simpan Waybill</strong>
+                <span style="color: #94a3b8; font-size: 0.76rem;">Menyimpan struktur resi ke database internal</span>
+              </div>
+            </div>
+            <span id="qpStep1Status" style="font-size: 0.76rem; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 3px 9px; border-radius: 6px;">Sedang Berjalan</span>
+          </div>
+
+          <!-- Step 2 -->
+          <div id="qpStep2" style="display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); opacity: 0.6; transition: all 0.3s ease;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="qpStep2Icon" style="font-size: 1.1rem;">⚪</span>
+              <div>
+                <strong style="color: #f8fafc; font-size: 0.86rem; display: block;">Langkah 2: Sinkronisasi Scan POD (Holding GW &amp; Durasi)</strong>
+                <span style="color: #94a3b8; font-size: 0.76rem;">Melacak gateway terakhir, status simpan &amp; jam durasi riil</span>
+              </div>
+            </div>
+            <span id="qpStep2Status" style="font-size: 0.76rem; font-weight: 600; color: #94a3b8; background: rgba(148, 163, 184, 0.1); padding: 3px 9px; border-radius: 6px;">Menunggu</span>
+          </div>
+
+          <!-- Step 3 -->
+          <div id="qpStep3" style="display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); opacity: 0.6; transition: all 0.3s ease;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="qpStep3Icon" style="font-size: 1.1rem;">⚪</span>
+              <div>
+                <strong style="color: #f8fafc; font-size: 0.86rem; display: block;">Langkah 3: Buka Sensor Bintang &amp; Rincian Produk</strong>
+                <span style="color: #94a3b8; font-size: 0.76rem;">Unmasking nama pengirim, penerima, alamat &amp; nama barang</span>
+              </div>
+            </div>
+            <span id="qpStep3Status" style="font-size: 0.76rem; font-weight: 600; color: #94a3b8; background: rgba(148, 163, 184, 0.1); padding: 3px 9px; border-radius: 6px;">Menunggu</span>
+          </div>
+
+          <!-- Step 4 -->
+          <div id="qpStep4" style="display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-radius: 10px; background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); opacity: 0.6; transition: all 0.3s ease;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="qpStep4Icon" style="font-size: 1.1rem;">⚪</span>
+              <div>
+                <strong style="color: #f8fafc; font-size: 0.86rem; display: block;">Langkah 4: Pratinjau &amp; Penyelesaian</strong>
+                <span style="color: #94a3b8; font-size: 0.76rem;">Menyiapkan tabel pratinjau hasil impor instan</span>
+              </div>
+            </div>
+            <span id="qpStep4Status" style="font-size: 0.76rem; font-weight: 600; color: #94a3b8; background: rgba(148, 163, 184, 0.1); padding: 3px 9px; border-radius: 6px;">Menunggu</span>
+          </div>
+        </div>
+
+        <!-- Safe Info Subtext -->
+        <p style="margin: 0; font-size: 0.78rem; color: #64748b; text-align: center; display: flex; align-items: center; gap: 6px;">
+          <span>🔒</span>
+          <span>Data tetap aman diproses di latar belakang bahkan jika jendela ini ditutup.</span>
+        </p>
       </div>
 
       <!-- COMPLETED RESULT WITH PREVIEW TABLE -->

@@ -328,14 +328,87 @@ async function submitQuickPaste() {
   const autoEnrichJfs = chkAutoEnrich ? chkAutoEnrich.checked : true;
   const importMode = importModeSelect ? importModeSelect.value : 'all';
 
+  // Count waybills from rawText
+  const validWbLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length >= 5);
+  const totalWbCount = Math.max(1, validWbLines.length);
+
   // Transition to Live Progress View inside modal
   if (formSection) formSection.style.display = 'none';
   if (progSection) progSection.style.display = 'flex';
   if (liveRunning) liveRunning.style.display = 'flex';
   if (liveDone) liveDone.style.display = 'none';
 
-  if (liveTitle) liveTitle.textContent = 'Menyimpan & Menarik Rincian Produk...';
-  if (liveDesc) liveDesc.textContent = 'Menyimpan data inventaris dan menghubungi JFS OMS untuk auto-enrich nama barang...';
+  const elWbBadge = document.getElementById('quickPasteLiveWbCountBadge');
+  if (elWbBadge) elWbBadge.textContent = `Memproses ${totalWbCount.toLocaleString('id-ID')} Waybill...`;
+
+  const elTimer = document.getElementById('quickPasteLiveTimer');
+  const elBar = document.getElementById('quickPasteProgressBar');
+  const elPercent = document.getElementById('quickPasteLivePercent');
+  const elCurrentTask = document.getElementById('quickPasteLiveCurrentTask');
+
+  function setQuickPasteStep(stepNum, statusText, isDone = false) {
+    for (let i = 1; i <= 4; i++) {
+      const card = document.getElementById(`qpStep${i}`);
+      const icon = document.getElementById(`qpStep${i}Icon`);
+      const statusBadge = document.getElementById(`qpStep${i}Status`);
+      if (!card || !icon || !statusBadge) continue;
+
+      if (i < stepNum || (i === stepNum && isDone)) {
+        card.style.opacity = '1';
+        card.style.background = 'rgba(16, 185, 129, 0.12)';
+        card.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+        icon.textContent = '✅';
+        statusBadge.textContent = 'Selesai';
+        statusBadge.style.color = '#34d399';
+        statusBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+      } else if (i === stepNum) {
+        card.style.opacity = '1';
+        card.style.background = 'rgba(30, 41, 59, 0.7)';
+        card.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        icon.textContent = '⏳';
+        statusBadge.textContent = statusText || 'Sedang Berjalan';
+        statusBadge.style.color = '#38bdf8';
+        statusBadge.style.background = 'rgba(56, 189, 248, 0.15)';
+      } else {
+        card.style.opacity = '0.45';
+        card.style.background = 'rgba(30, 41, 59, 0.3)';
+        card.style.borderColor = 'rgba(148, 163, 184, 0.1)';
+        icon.textContent = '⚪';
+        statusBadge.textContent = 'Menunggu';
+        statusBadge.style.color = '#94a3b8';
+        statusBadge.style.background = 'rgba(148, 163, 184, 0.1)';
+      }
+    }
+  }
+
+  // Start live timer & dynamic progress simulation
+  let startTime = Date.now();
+  setQuickPasteStep(1, 'Menyimpan resi ke DB...');
+  if (elBar) elBar.style.width = '20%';
+  if (elPercent) elPercent.textContent = '20%';
+  if (elCurrentTask) elCurrentTask.textContent = 'Menyimpan data waybill ke database internal...';
+
+  const progressInterval = setInterval(() => {
+    const elapsedSec = (Date.now() - startTime) / 1000;
+    if (elTimer) elTimer.textContent = `${elapsedSec.toFixed(1)}s`;
+
+    if (elapsedSec >= 0.4 && elapsedSec < 1.2) {
+      setQuickPasteStep(2, 'Melacak POD scan...');
+      if (elBar) elBar.style.width = '48%';
+      if (elPercent) elPercent.textContent = '48%';
+      if (elCurrentTask) elCurrentTask.textContent = 'Mengambil scan tracking (Holding GW, Status & Durasi Jam)...';
+    } else if (elapsedSec >= 1.2 && elapsedSec < 2.4) {
+      setQuickPasteStep(3, 'Membuka sensor bintang (*)...');
+      if (elBar) elBar.style.width = '78%';
+      if (elPercent) elPercent.textContent = '78%';
+      if (elCurrentTask) elCurrentTask.textContent = 'Unmasking sensor bintang (*) & nama produk JFS OMS...';
+    } else if (elapsedSec >= 2.4) {
+      setQuickPasteStep(4, 'Menyiapkan pratinjau...');
+      if (elBar) elBar.style.width = '92%';
+      if (elPercent) elPercent.textContent = '92%';
+      if (elCurrentTask) elCurrentTask.textContent = 'Menyelesaikan sinkronisasi data tabel...';
+    }
+  }, 90);
 
   try {
     const token = localStorage.getItem('token');
@@ -349,11 +422,23 @@ async function submitQuickPaste() {
     });
 
     const json = await res.json();
+    clearInterval(progressInterval);
+
     if (!res.ok || !json.success) {
       alert(json.message || 'Gagal memproses data tempel.');
       resetQuickPasteToInput();
       return;
     }
+
+    const finalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    if (elTimer) elTimer.textContent = `${finalElapsed}s`;
+    if (elBar) elBar.style.width = '100%';
+    if (elPercent) elPercent.textContent = '100%';
+    if (elCurrentTask) elCurrentTask.textContent = 'Semua data selesai diproses!';
+    setQuickPasteStep(4, 'Selesai', true);
+
+    // Smooth 250ms delay so user sees 100% completion checkmark
+    await new Promise(r => setTimeout(r, 260));
 
     latestPastedWaybills = json.pastedWaybills || [];
 
@@ -409,6 +494,7 @@ async function submitQuickPaste() {
     fetchGudangFileInfo();
 
   } catch (err) {
+    clearInterval(progressInterval);
     alert('Terjadi kesalahan saat memproses data: ' + err.message);
     resetQuickPasteToInput();
   }
