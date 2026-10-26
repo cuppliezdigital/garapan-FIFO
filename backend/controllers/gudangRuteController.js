@@ -776,7 +776,14 @@ async function pasteImportGudangData(req, res) {
                     penerima = COALESCE(NULLIF(?, ''), penerima),
                     perusahaan_penerima = COALESCE(NULLIF(?, ''), perusahaan_penerima),
                     no_hp_penerima = COALESCE(NULLIF(?, ''), no_hp_penerima),
-                    alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima)
+                    alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima),
+                    outlet_asal = COALESCE(NULLIF(outlet_asal, ''), ?),
+                    outlet_tujuan = COALESCE(NULLIF(outlet_tujuan, ''), ?),
+                    outlet_akhir = COALESCE(NULLIF(outlet_akhir, ''), ?),
+                    gw_asal = COALESCE(NULLIF(gw_asal, ''), ?),
+                    tgl_buka = COALESCE(NULLIF(tgl_buka, ''), ?),
+                    berat = CASE WHEN berat = 0 OR berat IS NULL THEN ? ELSE berat END,
+                    volume = CASE WHEN volume = 0 OR volume IS NULL THEN ? ELSE volume END
                   WHERE waybill = ? OR waybill LIKE ?
                 `, [
                   gName,
@@ -787,6 +794,13 @@ async function pasteImportGudangData(req, res) {
                   r.receiverCompany || '',
                   r.receiverMobilePhone || r.receiverTelphone || '',
                   r.receiverDetailedAddress || '',
+                  r.pickNetworkName || r.realPickNetworkName || '',
+                  r.dispatchNetworkCode || r.dispatchNetworkName || '',
+                  r.dispatchNetworkCode || '',
+                  r.proxyAreaName ? ('GW-' + r.proxyAreaName) : '',
+                  r.inputTime || '',
+                  parseFloat(r.packageChargeWeight || r.packageTotalWeight || 0),
+                  parseFloat(r.packateVolume || 0),
                   r.waybillId,
                   r.waybillId + '%'
                 ]);
@@ -1764,7 +1778,14 @@ function startBackgroundEnrichRunner(targetWaybills) {
                     penerima = COALESCE(NULLIF(?, ''), penerima),
                     perusahaan_penerima = COALESCE(NULLIF(?, ''), perusahaan_penerima),
                     no_hp_penerima = COALESCE(NULLIF(?, ''), no_hp_penerima),
-                    alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima)
+                    alamat_penerima = COALESCE(NULLIF(?, ''), alamat_penerima),
+                    outlet_asal = COALESCE(NULLIF(outlet_asal, ''), ?),
+                    outlet_tujuan = COALESCE(NULLIF(outlet_tujuan, ''), ?),
+                    outlet_akhir = COALESCE(NULLIF(outlet_akhir, ''), ?),
+                    gw_asal = COALESCE(NULLIF(gw_asal, ''), ?),
+                    tgl_buka = COALESCE(NULLIF(tgl_buka, ''), ?),
+                    berat = CASE WHEN berat = 0 OR berat IS NULL THEN ? ELSE berat END,
+                    volume = CASE WHEN volume = 0 OR volume IS NULL THEN ? ELSE volume END
                   WHERE waybill = ? OR waybill LIKE ?
                 `, [
                   gName,
@@ -1775,6 +1796,13 @@ function startBackgroundEnrichRunner(targetWaybills) {
                   r.receiverCompany || '',
                   r.receiverMobilePhone || r.receiverTelphone || '',
                   r.receiverDetailedAddress || '',
+                  r.pickNetworkName || r.realPickNetworkName || '',
+                  r.dispatchNetworkCode || r.dispatchNetworkName || '',
+                  r.dispatchNetworkCode || '',
+                  r.proxyAreaName ? ('GW-' + r.proxyAreaName) : '',
+                  r.inputTime || '',
+                  parseFloat(r.packageChargeWeight || r.packageTotalWeight || 0),
+                  parseFloat(r.packateVolume || 0),
                   r.waybillId,
                   r.waybillId + '%'
                 ]);
