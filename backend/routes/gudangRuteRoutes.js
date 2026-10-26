@@ -7,6 +7,7 @@ router.get('/latest-file', authMiddleware, gudangRuteController.getLatestFileInf
 router.get('/import-status', authMiddleware, gudangRuteController.getImportStatus);
 router.post('/import', authMiddleware, gudangRuteController.importExcelData);
 router.post('/paste-import', authMiddleware, gudangRuteController.pasteImportGudangData);
+router.post('/check-existing', authMiddleware, gudangRuteController.checkExistingWaybills);
 router.post('/query', authMiddleware, gudangRuteController.queryInventory);
 
 // POD Tracking & Scanning History

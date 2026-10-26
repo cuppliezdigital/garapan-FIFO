@@ -550,7 +550,7 @@ function parseClipboardText(rawText, batchTime = '') {
 // 2c. Controller: Paste Import & Auto-Enrich
 async function pasteImportGudangData(req, res) {
   try {
-    const { rawText, batchTime: customBatchTime, autoEnrichJfs = true } = req.body || {};
+    const { rawText, batchTime: customBatchTime, autoEnrichJfs = true, importMode = 'all' } = req.body || {};
     if (!rawText || !rawText.trim()) {
       return res.status(400).json({ success: false, message: 'Data yang ditempel kosong. Silakan copy data dari Feishu atau Excel lalu tempel di kolom yang disediakan.' });
     }
@@ -559,9 +559,47 @@ async function pasteImportGudangData(req, res) {
     const defaultBatchTime = now.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     const batchTime = customBatchTime && customBatchTime.trim() ? customBatchTime.trim() : defaultBatchTime;
 
-    const records = parseClipboardText(rawText, batchTime);
+    let records = parseClipboardText(rawText, batchTime);
     if (records.length === 0) {
       return res.status(400).json({ success: false, message: 'Tidak ada baris waybill yang valid terdeteksi dari teks yang ditempel.' });
+    }
+
+    const totalRaw = records.length;
+    const allWbs = records.map(r => r.waybill);
+
+    // Fast check existing vs new in database
+    const existingWbs = [];
+    try {
+      const CHUNK = 5000;
+      for (let i = 0; i < allWbs.length; i += CHUNK) {
+        const [exRows] = await db.query(
+          'SELECT waybill FROM gudang_rute_inventory WHERE waybill IN (?)',
+          [allWbs.slice(i, i + CHUNK)]
+        );
+        exRows.forEach(r => existingWbs.push(r.waybill));
+      }
+    } catch (_) {}
+
+    const existingSet = new Set(existingWbs);
+    const existingCount = existingWbs.length;
+    const newCount = totalRaw - existingCount;
+
+    // Filter if user specifically selected 'only_new'
+    if (importMode === 'only_new') {
+      records = records.filter(r => !existingSet.has(r.waybill));
+      if (records.length === 0) {
+        return res.json({
+          success: true,
+          message: `Semua ${totalRaw.toLocaleString('id-ID')} waybill yang ditempel sudah ada di database. Tidak ada data baru yang diimpor karena memilih mode 'Hanya Resi Baru'.`,
+          totalPasted: totalRaw,
+          importedCount: 0,
+          newCount: 0,
+          existingCount,
+          localEnrichedCount: 0,
+          jfsEnrichedCount: 0,
+          skippedExisting: true
+        });
+      }
     }
 
     const startTime = Date.now();
@@ -774,8 +812,14 @@ async function pasteImportGudangData(req, res) {
 
     res.json({
       success: true,
-      message: `Berhasil mengimpor ${records.length.toLocaleString('id-ID')} waybill (${durationSec} detik)!`,
-      totalPasted: records.length,
+      message: importMode === 'only_new'
+        ? `Berhasil mengimpor ${records.length.toLocaleString('id-ID')} waybill baru (${existingCount.toLocaleString('id-ID')} resi lama dilewati) dalam ${durationSec} detik!`
+        : `Berhasil memproses ${totalRaw.toLocaleString('id-ID')} waybill (${newCount.toLocaleString('id-ID')} baru, ${existingCount.toLocaleString('id-ID')} diperbarui) dalam ${durationSec} detik!`,
+      totalPasted: totalRaw,
+      importedCount: records.length,
+      newCount,
+      existingCount,
+      importMode,
       localEnrichedCount,
       jfsEnrichedCount,
       totalEnriched: localEnrichedCount + jfsEnrichedCount,
@@ -787,6 +831,63 @@ async function pasteImportGudangData(req, res) {
   } catch (error) {
     console.error('pasteImportGudangData error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengimpor data tempel: ' + error.message });
+  }
+}
+
+// 2d. Controller: Fast Live Check Existing vs New Waybills for Quick Paste
+async function checkExistingWaybills(req, res) {
+  try {
+    const { waybills } = req.body || {};
+    if (!Array.isArray(waybills) || waybills.length === 0) {
+      return res.json({
+        success: true,
+        totalChecked: 0,
+        existingCount: 0,
+        newCount: 0,
+        existingWaybills: [],
+        newWaybills: []
+      });
+    }
+
+    // Deduplicate and sanitize
+    const cleanList = [...new Set(waybills.map(w => String(w).trim()).filter(Boolean))].slice(0, 10000);
+    if (cleanList.length === 0) {
+      return res.json({
+        success: true,
+        totalChecked: 0,
+        existingCount: 0,
+        newCount: 0,
+        existingWaybills: [],
+        newWaybills: []
+      });
+    }
+
+    // Fast indexed query
+    const foundWaybills = [];
+    const CHUNK_SIZE = 5000;
+    for (let i = 0; i < cleanList.length; i += CHUNK_SIZE) {
+      const chunk = cleanList.slice(i, i + CHUNK_SIZE);
+      const [rows] = await db.query(
+        'SELECT waybill FROM gudang_rute_inventory WHERE waybill IN (?)',
+        [chunk]
+      );
+      rows.forEach(r => foundWaybills.push(r.waybill));
+    }
+
+    const existingSet = new Set(foundWaybills);
+    const newWaybills = cleanList.filter(w => !existingSet.has(w));
+
+    res.json({
+      success: true,
+      totalChecked: cleanList.length,
+      existingCount: foundWaybills.length,
+      newCount: newWaybills.length,
+      existingWaybills: foundWaybills,
+      newWaybills: newWaybills
+    });
+  } catch (error) {
+    console.error('checkExistingWaybills error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 }
 
@@ -1808,6 +1909,7 @@ module.exports = {
   getImportStatus,
   importExcelData,
   pasteImportGudangData,
+  checkExistingWaybills,
   queryInventory,
   getPodTrace,
   enrichWaybill,

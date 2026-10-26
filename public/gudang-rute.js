@@ -110,11 +110,30 @@ function clearQuickPasteText() {
   }
 }
 
+let quickPasteDebounceTimer = null;
+let quickPasteExistingList = [];
+
+function toggleExistingListDropdown() {
+  const drawer = document.getElementById('drawerExistingWaybills');
+  if (!drawer) return;
+  drawer.style.display = (drawer.style.display === 'none' || !drawer.style.display) ? 'block' : 'none';
+}
+
 function onQuickPasteInput() {
   const textarea = document.getElementById('quickPasteTextarea');
   const badgeText = document.getElementById('quickPasteStatusText');
   const badgeDot = document.getElementById('quickPasteStatusDot');
   const badgeContainer = document.getElementById('quickPasteStatusBadge');
+  const badgeNew = document.getElementById('badgeQuickPasteNew');
+  const textNew = document.getElementById('textQuickPasteNew');
+  const badgeExisting = document.getElementById('badgeQuickPasteExisting');
+  const textExisting = document.getElementById('textQuickPasteExisting');
+  const drawerExisting = document.getElementById('drawerExistingWaybills');
+
+  if (quickPasteDebounceTimer) {
+    clearTimeout(quickPasteDebounceTimer);
+    quickPasteDebounceTimer = null;
+  }
 
   if (!textarea || !badgeText) return;
 
@@ -127,13 +146,18 @@ function onQuickPasteInput() {
       badgeContainer.style.borderColor = 'rgba(148, 163, 184, 0.2)';
       badgeContainer.style.color = '#94a3b8';
     }
+    if (badgeNew) badgeNew.style.display = 'none';
+    if (badgeExisting) badgeExisting.style.display = 'none';
+    if (drawerExisting) drawerExisting.style.display = 'none';
+    quickPasteExistingList = [];
     return;
   }
 
-  // Count lines skipping headers
+  // Count lines skipping headers and extract unique waybills
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  let count = 0;
+  const detectedWaybills = [];
   let maxCols = 1;
+
   for (const line of lines) {
     if (
       line.includes('运单号') || 
@@ -146,19 +170,32 @@ function onQuickPasteInput() {
     if (cols.length > maxCols) maxCols = cols.length;
     const firstCol = (cols[0] || '').replace(/[^a-zA-Z0-9]/g, '');
     if (firstCol && firstCol.length >= 5) {
-      count++;
+      detectedWaybills.push(firstCol);
     }
   }
 
+  const count = detectedWaybills.length;
   if (count > 0) {
     const colInfo = maxCols >= 15 ? 'Tabel 19 Kolom Feishu/Excel' : (maxCols > 1 ? `${maxCols} Kolom` : 'Daftar Resi');
-    badgeText.textContent = `✔ ${count.toLocaleString('id-ID')} waybill valid siap diproses (${colInfo})`;
+    badgeText.textContent = `✔ ${count.toLocaleString('id-ID')} waybill (${colInfo})`;
     if (badgeDot) badgeDot.style.background = '#34d399';
     if (badgeContainer) {
       badgeContainer.style.background = 'rgba(52, 211, 153, 0.15)';
       badgeContainer.style.borderColor = 'rgba(52, 211, 153, 0.35)';
       badgeContainer.style.color = '#34d399';
     }
+
+    // Show checking indicator immediately
+    if (badgeNew && textNew) {
+      badgeNew.style.display = 'inline-flex';
+      textNew.textContent = 'Memeriksa database...';
+    }
+    if (badgeExisting) badgeExisting.style.display = 'none';
+
+    quickPasteDebounceTimer = setTimeout(() => {
+      checkPastedDuplicates(detectedWaybills);
+    }, 350);
+
   } else {
     badgeText.textContent = 'Menunggu data waybill yang valid...';
     if (badgeDot) badgeDot.style.background = '#fbbf24';
@@ -167,6 +204,62 @@ function onQuickPasteInput() {
       badgeContainer.style.borderColor = 'rgba(245, 158, 11, 0.35)';
       badgeContainer.style.color = '#fbbf24';
     }
+    if (badgeNew) badgeNew.style.display = 'none';
+    if (badgeExisting) badgeExisting.style.display = 'none';
+  }
+}
+
+async function checkPastedDuplicates(waybills) {
+  if (!waybills || waybills.length === 0) return;
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/gudang-rute/check-existing', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ waybills: waybills.slice(0, 10000) })
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.success) return;
+
+    const badgeNew = document.getElementById('badgeQuickPasteNew');
+    const textNew = document.getElementById('textQuickPasteNew');
+    const badgeExisting = document.getElementById('badgeQuickPasteExisting');
+    const textExisting = document.getElementById('textQuickPasteExisting');
+    const listContent = document.getElementById('listExistingWaybillsContent');
+
+    quickPasteExistingList = json.existingWaybills || [];
+
+    if (badgeNew && textNew) {
+      badgeNew.style.display = 'inline-flex';
+      textNew.textContent = `🟢 ${json.newCount.toLocaleString('id-ID')} Resi Baru`;
+    }
+
+    if (badgeExisting && textExisting) {
+      if (json.existingCount > 0) {
+        badgeExisting.style.display = 'inline-flex';
+        textExisting.textContent = `🟡 ${json.existingCount.toLocaleString('id-ID')} Sudah Ada`;
+      } else {
+        badgeExisting.style.display = 'none';
+      }
+    }
+
+    if (listContent) {
+      if (quickPasteExistingList.length > 0) {
+        listContent.innerHTML = quickPasteExistingList.map(wb => `
+          <span style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 9px; border-radius: 5px; display: inline-flex; align-items: center; gap: 5px;">
+            <span>${escapeHtml(wb)}</span>
+          </span>
+        `).join('');
+      } else {
+        listContent.innerHTML = '<span style="color: #94a3b8; font-style: italic;">Tidak ada resi yang duplikat.</span>';
+      }
+    }
+  } catch (err) {
+    console.warn('checkPastedDuplicates error:', err);
   }
 }
 
@@ -174,6 +267,7 @@ async function submitQuickPaste() {
   const textarea = document.getElementById('quickPasteTextarea');
   const batchInput = document.getElementById('quickPasteBatchTime');
   const chkAutoEnrich = document.getElementById('chkQuickPasteAutoEnrich');
+  const importModeSelect = document.getElementById('quickPasteImportMode');
   const btn = document.getElementById('btnSubmitQuickPaste');
   const btnText = document.getElementById('btnSubmitQuickPasteText');
 
@@ -186,6 +280,7 @@ async function submitQuickPaste() {
 
   const batchTime = batchInput ? batchInput.value.trim() : '';
   const autoEnrichJfs = chkAutoEnrich ? chkAutoEnrich.checked : true;
+  const importMode = importModeSelect ? importModeSelect.value : 'all';
 
   if (btn) btn.disabled = true;
   if (btnText) btnText.textContent = '⏳ Menyimpan & Meng-enrich...';
@@ -198,7 +293,7 @@ async function submitQuickPaste() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ rawText, batchTime, autoEnrichJfs })
+      body: JSON.stringify({ rawText, batchTime, autoEnrichJfs, importMode })
     });
 
     const json = await res.json();
@@ -210,7 +305,13 @@ async function submitQuickPaste() {
     closeQuickPasteModal();
     if (textarea) textarea.value = '';
 
-    showGudangToast(`✔ Sukses! ${json.totalPasted.toLocaleString('id-ID')} waybill disimpan (${json.totalEnriched.toLocaleString('id-ID')} langsung ter-enrich)!`);
+    if (json.skippedExisting) {
+      showGudangToast(`ℹ Info: ${json.message}`);
+    } else if (json.importMode === 'only_new') {
+      showGudangToast(`✔ Sukses! ${(json.importedCount || 0).toLocaleString('id-ID')} resi baru disimpan (${(json.existingCount || 0).toLocaleString('id-ID')} resi lama dilewati).`);
+    } else {
+      showGudangToast(`✔ Sukses! ${(json.newCount || 0).toLocaleString('id-ID')} resi baru disimpan & ${(json.existingCount || 0).toLocaleString('id-ID')} diperbarui!`);
+    }
 
     // If background enrichment was triggered for large remaining sets:
     if (json.backgroundTriggered) {
@@ -1557,3 +1658,4 @@ window.openEnrichOptionsModal = openEnrichOptionsModal;
 window.closeEnrichModal = closeEnrichModal;
 window.startEnrichByMode = startEnrichByMode;
 window.stopBulkEnrich = stopBulkEnrich;
+window.toggleExistingListDropdown = toggleExistingListDropdown;
