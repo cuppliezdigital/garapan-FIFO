@@ -486,8 +486,8 @@ async function submitQuickPaste() {
     }
 
     // If background enrichment was triggered for large remaining sets:
-    if (json.backgroundTriggered) {
-      startEnrichStatusPolling();
+    if (json.backgroundTriggered && typeof startBulkEnrichPolling === 'function') {
+      startBulkEnrichPolling();
     }
 
     // Refresh background inventory
