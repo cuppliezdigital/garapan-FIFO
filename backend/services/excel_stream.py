@@ -45,7 +45,7 @@ def main():
                             elem.clear()
                             root.clear()
 
-            # 2. Find ALL raw data worksheets (handles multi-sheet workbooks when rows > 1,000,000)
+            # 2. Find ALL worksheets (handles multi-sheet workbooks when rows > 1,000,000, e.g. Sheet 1 & Sheet 2)
             raw_sheets = []
             if 'xl/workbook.xml' in z.namelist() and 'xl/_rels/workbook.xml.rels' in z.namelist():
                 try:
@@ -57,23 +57,17 @@ def main():
                         sname = s.attrib.get('name', '')
                         rId = s.attrib.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
                         target = rel_map.get(rId, '')
-                        if 'raw data' in sname.lower() or '数据源' in sname:
-                            full_target = 'xl/' + target if not target.startswith('xl/') else target
-                            if full_target in z.namelist():
-                                raw_sheets.append((sname, full_target))
+                        full_target = 'xl/' + target if not target.startswith('xl/') else target
+                        if full_target in z.namelist():
+                            raw_sheets.append((sname, full_target))
                 except Exception as ex:
                     sys.stderr.write(f"Warning parsing workbook.xml: {ex}\n")
 
             # Fallback if no matching sheet names in workbook.xml
             if not raw_sheets:
-                for target_candidate in ['xl/worksheets/sheet2.xml', 'xl/worksheets/sheet3.xml']:
-                    if target_candidate in z.namelist():
-                        raw_sheets.append((target_candidate, target_candidate))
-                if not raw_sheets:
-                    for name in z.namelist():
-                        if name.startswith('xl/worksheets/sheet1.xml'):
-                            raw_sheets.append((name, name))
-                            break
+                for name in sorted(z.namelist()):
+                    if name.startswith('xl/worksheets/sheet') and name.endswith('.xml'):
+                        raw_sheets.append((name, name))
 
             if not raw_sheets:
                 sys.stderr.write("No raw data worksheet found in xlsx\n")

@@ -189,6 +189,16 @@
           </select>
         </div>
 
+        <!-- OPERATIONAL STATUS (AKTIF GUDANG VS SUDAH TTD) -->
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px;">Status Operasional</label>
+          <select id="gudangFilterOperationalStatus" class="col-filter-input" onchange="onGudangSearchInput(true)" style="width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(52, 211, 153, 0.4); background: #0b1220; color: #34d399; font-weight: 600; font-size: 0.85rem;">
+            <option value="active" selected>⚡ Aktif di Gudang (Enteng &amp; Cepat)</option>
+            <option value="all">🌐 Semua Paket (Termasuk TTD Selesai)</option>
+            <option value="ttd">📦 Hanya Sudah TTD Selesai</option>
+          </select>
+        </div>
+
         <!-- RESET ACTION (LANGSUNG BERSIH TANPA TOMBOL CARI) -->
         <div style="display: flex;">
           <button type="button" class="btn btn-secondary" onclick="resetGudangFilter()" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; font-weight: 600; border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
@@ -573,6 +583,36 @@
             <button type="button" onclick="toggleExistingListDropdown()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.78rem;">✕ Tutup</button>
           </div>
           <div id="listExistingWaybillsContent" style="display: flex; flex-wrap: wrap; gap: 6px; font-family: monospace; font-size: 0.78rem; color: #cbd5e1;"></div>
+        </div>
+
+        <!-- DRAG & DROP / FILE IMPORT ZONE -->
+        <div id="quickPasteDropZone" ondragover="handleGudangDragOver(event)" ondragleave="handleGudangDragLeave(event)" ondrop="handleGudangFileDrop(event)" onclick="document.getElementById('fileInputGudangDirect').click()" style="border: 2px dashed rgba(52, 211, 153, 0.45); border-radius: 12px; background: rgba(16, 185, 129, 0.06); padding: 14px 18px; text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <input type="file" id="fileInputGudangDirect" accept=".xlsx,.csv,.txt" onchange="handleGudangFileSelect(event)" style="display: none;" />
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(52, 211, 153, 0.16); border: 1px solid rgba(52, 211, 153, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #34d399;">
+              📂
+            </div>
+            <div style="text-align: left;">
+              <div style="font-size: 0.9rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                <span>Tarik &amp; Lepas File Excel (.xlsx) / CSV / TXT ke sini</span>
+                <span style="font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; background: #059669; color: #fff; font-weight: 700;">Metode Instan</span>
+              </div>
+              <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
+                Atau <span style="color: #34d399; font-weight: 700; text-decoration: underline;">klik di sini untuk memilih file</span> dari laptop/komputer.
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <span style="padding: 4px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: 700; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); color: #38bdf8;">.XLSX</span>
+            <span style="padding: 4px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: 700; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); color: #fbbf24;">.CSV</span>
+            <span style="padding: 4px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: 700; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); color: #a78bfa;">.TXT</span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; margin: -4px 0;">
+          <div style="flex: 1; height: 1px; background: rgba(148, 163, 184, 0.15);"></div>
+          <span style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">atau copy &amp; paste manual di kotak berikut</span>
+          <div style="flex: 1; height: 1px; background: rgba(148, 163, 184, 0.15);"></div>
         </div>
 
         <!-- TEXTAREA (EXTRA WIDE WITH HORIZONTAL TABULAR SCROLL) -->

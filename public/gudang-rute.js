@@ -19,6 +19,7 @@ let gudangState = {
   col_durasi_min: '',
   col_durasi_max: '',
   col_status: 'ALL',
+  operationalStatus: 'active',
   holdingGw: 'ALL',
   destGw: 'ALL',
   tipeJalur: 'ALL',
@@ -299,6 +300,224 @@ async function checkPastedDuplicates(waybills) {
     }
   } catch (err) {
     console.warn('checkPastedDuplicates error:', err);
+  }
+}
+
+// 2b-2. Drag & Drop and File Selection Handlers (.xlsx, .csv, .txt)
+function handleGudangDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const zone = document.getElementById('quickPasteDropZone');
+  if (zone) {
+    zone.style.background = 'rgba(52, 211, 153, 0.18)';
+    zone.style.borderColor = '#10b981';
+  }
+}
+
+function handleGudangDragLeave(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const zone = document.getElementById('quickPasteDropZone');
+  if (zone) {
+    zone.style.background = 'rgba(16, 185, 129, 0.06)';
+    zone.style.borderColor = 'rgba(52, 211, 153, 0.45)';
+  }
+}
+
+function handleGudangFileDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  handleGudangDragLeave(e);
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0) {
+    processGudangUploadedFile(files[0]);
+  }
+}
+
+function handleGudangFileSelect(e) {
+  const files = e.target?.files;
+  if (files && files.length > 0) {
+    processGudangUploadedFile(files[0]);
+  }
+}
+
+async function processGudangUploadedFile(file) {
+  if (!file) return;
+  const fileName = file.name || '';
+  const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+
+  if (!['.xlsx', '.csv', '.txt'].includes(ext)) {
+    alert('Format file tidak didukung. Harap pilih file .xlsx, .csv, atau .txt.');
+    return;
+  }
+
+  // If TXT file, read instantly in browser and populate textarea
+  if (ext === '.txt') {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result || '';
+      const textarea = document.getElementById('quickPasteTextarea');
+      if (textarea) {
+        textarea.value = content;
+        onQuickPasteInput();
+        showGudangToast(`📄 File "${fileName}" berhasil dibaca! Siap disimpan.`);
+      }
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  // XLSX or CSV: upload and stream directly
+  const formSection = document.getElementById('quickPasteFormContainer');
+  const progSection = document.getElementById('quickPasteProgressContainer');
+  const liveRunning = document.getElementById('quickPasteLiveRunning');
+  const liveDone = document.getElementById('quickPasteLiveDone');
+  const elWbBadge = document.getElementById('quickPasteLiveWbCountBadge');
+  const elTimer = document.getElementById('quickPasteLiveTimer');
+  const elBar = document.getElementById('quickPasteProgressBar');
+  const elPercent = document.getElementById('quickPasteLivePercent');
+  const elCurrentTask = document.getElementById('quickPasteLiveCurrentTask');
+
+  if (formSection) formSection.style.display = 'none';
+  if (progSection) progSection.style.display = 'flex';
+  if (liveRunning) liveRunning.style.display = 'flex';
+  if (liveDone) liveDone.style.display = 'none';
+
+  if (elWbBadge) elWbBadge.textContent = `Mengunggah & Memproses: ${fileName}`;
+  if (elCurrentTask) elCurrentTask.textContent = 'Mengunggah file ke server...';
+  if (elBar) elBar.style.width = '15%';
+  if (elPercent) elPercent.textContent = '15%';
+
+  function setUploadStep(stepNum, statusText, isDone = false) {
+    for (let i = 1; i <= 4; i++) {
+      const card = document.getElementById(`qpStep${i}`);
+      const icon = document.getElementById(`qpStep${i}Icon`);
+      const statusBadge = document.getElementById(`qpStep${i}Status`);
+      if (!card || !icon || !statusBadge) continue;
+
+      if (i < stepNum || (i === stepNum && isDone)) {
+        card.style.opacity = '1';
+        card.style.background = 'rgba(16, 185, 129, 0.12)';
+        card.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+        icon.textContent = '✅';
+        statusBadge.textContent = 'Selesai';
+        statusBadge.style.color = '#34d399';
+        statusBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+      } else if (i === stepNum) {
+        card.style.opacity = '1';
+        card.style.background = 'rgba(30, 41, 59, 0.7)';
+        card.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        icon.textContent = '⏳';
+        statusBadge.textContent = statusText || 'Sedang Berjalan';
+        statusBadge.style.color = '#38bdf8';
+        statusBadge.style.background = 'rgba(56, 189, 248, 0.15)';
+      } else {
+        card.style.opacity = '0.45';
+        card.style.background = 'rgba(30, 41, 59, 0.3)';
+        card.style.borderColor = 'rgba(148, 163, 184, 0.1)';
+        icon.textContent = '⚪';
+        statusBadge.textContent = 'Menunggu';
+        statusBadge.style.color = '#94a3b8';
+        statusBadge.style.background = 'rgba(148, 163, 184, 0.1)';
+      }
+    }
+  }
+
+  const startTime = Date.now();
+  const timerInterval = setInterval(() => {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    if (elTimer) elTimer.textContent = `${elapsed}s`;
+  }, 100);
+
+  setUploadStep(1, 'Mengunggah & Streaming Excel...');
+
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('filterGw', 'ALL');
+
+    const res = await fetch('/api/gudang-rute/upload-import', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      clearInterval(timerInterval);
+      alert(json.message || 'Gagal mengunggah file.');
+      resetQuickPasteToInput();
+      return;
+    }
+
+    setUploadStep(2, 'Menyimpan multi-sheet inventaris...');
+    if (elBar) elBar.style.width = '45%';
+    if (elPercent) elPercent.textContent = '45%';
+
+    const pollUploadStatus = setInterval(async () => {
+      try {
+        const stRes = await fetch('/api/gudang-rute/import-status', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!stRes.ok) return;
+        const stJson = await stRes.json();
+        const p = stJson.progress;
+
+        if (stJson.isImporting) {
+          const count = p?.totalProcessed || 0;
+          if (elWbBadge) elWbBadge.textContent = `${count.toLocaleString('id-ID')} waybill diproses...`;
+          if (elCurrentTask) elCurrentTask.textContent = p?.message || 'Memproses baris data...';
+
+          if (count > 0) {
+            setUploadStep(2, 'Menyimpan data multi-sheet...');
+            if (elBar) elBar.style.width = '70%';
+            if (elPercent) elPercent.textContent = '70%';
+          }
+        } else {
+          clearInterval(pollUploadStatus);
+          clearInterval(timerInterval);
+
+          if (p?.status === 'error') {
+            alert('Proses impor terhenti: ' + (p.message || 'Unknown error'));
+            resetQuickPasteToInput();
+            return;
+          }
+
+          setUploadStep(3, 'Auto-enrich nama barang...');
+          if (elBar) elBar.style.width = '92%';
+          if (elPercent) elPercent.textContent = '92%';
+
+          setTimeout(async () => {
+            setUploadStep(4, 'Selesai', true);
+            if (elBar) elBar.style.width = '100%';
+            if (elPercent) elPercent.textContent = '100%';
+            if (elCurrentTask) elCurrentTask.textContent = 'Semua data dan multi-sheet berhasil diimpor!';
+
+            await new Promise(r => setTimeout(r, 300));
+
+            if (liveRunning) liveRunning.style.display = 'none';
+            if (liveDone) liveDone.style.display = 'flex';
+
+            const elSummary = document.getElementById('quickPasteResultSummary');
+            if (elSummary) {
+              elSummary.textContent = `${(p?.totalProcessed || 0).toLocaleString('id-ID')} waybill berhasil diimpor dari file "${fileName}". Auto-enrichment berjalan otomatis!`;
+            }
+
+            fetchGudangFileInfo();
+            fetchGudangInventory();
+          }, 500);
+        }
+      } catch (pollErr) {
+        console.warn('pollUploadStatus error:', pollErr);
+      }
+    }, 1500);
+
+  } catch (err) {
+    clearInterval(timerInterval);
+    console.error('processGudangUploadedFile error:', err);
+    alert('Terjadi kesalahan saat mengunggah file: ' + err.message);
+    resetQuickPasteToInput();
   }
 }
 
@@ -673,6 +892,7 @@ async function fetchGudangInventory() {
         col_durasi_min: gudangState.col_durasi_min,
         col_durasi_max: gudangState.col_durasi_max,
         col_status: gudangState.col_status,
+        operational_status: gudangState.operationalStatus || 'active',
         holding_gw: gudangState.holdingGw,
         gw_tujuan: gudangState.destGw,
         tipe_jalur: gudangState.tipeJalur,
@@ -1078,7 +1298,10 @@ function updateGudangPagination(p = {}) {
   if (info) {
     const from = (gudangState.page - 1) * activeLimit + 1;
     const to = Math.min(gudangState.page * activeLimit, gudangState.totalRows);
-    info.textContent = `Menampilkan ${gudangState.totalRows > 0 ? from.toLocaleString('id-ID') : 0} - ${to.toLocaleString('id-ID')} dari ${gudangState.totalRows.toLocaleString('id-ID')} waybill`;
+    const countDisplay = (gudangState.totalRows >= 1001) 
+      ? '1.000+ (Dibatasi untuk kecepatan)' 
+      : `${gudangState.totalRows.toLocaleString('id-ID')}`;
+    info.textContent = `Menampilkan ${gudangState.totalRows > 0 ? from.toLocaleString('id-ID') : 0} - ${to.toLocaleString('id-ID')} dari ${countDisplay} waybill`;
   }
 
   const badge = document.getElementById('gudangCurrentPageBadge');
@@ -1117,7 +1340,7 @@ function onGudangSearchInput(instant = false) {
   } else {
     gudangSearchDebounceTimer = setTimeout(() => {
       applyGudangAutoSearch();
-    }, 350);
+    }, 600);
   }
 }
 
@@ -1132,6 +1355,7 @@ function applyGudangAutoSearch() {
   gudangState.tipeJalur = document.getElementById('gudangFilterTipeJalur')?.value || 'ALL';
   gudangState.aging = document.getElementById('gudangFilterAging')?.value || 'ALL';
   gudangState.enrichStatus = document.getElementById('gudangFilterEnrich')?.value || 'all';
+  gudangState.operationalStatus = document.getElementById('gudangFilterOperationalStatus')?.value || 'active';
 
   gudangState.col_waybill = document.getElementById('colSearchWaybill')?.value.trim() || '';
   gudangState.col_nama_barang = document.getElementById('colSearchNamaBarang')?.value.trim() || '';
@@ -1210,6 +1434,10 @@ function resetGudangFilter() {
   gudangState.tipeJalur = 'ALL';
   gudangState.aging = 'ALL';
   gudangState.enrichStatus = 'all';
+  gudangState.operationalStatus = 'active';
+
+  const opEl = document.getElementById('gudangFilterOperationalStatus');
+  if (opEl) opEl.value = 'active';
 
   clearAllColumnFilters();
 }
@@ -1721,6 +1949,7 @@ async function exportGudangRuteExcel() {
         col_durasi_min: gudangState.col_durasi_min,
         col_durasi_max: gudangState.col_durasi_max,
         col_status: gudangState.col_status,
+        operational_status: gudangState.operationalStatus || 'active',
         holding_gw: gudangState.holdingGw,
         gw_tujuan: gudangState.destGw,
         tipe_jalur: gudangState.tipeJalur,
@@ -1831,3 +2060,7 @@ window.stopBulkEnrich = stopBulkEnrich;
 window.toggleExistingListDropdown = toggleExistingListDropdown;
 window.viewPastedInMainTable = viewPastedInMainTable;
 window.resetQuickPasteToInput = resetQuickPasteToInput;
+window.handleGudangDragOver = handleGudangDragOver;
+window.handleGudangDragLeave = handleGudangDragLeave;
+window.handleGudangFileDrop = handleGudangFileDrop;
+window.handleGudangFileSelect = handleGudangFileSelect;

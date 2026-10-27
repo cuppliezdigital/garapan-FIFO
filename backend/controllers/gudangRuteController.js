@@ -277,7 +277,7 @@ async function importExcelData(req, res) {
     targetPath = targetFile.filePath;
   } else {
     targetFile = {
-      fileName: path.basename(targetPath),
+      fileName: (req.body && req.body.manualFileName) || path.basename(targetPath),
       filePath: targetPath
     };
   }
@@ -504,6 +504,22 @@ async function importExcelData(req, res) {
           durationSec,
           message: `Selesai! ${totalInserted.toLocaleString('id-ID')} waybill berhasil diimpor & ${enrichedCount.toLocaleString('id-ID')} ter-enrich otomatis.`
         };
+
+        // Auto-trigger background unmasking runner for remaining unenriched waybills
+        try {
+          const [emptyWbs] = await db.query(`
+            SELECT waybill FROM gudang_rute_inventory
+            WHERE (nama_barang IS NULL OR nama_barang = '' OR nama_barang = '-')
+            LIMIT 50000
+          `);
+          if (emptyWbs.length > 0) {
+            const targets = emptyWbs.map(r => r.waybill);
+            startBackgroundEnrichRunner(targets);
+            console.log(`[Auto-Enrich] Triggered background unmasking runner for ${targets.length} waybills.`);
+          }
+        } catch (bgErr) {
+          console.warn('Auto background enrich error:', bgErr.message);
+        }
       } catch (postErr) {
         console.error('Error during post-import enrichment:', postErr);
         importProgress = {
@@ -511,16 +527,69 @@ async function importExcelData(req, res) {
           message: 'Error saat menyimpan data: ' + postErr.message
         };
       } finally {
+        if (manualPath && fs.existsSync(manualPath)) {
+          try { fs.unlinkSync(manualPath); } catch (_) {}
+        }
         isImporting = false;
       }
     });
 
     py.on('error', (err) => {
       console.error('Error spawning excel_stream.py:', err);
+      if (manualPath && fs.existsSync(manualPath)) {
+        try { fs.unlinkSync(manualPath); } catch (_) {}
+      }
       isImporting = false;
       importProgress = { status: 'error', message: 'Gagal menjalankan streaming python: ' + err.message };
     });
   })();
+}
+
+// 2c. Direct File Upload (.xlsx, .csv, .txt)
+async function uploadFileGudangData(req, res) {
+  if (isImporting) {
+    return res.status(409).json({ success: false, message: 'Proses impor sedang berjalan, harap tunggu hingga selesai.' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Tidak ada file yang diunggah.' });
+  }
+
+  const filePath = req.file.path;
+  const originalName = req.file.originalname || '';
+  const ext = path.extname(originalName).toLowerCase();
+
+  // If TXT file, parse as waybill list or TSV
+  if (ext === '.txt') {
+    try {
+      const rawText = fs.readFileSync(filePath, 'utf8');
+      try { fs.unlinkSync(filePath); } catch (_) {}
+
+      req.body = {
+        rawText,
+        batchTime: req.body?.batchTime || '',
+        autoEnrichJfs: req.body?.autoEnrichJfs !== 'false',
+        importMode: req.body?.importMode || 'all'
+      };
+      return pasteImportGudangData(req, res);
+    } catch (txtErr) {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+      return res.status(500).json({ success: false, message: 'Gagal membaca file TXT: ' + txtErr.message });
+    }
+  }
+
+  // If XLSX or CSV file, stream directly through streaming engine
+  if (ext === '.xlsx' || ext === '.csv') {
+    req.body = {
+      manualPath: filePath,
+      manualFileName: originalName,
+      filterGw: req.body?.filterGw || 'ALL'
+    };
+    return importExcelData(req, res);
+  }
+
+  try { fs.unlinkSync(filePath); } catch (_) {}
+  return res.status(400).json({ success: false, message: 'Format file tidak didukung. Harap unggah file .xlsx, .csv, atau .txt.' });
 }
 
 // 2b. Fast Quick Paste & Auto-Enrich Parser
@@ -1146,6 +1215,15 @@ async function getCachedDropdowns() {
   return { holdingGws: cachedHoldingGws, destGws: cachedDestGws };
 }
 
+// Helper to format search words for MySQL FULLTEXT boolean search (+word*)
+function formatFulltextQuery(queryStr) {
+  if (!queryStr || typeof queryStr !== 'string') return '';
+  const cleaned = queryStr.replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+  const words = cleaned.split(/\s+/).filter(w => w.length >= 2);
+  if (words.length === 0) return '';
+  return words.map(w => `+${w}*`).join(' ');
+}
+
 // 3. Query inventory with filters and pagination
 async function queryInventory(req, res) {
   try {
@@ -1163,6 +1241,7 @@ async function queryInventory(req, res) {
       col_durasi_min = '',
       col_durasi_max = '',
       col_status = '',
+      operational_status = 'active',
       holding_gw = '',
       gw_tujuan = '',
       tipe_jalur = '',
@@ -1182,6 +1261,17 @@ async function queryInventory(req, res) {
 
     const conditions = ['1=1'];
     const params = [];
+
+    // Operational status filter (Default: 'active' packages in warehouse/transit)
+    // When user searches a specific waybill number or waybill list, allow finding it across all statuses
+    const isWaybillTargeted = Boolean((col_waybill && col_waybill.trim()) || (/^\d{6,15}$/.test(search.trim())));
+    if (!isWaybillTargeted) {
+      if (operational_status === 'active') {
+        conditions.push("(g.status_simpan IS NULL OR g.status_simpan NOT IN ('Tanda Terima', 'TTD', 'TTD Pengembalian'))");
+      } else if (operational_status === 'ttd') {
+        conditions.push("g.status_simpan IN ('Tanda Terima', 'TTD', 'TTD Pengembalian')");
+      }
+    }
 
     // Helper to process multi-token waybills (supports newline, comma, semicolon, space)
     function parseWaybillFilter(inputStr) {
@@ -1251,16 +1341,22 @@ async function queryInventory(req, res) {
         conditions.push('(g.waybill LIKE ? OR g.nama_barang LIKE ?)');
         params.push(pattern, pattern);
       } else {
-        conditions.push(`(
-          g.nama_barang LIKE ? OR 
-          g.pengirim LIKE ? OR 
-          g.perusahaan_pengirim LIKE ? OR 
-          g.penerima LIKE ? OR 
-          g.perusahaan_penerima LIKE ? OR
-          g.outlet_tujuan LIKE ?
-        )`);
-        const searchPattern = `%${q}%`;
-        params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+        const ft = formatFulltextQuery(q);
+        if (ft) {
+          conditions.push('MATCH(g.nama_barang, g.pengirim, g.penerima, g.alamat_penerima) AGAINST(? IN BOOLEAN MODE)');
+          params.push(ft);
+        } else {
+          conditions.push(`(
+            g.nama_barang LIKE ? OR 
+            g.pengirim LIKE ? OR 
+            g.perusahaan_pengirim LIKE ? OR 
+            g.penerima LIKE ? OR 
+            g.perusahaan_penerima LIKE ? OR
+            g.outlet_tujuan LIKE ?
+          )`);
+          const searchPattern = `%${q}%`;
+          params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+        }
       }
     }
 
@@ -1273,34 +1369,58 @@ async function queryInventory(req, res) {
       }
     }
 
-    // 3. Per-Column Filter: Nama Barang (Supports pipe | for OR search, e.g. "sepatu | treadmill")
+    // 3. Per-Column Filter: Nama Barang (Full-text index)
     if (col_nama_barang && col_nama_barang.trim()) {
-      const tokens = col_nama_barang.split('|').map(s => s.trim()).filter(Boolean);
-      if (tokens.length > 0) {
-        const subConds = tokens.map(() => 'g.nama_barang LIKE ?');
-        conditions.push(`(${subConds.join(' OR ')})`);
-        tokens.forEach(t => params.push(`%${t}%`));
+      const ft = formatFulltextQuery(col_nama_barang);
+      if (ft) {
+        conditions.push('MATCH(g.nama_barang) AGAINST(? IN BOOLEAN MODE)');
+        params.push(ft);
+      } else {
+        const tokens = col_nama_barang.split('|').map(s => s.trim()).filter(Boolean);
+        if (tokens.length > 0) {
+          const subConds = tokens.map(() => 'g.nama_barang LIKE ?');
+          conditions.push(`(${subConds.join(' OR ')})`);
+          tokens.forEach(t => params.push(`%${t}%`));
+        }
       }
     }
 
-    // 4. Per-Column Filter: Pengirim & Toko
+    // 4. Per-Column Filter: Pengirim & Toko (Full-text index)
     if (col_pengirim && col_pengirim.trim()) {
-      const p = `%${col_pengirim.trim()}%`;
-      conditions.push('(g.pengirim LIKE ? OR g.perusahaan_pengirim LIKE ? OR g.no_hp_pengirim LIKE ?)');
-      params.push(p, p, p);
+      const ft = formatFulltextQuery(col_pengirim);
+      if (ft) {
+        conditions.push('MATCH(g.pengirim) AGAINST(? IN BOOLEAN MODE)');
+        params.push(ft);
+      } else {
+        const p = `%${col_pengirim.trim()}%`;
+        conditions.push('(g.pengirim LIKE ? OR g.perusahaan_pengirim LIKE ? OR g.no_hp_pengirim LIKE ?)');
+        params.push(p, p, p);
+      }
     }
 
-    // 5. Per-Column Filter: Penerima & HP
+    // 5. Per-Column Filter: Penerima & HP (Full-text index)
     if (col_penerima && col_penerima.trim()) {
-      const p = `%${col_penerima.trim()}%`;
-      conditions.push('(g.penerima LIKE ? OR g.perusahaan_penerima LIKE ? OR g.no_hp_penerima LIKE ?)');
-      params.push(p, p, p);
+      const ft = formatFulltextQuery(col_penerima);
+      if (ft) {
+        conditions.push('MATCH(g.penerima) AGAINST(? IN BOOLEAN MODE)');
+        params.push(ft);
+      } else {
+        const p = `%${col_penerima.trim()}%`;
+        conditions.push('(g.penerima LIKE ? OR g.perusahaan_penerima LIKE ? OR g.no_hp_penerima LIKE ?)');
+        params.push(p, p, p);
+      }
     }
 
-    // 6. Per-Column Filter: Alamat Penerima
+    // 6. Per-Column Filter: Alamat Penerima (Full-text index)
     if (col_alamat && col_alamat.trim()) {
-      conditions.push('g.alamat_penerima LIKE ?');
-      params.push(`%${col_alamat.trim()}%`);
+      const ft = formatFulltextQuery(col_alamat);
+      if (ft) {
+        conditions.push('MATCH(g.alamat_penerima) AGAINST(? IN BOOLEAN MODE)');
+        params.push(ft);
+      } else {
+        conditions.push('g.alamat_penerima LIKE ?');
+        params.push(`%${col_alamat.trim()}%`);
+      }
     }
 
     // 6b. Per-Column Filter: Asal (GW Asal & Outlet Asal)
@@ -1408,9 +1528,8 @@ async function queryInventory(req, res) {
     if (isUnfiltered) {
       statsPromise = Promise.resolve([[cachedGlobalStats]]);
     } else {
-      // Filtered query: Only run fast indexed COUNT(*) to get totalRows (<50ms)
-      // Avoid heavy SUM/AVG across 1.4M rows which causes 4-8s freeze
-      const fastCountSql = `SELECT COUNT(*) as totalRows FROM gudang_rute_inventory g WHERE ${whereClause}`;
+      // Filtered query: Run fast subquery capped COUNT to avoid freezing 1.4M rows
+      const fastCountSql = `SELECT COUNT(*) as totalRows FROM (SELECT g.id FROM gudang_rute_inventory g WHERE ${whereClause} LIMIT 1001) as sub`;
       statsPromise = db.query(fastCountSql, params).then(([res]) => {
         return [res];
       });
@@ -2191,5 +2310,6 @@ module.exports = {
   bulkEnrichWaybills,
   getBulkEnrichStatus,
   cancelBulkEnrich,
-  instantDbEnrich
+  instantDbEnrich,
+  uploadFileGudangData
 };
