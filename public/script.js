@@ -449,7 +449,7 @@ function showAppAlert(message, isErrorOverride = null) {
   const text = String(message || 'Terjadi sesuatu pada aplikasi.');
   const isError = isErrorOverride !== null
     ? Boolean(isErrorOverride)
-    : (!/berhasil|sukses|disalin|selesai/i.test(text) && /gagal|error|ditolak|batal|salah|kadaluarsa|unauthorized|forbidden|invalid|belum berhasil/i.test(text));
+    : (!/berhasil|sukses|disalin|selesai/i.test(text) && /gagal|error|ditolak|batal|salah|kadaluarsa|unauthorized|forbidden|invalid|belum berhasil|tidak ditemukan/i.test(text));
   if (appAlertTitle) appAlertTitle.textContent = isError ? 'Proses belum berhasil' : 'Proses berhasil';
   if (appAlertMessage) appAlertMessage.textContent = text;
   if (appAlertIcon) {

@@ -26,7 +26,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 300 * 1024 * 1024 } // 300MB
+  limits: { fileSize: 1024 * 1024 * 1024 } // 1GB
 });
 
 router.get('/latest-file', authMiddleware, gudangRuteController.getLatestFileInfo);

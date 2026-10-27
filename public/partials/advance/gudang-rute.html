@@ -525,7 +525,7 @@
 </div>
 
 <!-- MODAL: QUICK PASTE DATA FEISHU / EXCEL & AUTO-ENRICH -->
-<div id="modalQuickPasteGudang" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px;">
+<div id="modalQuickPasteGudang" ondragover="handleGudangDragOver(event)" ondragleave="handleGudangDragLeave(event)" ondrop="handleGudangFileDrop(event)" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px;">
   <div style="background: #0b1324; border: 1px solid rgba(52, 211, 153, 0.45); border-radius: 18px; max-width: 1400px; width: 95vw; max-height: 94vh; display: flex; flex-direction: column; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9); overflow: hidden; animation: fadeIn 0.2s ease;">
     <!-- MODAL HEADER -->
     <div style="padding: 18px 26px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98)); border-bottom: 1px solid rgba(52, 211, 153, 0.25); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
@@ -617,7 +617,7 @@
 
         <!-- TEXTAREA (EXTRA WIDE WITH HORIZONTAL TABULAR SCROLL) -->
         <div style="position: relative; flex: 1;">
-          <textarea id="quickPasteTextarea" oninput="onQuickPasteInput()" placeholder="Tempel (Ctrl + V) data tabel dari Feishu / Excel di sini...&#10;&#10;Contoh format tabel (19 kolom standar):&#10;100003200438015  2026-10-26 15:11:10  JBR021B  dalam perjalanan  327.00  1.000  tidak  2026-10-24 15:58:06 ...&#10;&#10;*Bisa juga langsung tempel nomor waybill saja (1 nomor per baris)!" style="width: 100%; height: 380px; min-height: 260px; padding: 14px 16px; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.82rem; line-height: 1.6; background: #060b14; color: #f1f5f9; border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 10px; resize: vertical; box-sizing: border-box; outline: none; white-space: pre; overflow-x: auto; tab-size: 8; -moz-tab-size: 8;"></textarea>
+          <textarea id="quickPasteTextarea" ondragover="handleGudangDragOver(event)" ondrop="handleGudangFileDrop(event)" oninput="onQuickPasteInput()" placeholder="Tempel (Ctrl + V) data tabel dari Feishu / Excel di sini...&#10;&#10;Contoh format tabel (19 kolom standar):&#10;100003200438015  2026-10-26 15:11:10  JBR021B  dalam perjalanan  327.00  1.000  tidak  2026-10-24 15:58:06 ...&#10;&#10;*Bisa juga langsung tempel nomor waybill saja (1 nomor per baris)!" style="width: 100%; height: 380px; min-height: 260px; padding: 14px 16px; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.82rem; line-height: 1.6; background: #060b14; color: #f1f5f9; border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 10px; resize: vertical; box-sizing: border-box; outline: none; white-space: pre; overflow-x: auto; tab-size: 8; -moz-tab-size: 8;"></textarea>
         </div>
 
         <!-- OPTIONS ROW -->

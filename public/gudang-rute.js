@@ -437,81 +437,107 @@ async function processGudangUploadedFile(file) {
     formData.append('file', file);
     formData.append('filterGw', 'ALL');
 
-    const res = await fetch('/api/gudang-rute/upload-import', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      clearInterval(timerInterval);
-      alert(json.message || 'Gagal mengunggah file.');
-      resetQuickPasteToInput();
-      return;
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/gudang-rute/upload-import');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     }
 
-    setUploadStep(2, 'Menyimpan multi-sheet inventaris...');
-    if (elBar) elBar.style.width = '45%';
-    if (elPercent) elPercent.textContent = '45%';
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) {
+        const pct = Math.min(45, Math.max(5, Math.round((evt.loaded / evt.total) * 45)));
+        const loadedMB = (evt.loaded / (1024 * 1024)).toFixed(1);
+        const totalMB = (evt.total / (1024 * 1024)).toFixed(1);
+        if (elBar) elBar.style.width = `${pct}%`;
+        if (elPercent) elPercent.textContent = `${pct}%`;
+        if (elCurrentTask) elCurrentTask.textContent = `Mengunggah file ke server: ${loadedMB} MB / ${totalMB} MB (${pct}%)...`;
+      }
+    };
 
-    const pollUploadStatus = setInterval(async () => {
+    xhr.onerror = () => {
+      clearInterval(timerInterval);
+      alert('Koneksi terputus saat mengunggah file.');
+      resetQuickPasteToInput();
+    };
+
+    xhr.onload = () => {
+      let json = {};
       try {
-        const stRes = await fetch('/api/gudang-rute/import-status', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!stRes.ok) return;
-        const stJson = await stRes.json();
-        const p = stJson.progress;
+        json = JSON.parse(xhr.responseText || '{}');
+      } catch (_) {}
 
-        if (stJson.isImporting) {
-          const count = p?.totalProcessed || 0;
-          if (elWbBadge) elWbBadge.textContent = `${count.toLocaleString('id-ID')} waybill diproses...`;
-          if (elCurrentTask) elCurrentTask.textContent = p?.message || 'Memproses baris data...';
+      if (xhr.status < 200 || xhr.status >= 300 || !json.success) {
+        clearInterval(timerInterval);
+        alert(json.message || json.error || 'Gagal memproses file unggahan.');
+        resetQuickPasteToInput();
+        return;
+      }
 
-          if (count > 0) {
-            setUploadStep(2, 'Menyimpan data multi-sheet...');
-            if (elBar) elBar.style.width = '70%';
-            if (elPercent) elPercent.textContent = '70%';
-          }
-        } else {
-          clearInterval(pollUploadStatus);
-          clearInterval(timerInterval);
+      setUploadStep(2, 'Menyimpan multi-sheet inventaris...');
+      if (elBar) elBar.style.width = '48%';
+      if (elPercent) elPercent.textContent = '48%';
+      if (elCurrentTask) elCurrentTask.textContent = 'Membaca Sheet 1 & Sheet 2 (Streaming Engine)...';
 
-          if (p?.status === 'error') {
-            alert('Proses impor terhenti: ' + (p.message || 'Unknown error'));
-            resetQuickPasteToInput();
-            return;
-          }
+      const pollUploadStatus = setInterval(async () => {
+        try {
+          const stRes = await fetch('/api/gudang-rute/import-status', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!stRes.ok) return;
+          const stJson = await stRes.json();
+          const p = stJson.progress;
 
-          setUploadStep(3, 'Auto-enrich nama barang...');
-          if (elBar) elBar.style.width = '92%';
-          if (elPercent) elPercent.textContent = '92%';
+          if (stJson.isImporting) {
+            const count = p?.totalProcessed || 0;
+            if (elWbBadge) elWbBadge.textContent = `${count.toLocaleString('id-ID')} waybill diproses...`;
+            if (elCurrentTask) elCurrentTask.textContent = p?.message || 'Memproses baris data...';
 
-          setTimeout(async () => {
-            setUploadStep(4, 'Selesai', true);
-            if (elBar) elBar.style.width = '100%';
-            if (elPercent) elPercent.textContent = '100%';
-            if (elCurrentTask) elCurrentTask.textContent = 'Semua data dan multi-sheet berhasil diimpor!';
+            if (count > 0) {
+              setUploadStep(2, 'Menyimpan data multi-sheet...');
+              if (elBar) elBar.style.width = '70%';
+              if (elPercent) elPercent.textContent = '70%';
+            }
+          } else {
+            clearInterval(pollUploadStatus);
+            clearInterval(timerInterval);
 
-            await new Promise(r => setTimeout(r, 300));
-
-            if (liveRunning) liveRunning.style.display = 'none';
-            if (liveDone) liveDone.style.display = 'flex';
-
-            const elSummary = document.getElementById('quickPasteResultSummary');
-            if (elSummary) {
-              elSummary.textContent = `${(p?.totalProcessed || 0).toLocaleString('id-ID')} waybill berhasil diimpor dari file "${fileName}". Auto-enrichment berjalan otomatis!`;
+            if (p?.status === 'error') {
+              alert('Proses impor terhenti: ' + (p.message || 'Unknown error'));
+              resetQuickPasteToInput();
+              return;
             }
 
-            fetchGudangFileInfo();
-            fetchGudangInventory();
-          }, 500);
+            setUploadStep(3, 'Auto-enrich nama barang...');
+            if (elBar) elBar.style.width = '92%';
+            if (elPercent) elPercent.textContent = '92%';
+
+            setTimeout(async () => {
+              setUploadStep(4, 'Selesai', true);
+              if (elBar) elBar.style.width = '100%';
+              if (elPercent) elPercent.textContent = '100%';
+              if (elCurrentTask) elCurrentTask.textContent = 'Semua data dan multi-sheet berhasil diimpor!';
+
+              await new Promise(r => setTimeout(r, 300));
+
+              if (liveRunning) liveRunning.style.display = 'none';
+              if (liveDone) liveDone.style.display = 'flex';
+
+              const elSummary = document.getElementById('quickPasteResultSummary');
+              if (elSummary) {
+                elSummary.textContent = `${(p?.totalProcessed || 0).toLocaleString('id-ID')} waybill berhasil diimpor dari file "${fileName}". Auto-enrichment berjalan otomatis!`;
+              }
+
+              fetchGudangFileInfo();
+              fetchGudangInventory();
+            }, 500);
+          }
+        } catch (pollErr) {
+          console.warn('pollUploadStatus error:', pollErr);
         }
-      } catch (pollErr) {
-        console.warn('pollUploadStatus error:', pollErr);
-      }
-    }, 1500);
+      }, 1500);
+    };
+
+    xhr.send(formData);
 
   } catch (err) {
     clearInterval(timerInterval);
